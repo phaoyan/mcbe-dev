@@ -1,0 +1,40 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "minecraft_dev Resource Pack",
+        "description": "minecraft_dev Resource Pack",
+        "uuid": "2221e0a4-1651-4b59-9e86-5919f5bfcc4b",
+        "version": [
+            1,
+            0,
+            0
+        ],
+        "min_engine_version": [
+            1,
+            20,
+            30
+        ]
+    },
+    "modules": [
+        {
+            "description": "My Resource Pack",
+            "type": "resources",
+            "uuid": "503fe660-142b-46a2-8fec-34a54e944720",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        }
+    ],
+    "dependencies": [
+        {
+            "uuid": "3ee0fb3a-63d9-4587-a783-25ff8870e1d9",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        }
+    ]
+}

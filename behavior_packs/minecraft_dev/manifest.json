@@ -1,0 +1,46 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "minecraft_dev Behavior Pack",
+        "description": "minecraft_dev Behavior Pack",
+        "uuid": "3ee0fb3a-63d9-4587-a783-25ff8870e1d9",
+        "version": [
+            1,
+            0,
+            0
+        ],
+        "min_engine_version": [
+            1,
+            20,
+            30
+        ]
+    },
+    "modules": [
+        {
+            "description": "Script resources",
+            "language": "javascript",
+            "type": "script",
+            "uuid": "8f263959-e54a-4cda-b17f-f36de31e8a3c",
+            "version": [
+                1,
+                0,
+                0
+            ],
+            "entry": "scripts/main.js"
+        }
+    ],
+    "dependencies": [
+        {
+            "uuid": "2221e0a4-1651-4b59-9e86-5919f5bfcc4b",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        },
+        {
+            "module_name": "@minecraft/server",
+            "version": "1.8.0"
+        }
+    ]
+}
