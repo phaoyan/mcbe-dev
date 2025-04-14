@@ -54,8 +54,11 @@ def setup_name_mapping():
                         file = dp.get("file")
                         if file is None or not Path(file).exists():
                             continue
-                        particle_id = json.loads(Path(file).read_text())["particle_effect"]["description"]["identifier"]
-                        particles[name] = particle_id
+                        try: 
+                            particle_id = json.loads(Path(file).read_text())["particle_effect"]["description"]["identifier"]
+                            particles[name] = particle_id
+                        except:
+                            continue
         data[bbmodel_file.stem] = {
             "geometry": bbmodel["model_identifier"],
             "textures": [texture["name"] for texture in bbmodel["textures"]],
