@@ -68,6 +68,7 @@ def setup_name_mapping():
             "sounds": {}    
         }
     NAME_MAPPING_PATH.write_text(json.dumps(data, indent=2))
+    (SCRIPTS_DIR / "json").mkdir(exist_ok=True)
     (SCRIPTS_DIR / "json" / "name_mapping.json").write_text(json.dumps(data, indent=2))
 
 def save_base64_image(base64_str, output_path):
