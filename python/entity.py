@@ -77,7 +77,7 @@ class Workspace:
         self.ce["minecraft:client_entity"]["description"]["geometry"] = {"default": f"geometry.{self.name_mapping.get('geometry')}"}
         self.ce["minecraft:client_entity"]["description"]["textures"] = {"default": f"textures/entity/{self.name_mapping.get('textures')[0]}"}
         if len(self.name_mapping.get("animations")) > 0:
-            self.ce["minecraft:client_entity"]["description"]["animations"] = { animation.split(".")[-1]: animation for animation in self.name_mapping.get("animations") }
+            self.ce["minecraft:client_entity"]["description"]["animations"] = self.name_mapping.get("animations")
         if len(self.name_mapping.get("particles").keys()) > 0:
             self.ce["minecraft:client_entity"]["description"]["particle_effects"] = self.name_mapping.get("particles")
         if len(self.name_mapping.get("sounds").keys()) > 0:
@@ -87,7 +87,7 @@ class Workspace:
         self.att["minecraft:attachable"]["description"]["geometry"] = {"default": f"geometry.{self.name_mapping.get('geometry')}"}
         self.att["minecraft:attachable"]["description"]["textures"] = {"default": f"textures/entity/{self.name_mapping.get('textures')[0]}"}
         if len(self.name_mapping.get("animations")) > 0:
-            self.att["minecraft:attachable"]["description"]["animations"] = { animation.split(".")[-1]: animation for animation in self.name_mapping.get("animations") }
+            self.att["minecraft:attachable"]["description"]["animations"] = self.name_mapping.get("animations")
         if len(self.name_mapping.get("particles").keys()) > 0:
             self.att["minecraft:attachable"]["description"]["particle_effects"] = self.name_mapping.get("particles")
         if len(self.name_mapping.get("sounds").keys()) > 0:
@@ -97,9 +97,7 @@ def deploy():
     """
     批量create操作以实现完全部署
     """
-    bbmodels = [
-        # 填写需要部署的bbmodel名称
-    ]
+    bbmodels = []
     for bbmodel in bbmodels:
         create(Workspace(bbmodel))
 

@@ -151,7 +151,11 @@ function compileGroup(data, group) {
             ],
           };
         } else {
-          locators[key] = offset;
+          locators[key] = [
+            element.position[0],
+            element.position[1],
+            element.position[2],
+          ];
         }
       }
     }

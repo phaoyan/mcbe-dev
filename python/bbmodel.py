@@ -15,6 +15,7 @@ ENV_PATH = Path(__file__).parent.parent / ".env"
 PROJECT_NAME = get_project_name()
 RESOURCE_PACK_DIR = Path(__file__).parent.parent / "resource_packs" / PROJECT_NAME
 BEHAVIOR_PACK_DIR = Path(__file__).parent.parent / "behavior_packs" / PROJECT_NAME
+SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 
 def list_bbomdel_files():
     bbmodel_files = list(BBMODEL_DIR.glob("*.bbmodel"))
@@ -58,11 +59,13 @@ def setup_name_mapping():
         data[bbmodel_file.stem] = {
             "geometry": bbmodel["model_identifier"],
             "textures": [texture["name"] for texture in bbmodel["textures"]],
-            "animations": [animation["name"] for animation in bbmodel["animations"]],
+            "animations": {animation["name"].split(".")[-1]: animation["name"] for animation in bbmodel["animations"]},
+            "animation_length": {animation["name"].split(".")[-1]: animation["length"] for animation in bbmodel["animations"]},
             "particles": particles,
-            "sounds": []    
+            "sounds": {}    
         }
     NAME_MAPPING_PATH.write_text(json.dumps(data, indent=2))
+    (SCRIPTS_DIR / "json" / "name_mapping.json").write_text(json.dumps(data, indent=2))
 
 def save_base64_image(base64_str, output_path):
     if base64_str.startswith('data:image'):
@@ -124,7 +127,7 @@ def export_animation(bbmodel_file: Path):
                     data_points   = [data_points[0]["x"], data_points[0]["y"], data_points[0]["z"]]
                     fillin = \
                         data_points if interpolation.__eq__("linear") else \
-                        {"post": data_points, "lerp_mode": "catmullrom"} if interpolation.__eq__("catmullrom") else \
+                        {"pre": data_points, "post": data_points, "lerp_mode": "catmullrom"} if interpolation.__eq__("catmullrom") else \
                         None
                     bone_data[channel] = bone_data.get(channel, {}) | { str(time): fillin }
                 bones[animator_name] = bone_data
@@ -145,10 +148,15 @@ def export_animation(bbmodel_file: Path):
             "animation_length": animation_length,
             "override_previous_animation": override_previous_animation,
             "loop": loop,
-            "bones": bones,
-            "particle_effects": particle_effects,
-            "sound_effects": sound_effects
         }
+        
+        if len(bones.keys()) > 0:
+            output_animations[name]["bones"] = bones
+        if len(particle_effects.keys()) > 0:
+            output_animations[name]["particle_effects"] = particle_effects
+        if len(sound_effects.keys()) > 0:
+            output_animations[name]["sount_effects"] = sound_effects
+            
     target_path.write_text(json.dumps({
         "format_version": "1.8.0",
         "animations": output_animations
