@@ -21,6 +21,8 @@
        "baseUrl":"behavior_packs/",
        "listFiles":false,
        "noEmitHelpers":true,
+       "resolveJsonModule": true,
+       "esModuleInterop": true,
        "skipLibCheck": true
     },
     "include":[ 

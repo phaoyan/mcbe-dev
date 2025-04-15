@@ -213,6 +213,9 @@ function compileCube(data, element, bone) {
           uv: [face.uv[0], face.uv[1]],
           uv_size: [face.uv[2] - face.uv[0], face.uv[3] - face.uv[1]],
         };
+        if (face.rotation) {
+          cube.uv[key].uv_rotation = face.rotation
+        }
         if (face.material_name) {
           cube.uv[key].material_instance = face.material_name;
         }
