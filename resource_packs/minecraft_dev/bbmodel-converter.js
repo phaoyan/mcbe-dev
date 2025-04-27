@@ -127,6 +127,8 @@ function compileGroup(data, group) {
   for (let child of group.children) {
     if (!(child instanceof Object)) {
       let element = data.elements.find((element) => element.uuid === child);
+      if (!element) continue
+
       if (element.type !== "locator") {
         if (element.visibility===false) continue
         let cube = compileCube(data, element, bone);
