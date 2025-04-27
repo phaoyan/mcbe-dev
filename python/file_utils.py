@@ -52,11 +52,5 @@ def rename_bbmodel_files(old_str, new_str):
             except Exception as e:
                 print(f"重命名 '{filename}' 失败: {e}")
 
-def get_bbmodel_files():
-    return [file for file in BBMODEL_DIR.rglob("*.bbmodel")]
-
-def get_bbmodel_names():
-    return [file.stem for file in BBMODEL_DIR.rglob("*.bbmodel")]
-
 if __name__ == "__main__":
   rename_bbmodel_files("-", "_")
