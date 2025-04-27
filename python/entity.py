@@ -17,10 +17,10 @@ RESOURCE_PACK_DIR = Path(__file__).parent.parent / "resource_packs" / PROJECT_NA
 BEHAVIOR_PACK_DIR = Path(__file__).parent.parent / "behavior_packs" / PROJECT_NAME
 
 NAME_MAPPING  = json.loads(NAME_MAPPING_PATH.read_text())
-BBMODEL_NAMES = [bbmodel.stem for bbmodel in BBMODEL_DIR.iterdir()]
+BBMODEL_NAMES = [bbmodel.stem for bbmodel in BBMODEL_DIR.rglob("*.bbmodel")]
 BBMODEL_DATA  = {
     bbmodel.stem: json.loads((BBMODEL_DIR / bbmodel.name).read_text())
-    for bbmodel in BBMODEL_DIR.iterdir()
+    for bbmodel in BBMODEL_DIR.rglob("*.bbmodel")
 }
 TARGET_DIRS = {
     "item": BEHAVIOR_PACK_DIR / "items",
@@ -38,8 +38,9 @@ def str_replace(data, old: str, new: str) -> dict:
     return json.loads(json.dumps(data).replace(old, new))
 
 def setup_ce(data: dict, bbmodel: str) -> dict:
+    textures = NAME_MAPPING[bbmodel].get('textures')
     data["minecraft:client_entity"]["description"]["geometry"] = {"default": f"geometry.{NAME_MAPPING[bbmodel].get('geometry')}"}
-    data["minecraft:client_entity"]["description"]["textures"] = {"default": f"textures/entity/{NAME_MAPPING[bbmodel].get('textures')[0]}"}
+    data["minecraft:client_entity"]["description"]["textures"] = {"default": f"textures/entity/{textures[0] if len(textures) > 0 else 'empty'}"}
     if len(NAME_MAPPING[bbmodel].get("animations")) > 0:
         data["minecraft:client_entity"]["description"]["animations"] = NAME_MAPPING[bbmodel].get("animations")
     if len(NAME_MAPPING[bbmodel].get("particles").keys()) > 0:
@@ -49,8 +50,9 @@ def setup_ce(data: dict, bbmodel: str) -> dict:
     return data
 
 def setup_att(data: dict, bbmodel: str) -> dict:
+    textures = NAME_MAPPING[bbmodel].get('textures')
     data["minecraft:attachable"]["description"]["geometry"] = {"default": f"geometry.{NAME_MAPPING[bbmodel].get('geometry')}"}
-    data["minecraft:attachable"]["description"]["textures"] = {"default": f"textures/entity/{NAME_MAPPING[bbmodel].get('textures')[0]}"}
+    data["minecraft:attachable"]["description"]["textures"] = {"default": f"textures/entity/{textures[0] if len(textures) > 0 else 'empty'}"}
     if len(NAME_MAPPING[bbmodel].get("animations")) > 0:
         data["minecraft:attachable"]["description"]["animations"] = NAME_MAPPING[bbmodel].get("animations")
     if len(NAME_MAPPING[bbmodel].get("particles").keys()) > 0:
@@ -62,12 +64,20 @@ def setup_att(data: dict, bbmodel: str) -> dict:
 def export(data, name: str, type: str):
     filename = f"{name}.{type}.json"
     target_path = TARGET_DIRS[type] / filename
-    target_path.mkdir(parents=True, exist_ok=True)
+    target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_text(json.dumps(data, indent=2))
     
     
 def main():
-    pass
+    for bbmodel in BBMODEL_NAMES:
+        se_data = use_template("basic.se.json")
+        se_data = str_replace(se_data, "ID", bbmodel)
+        export(se_data, bbmodel, "se")
+        ce_data = use_template("basic.ce.json")
+        ce_data = str_replace(ce_data, "ID", bbmodel)
+        ce_data = setup_ce(ce_data, bbmodel)
+        export(ce_data, bbmodel, "ce")
+        
 
 if __name__ == "__main__":
     main()
