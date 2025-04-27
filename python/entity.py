@@ -34,40 +34,89 @@ class Workspace:
         self.att  = None
         self.item = None
         self.ac   = None
+        self.rc   = None
+        
+        self.se_name: str   = None
+        self.ce_name: str   = None
+        self.att_name: str  = None
+        self.item_name: str = None
+        self.ac_name: str   = None
+        self.rc_name: str   = None
 
     def export(self):
+        # 确定要导出的数据和目标路径
+        target_data = None
+        target_path = None
+        
         if self.item is not None:
             item_id: str = self.item["minecraft:item"]["description"]["identifier"]
-            target_path = BEHAVIOR_PACK_DIR / "items" / f"{item_id.split(':')[-1]}.item.json"
+            filename = f"{item_id.split(':')[-1]}.item.json" if self.item_name is None else f"{self.item_name}.item.json"
+            target_path = BEHAVIOR_PACK_DIR / "items" / filename
             target_data = self.item
         if self.se is not None:
             se_id: str = self.se["minecraft:entity"]["description"]["identifier"]
-            target_path = BEHAVIOR_PACK_DIR / "entities" / f"{se_id.split(':')[-1]}.se.json"
+            filename = f"{se_id.split(':')[-1]}.se.json" if self.se_name is None else f"{self.se_name}.se.json"
+            target_path = BEHAVIOR_PACK_DIR / "entities" / filename
             target_data = self.se
         if self.ce is not None:
             ce_id: str = self.ce["minecraft:client_entity"]["description"]["identifier"]
-            target_path = RESOURCE_PACK_DIR / "entity" / f"{ce_id.split(':')[-1]}.ce.json"
+            filename = f"{ce_id.split(':')[-1]}.ce.json" if self.ce_name is None else f"{self.ce_name}.ce.json"
+            target_path = RESOURCE_PACK_DIR / "entity" / filename
             target_data = self.ce
         if self.att is not None:
             att_id: str = self.att["minecraft:attachable"]["description"]["identifier"]
-            target_path = RESOURCE_PACK_DIR / "attachables" / "items" / f"{att_id.split(':')[-1]}.att.json"
+            filename = f"{att_id.split(':')[-1]}.att.json" if self.att_name is None else f"{self.att_name}.att.json"
+            target_path = RESOURCE_PACK_DIR / "attachables" / "items" / filename
             target_data = self.att
-            target_path.parent.parent.mkdir(exist_ok=True)
         if self.ac is not None:
-            ac_id: str = next(self.ac["animation_controllers"].keys())
-            target_path = RESOURCE_PACK_DIR / "animation_controllers" / f"{ac_id.split(':')[-1]}.ac.json"
+            ac_id: str = next(iter(self.ac["animation_controllers"].keys()))
+            filename = f"{ac_id.split(':')[-1]}.ac.json" if self.ac_name is None else f"{self.ac_name}.ac.json"
+            target_path = RESOURCE_PACK_DIR / "animation_controllers" / filename
             target_data = self.ac
+        if self.rc is not None:
+            rc_id: str = next(iter(self.rc["render_controllers"].keys()))
+            filename = f"{rc_id.split(':')[-1]}.rc.json" if self.rc_name is None else f"{self.rc_name}.rc.json"
+            target_path = RESOURCE_PACK_DIR / "render_controllers" / filename
+            target_data = self.rc
         
+        if target_data is None or target_path is None:
+            return
+        
+        # 处理带有路径分隔符的文件名
+        if '/' in target_path.name:
+            # 分割文件名中的路径部分和实际文件名
+            parts = target_path.name.split('/')
+            actual_filename = parts[-1]
+            sub_dirs = parts[:-1]
+            
+            # 构建新的目标路径
+            new_target_path = target_path.parent
+            for dir_name in sub_dirs:
+                new_target_path = new_target_path / dir_name
+            
+            # 确保目录存在
+            new_target_path.mkdir(parents=True, exist_ok=True)
+            
+            # 添加实际文件名
+            target_path = new_target_path / actual_filename
+        
+        # 处理导出模式
         if target_path.exists() and self.mode.__eq__("skip"):
             return
 
         if target_path.exists() and self.mode.__eq__("override"):
-            target_path.parent.mkdir(exist_ok=True)
+            target_path.parent.mkdir(parents=True, exist_ok=True)
             (TEMP_DIR / target_path.name).write_text(target_path.read_text())
             target_path.write_text(json.dumps(target_data, indent=2))
             return
         
-        target_path.parent.mkdir(exist_ok=True)
+        if target_path.exists() and self.mode.__eq__("force"):
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(json.dumps(target_data, indent=2))
+            return
+        
+        # 确保目录存在
+        target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_text(json.dumps(target_data, indent=2))
             
     def use_template(self, template_filename: str):
@@ -83,6 +132,8 @@ class Workspace:
             self.att = template
         elif type.__eq__("ac"):
             self.ac  = template
+        elif type.__eq__("rc"):
+            self.rc  = template
 
     def replace(self, data: dict, old: str, new: str):
         return json.loads(json.dumps(data).replace(old, new))
@@ -110,17 +161,3 @@ class Workspace:
 def deploy(bbmodels: list[str], create: Callable, mode: str = "skip"):
     for bbmodel in bbmodels:
         create(Workspace(bbmodel, mode))
-
-
-def create(workspace: Workspace):
-    """
-    用已有的数据按照具体的需求构建CE和SE文件(对于attachable则是ITEM和ATT文件),以及可能的AC文件, 然后将其导出到相应文件夹
-    Args:
-        bbmodel (dict[str, Any]): bbmodel数据
-        name_mapping (dict[str, Any]): 相应bbmodel的name_mapping
-        cejson (dict[str, Any]): 相应bbmodel对应
-    """
-    # 填写构建逻辑
-
-if __name__ == "__main__":
-    pass

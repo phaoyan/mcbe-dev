@@ -1,0 +1,23 @@
+{
+  "format_version": "1.21.10",
+  "minecraft:client_entity": {
+      "description": {
+          "identifier": "cubee:ID",
+          "textures": {
+          },
+          "geometry": {
+              "default": "geometry.ID"
+          },
+          "materials": {
+              "default": "entity_alphablend"
+          },
+          "render_controllers": [
+              "controller.render.default"
+          ],
+          "spawn_egg": {
+              "base_color": "#FF0000",
+              "overlay_color": "#00FF00"
+          }
+      }
+  }
+}

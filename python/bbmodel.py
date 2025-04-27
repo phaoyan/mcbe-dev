@@ -98,10 +98,12 @@ def export_texture(bbmodel_file: Path):
         save_base64_image(image_base64, f"{output_dir}/{texture['name'].replace('.png','')}.png")
 
 
-def export_geometry(bbmodel_file: Path):
+def export_geometry(bbmodel_file: Path, ignores: list[str]):
     target_model_path = RESOURCE_PACK_DIR / "models" / "entity" / bbmodel_file.name
     target_model_path.parent.mkdir(parents=True, exist_ok=True)
-    target_model_path.write_text(bbmodel_file.read_text())
+    bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
+    bbmodel["elements"] = [element for element in bbmodel["elements"] if not element["name"] in ignores]
+    target_model_path.write_text(json.dumps(bbmodel))
     os.system(f"node {RESOURCE_PACK_DIR}/bbmodel-converter.js")
     
 
@@ -192,7 +194,7 @@ def export_animation(bbmodel_file: Path):
 
 def deploy_bbmodel(bbmodel_file: Path):
     export_texture(bbmodel_file)
-    export_geometry(bbmodel_file)
+    export_geometry(bbmodel_file, ignores=["hitbox"])
     export_animation(bbmodel_file)
  
 
