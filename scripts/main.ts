@@ -1,3 +1,4 @@
+import "./utils"
 import { world, system } from "@minecraft/server";
 
 function mainTick() {
