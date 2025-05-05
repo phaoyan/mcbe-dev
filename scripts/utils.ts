@@ -396,6 +396,7 @@ export class DPUtils {
     
     static store() {
         return this.mapValues(this.STORE, (v, k) => ({
+            id: v,
             curr: (target: Entity | ItemStack, placeHolder?: any) => this.curr(target, k, placeHolder),
             prev: (target: Entity | ItemStack, placeHolder?: any) => this.prev(target, k, placeHolder),
             both: (target: Entity | ItemStack, placeHolder?: any) => this.both(target, k, placeHolder),
