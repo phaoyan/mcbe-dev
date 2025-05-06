@@ -386,7 +386,7 @@ export class EntityUtils {
 
 export class DPUtils {
 
-    static STORE: Record<string, string> = {}
+    static STORE = {}
     
     private static mapValues<T extends object, U>(obj: T, fn: (value: T[keyof T], key: keyof T) => U): Record<keyof T, U> {
         return Object.fromEntries(
@@ -426,5 +426,9 @@ export class DPUtils {
             curr: this.curr(target, key, placeHolder),
             prev: this.prev(target, key, placeHolder),
         }
+    }
+
+    static sync(target: Entity | ItemStack, key: string) {
+        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))   
     }
 }
