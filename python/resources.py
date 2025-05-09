@@ -1,15 +1,10 @@
-import json
-from pathlib import Path
+from utils import *
 
-def get_project_name():
-    project_name = ENV_PATH.read_text().splitlines()[0].split("=")[1].strip('"')
-    return project_name
-
-ENV_PATH = Path(__file__).parent.parent / ".env"
-PROJECT_NAME = get_project_name()
-RESOURCE_PACK_DIR = Path(__file__).parent.parent / "resource_packs" / PROJECT_NAME
-BEHAVIOR_PACK_DIR = Path(__file__).parent.parent / "behavior_packs" / PROJECT_NAME
-SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
+def generate_item_texture_list():
+    data = json.loads((SCRIPTS_DIR / "json" / "item_ids.json").read_text())
+    names = [f"{k}.item.json" for k in data.keys()]
+    target = PYTHON_DIR / "outputs" / "item_texture_list.txt"
+    target.write_text("\n".join(names))
 
 def setup_item_texture_json():
     item_dir = BEHAVIOR_PACK_DIR / "items"
@@ -24,14 +19,14 @@ def setup_item_texture_json():
         else:
             item_texture_json["texture_data"][item_id] = {"textures": f"textures/items/book"}
 
-    item_texture_path.write_text(json.dumps(item_texture_json, indent=4))
+    item_texture_path.write_text(json.dumps(item_texture_json, indent=JSON_INDENT))
 
 def deploy_item_texture():
     item_dir = BEHAVIOR_PACK_DIR / "items"
     for item_file in item_dir.rglob("*.json"):
         data = json.loads(item_file.read_text())
         data["minecraft:item"]["components"]["minecraft:icon"] = item_file.stem.replace(".item","")
-        item_file.write_text(json.dumps(data, indent=4))
+        item_file.write_text(json.dumps(data, indent=JSON_INDENT))
     
 def setup_sounds_definition():
     sounds_dir = RESOURCE_PACK_DIR / "sounds"
@@ -41,7 +36,7 @@ def setup_sounds_definition():
         sound_path = f"sounds/{str(sound_file.resolve()).replace(str(sounds_dir.resolve()), '').replace('\\','/')}"
         sound_id   = str(sound_file.resolve()).replace(str(sounds_dir.resolve()), "").replace("/",".").replace("\\","")
         def_json["sound_definitions"][sound_id] = {"category": "player","sounds": [{"name": sound_path,"volume": 1.0}]}
-    def_path.write_text(json.dumps(def_json, indent=4))
+    def_path.write_text(json.dumps(def_json, indent=JSON_INDENT))
 
 def setup_sound_type_json():
     sounds_dir  = RESOURCE_PACK_DIR / "sounds"
@@ -52,9 +47,10 @@ def setup_sound_type_json():
     for key in def_json["sound_definitions"].keys():
         prompt_json[key.replace(".","_")] = key
     target_path.parent.mkdir(exist_ok=True)
-    target_path.write_text(json.dumps(prompt_json, indent=4))
+    target_path.write_text(json.dumps(prompt_json, indent=JSON_INDENT))
 
 if __name__ == "__main__":
+    generate_item_texture_list()
     setup_item_texture_json()
     deploy_item_texture()
     setup_sounds_definition()

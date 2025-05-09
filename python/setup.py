@@ -1,21 +1,16 @@
-from pathlib import Path
-import json
+from utils import *
 import os
 import uuid
 
-RESOURCE_PACKS_DIR = Path(__file__).parent.parent / "resource_packs"
-BEHAVIOR_PACKS_DIR = Path(__file__).parent.parent / "behavior_packs"
-ENV_PATH = Path(__file__).parent.parent / ".env"
-
 def setup(project_name: str):
-    os.rename(next(iter(RESOURCE_PACKS_DIR.iterdir())), RESOURCE_PACKS_DIR / project_name)
-    os.rename(next(iter(BEHAVIOR_PACKS_DIR.iterdir())), BEHAVIOR_PACKS_DIR / project_name)
+    os.rename(next(iter(RESOURCE_PACK_DIR.iterdir())), RESOURCE_PACK_DIR / project_name)
+    os.rename(next(iter(BEHAVIOR_PACK_DIR.iterdir())), BEHAVIOR_PACK_DIR / project_name)
     ENV_PATH.write_text(f'PROJECT_NAME="{project_name}"\nMINECRAFT_PRODUCT="BedrockUWP"\nCUSTOM_DEPLOYMENT_PATH=""')
     resource_uuid = uuid.uuid4()
     behavior_uuid = uuid.uuid4()
     script_uuid = uuid.uuid4()
-    resource_manifest_file = RESOURCE_PACKS_DIR / project_name / "manifest.json"
-    behavior_manifest_file = BEHAVIOR_PACKS_DIR / project_name / "manifest.json"
+    resource_manifest_file = RESOURCE_PACK_DIR / project_name / "manifest.json"
+    behavior_manifest_file = BEHAVIOR_PACK_DIR / project_name / "manifest.json"
     resource_manifest = json.loads(resource_manifest_file.read_text())
     behavior_manifest = json.loads(behavior_manifest_file.read_text())
     resource_manifest["header"]["name"] = f"{project_name} Resource Pack"
@@ -27,8 +22,8 @@ def setup(project_name: str):
     resource_manifest["dependencies"][0]["uuid"] = str(behavior_uuid)
     behavior_manifest["dependencies"][0]["uuid"] = str(resource_uuid)
     behavior_manifest["modules"][0]["uuid"] = str(script_uuid)
-    resource_manifest_file.write_text(json.dumps(resource_manifest, indent=4))
-    behavior_manifest_file.write_text(json.dumps(behavior_manifest, indent=4))
+    resource_manifest_file.write_text(json.dumps(resource_manifest, indent=JSON_INDENT))
+    behavior_manifest_file.write_text(json.dumps(behavior_manifest, indent=JSON_INDENT))
     print(f"Project '{project_name}' setup complete.")
     print("Resource pack UUID:", resource_uuid)
     print("Behavior pack UUID:", behavior_uuid)

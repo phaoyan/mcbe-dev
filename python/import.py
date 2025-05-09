@@ -1,7 +1,6 @@
 import os
-from pathlib import Path
+from utils import *
 
-SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 def generate_main_ts(project_dir):
     # 校验目录有效性
     if not os.path.isdir(project_dir):

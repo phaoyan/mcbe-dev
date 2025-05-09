@@ -1,20 +1,9 @@
-import json
-from pathlib import Path
+from utils import *
 from typing import *
 
 def get_project_name():
     project_name = ENV_PATH.read_text().splitlines()[0].split("=")[1].strip('"')
     return project_name
-
-BBMODEL_DIR = Path(__file__).parent / "bbmodel"
-NAME_MAPPING_PATH = BBMODEL_DIR / "name_mapping.json"
-ENTITY_EXPORT_DIR = Path(__file__).parent / "entity"
-TEMPLATES_DIR = Path(__file__).parent / "templates"
-TEMP_DIR = Path(__file__).parent / "temp"
-ENV_PATH = Path(__file__).parent.parent / ".env"
-PROJECT_NAME = get_project_name()
-RESOURCE_PACK_DIR = Path(__file__).parent.parent / "resource_packs" / PROJECT_NAME
-BEHAVIOR_PACK_DIR = Path(__file__).parent.parent / "behavior_packs" / PROJECT_NAME
 
 NAME_MAPPING  = json.loads(NAME_MAPPING_PATH.read_text())
 BBMODEL_NAMES = [bbmodel.stem for bbmodel in BBMODEL_DIR.rglob("*.bbmodel")]
@@ -33,6 +22,11 @@ TARGET_DIRS = {
 
 def use_template(name: str) -> dict:
     return json.loads((TEMPLATES_DIR / name).read_text())
+
+def use_current(name: str, type: str) -> dict:
+    target_dir  = TARGET_DIRS[type]
+    target_path = target_dir / f"{name}.{type}.json"
+    return json.loads(target_path.read_text())
 
 def str_replace(data, old: str, new: str) -> dict:
     return json.loads(json.dumps(data).replace(old, new))
@@ -61,11 +55,23 @@ def setup_att(data: dict, bbmodel: str) -> dict:
         data["minecraft:attachable"]["description"]["sound_effects"] = NAME_MAPPING[bbmodel].get("sounds")
     return data
 
+def comp_se(data: dict, name: str):
+    comps: dict[str, dict] = json.loads((TEMPLATES_DIR / name).read_text())
+    for k, v in comps.items():
+        data["minecraft:entity"]["component_groups"][k] |= v
+    return data
+
+def comp_item(data: dict, name: str):
+    comps: dict[str, dict] = json.loads((TEMPLATES_DIR / name).read_text())
+    for k, v in comps.items():
+        data["minecraft:item"]["component_groups"][k] |= v
+    return data
+
 def export(data, name: str, type: str):
     filename = f"{name}.{type}.json"
     target_path = TARGET_DIRS[type] / filename
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_text(json.dumps(data, indent=2))
+    target_path.write_text(json.dumps(data, indent=JSON_INDENT))
     
     
 def main():

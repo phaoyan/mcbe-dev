@@ -3,19 +3,8 @@ import os
 from pathlib import Path
 import json
 from typing import Any
+from utils import *
 
-def get_project_name():
-    project_name = ENV_PATH.read_text().splitlines()[0].split("=")[1].strip('"')
-    return project_name
-
-BBMODEL_DIR = Path(__file__).parent / "bbmodel"
-NAME_MAPPING_PATH = BBMODEL_DIR / "name_mapping.json"
-ENTITY_EXPORT_DIR = Path(__file__).parent / "entity"
-ENV_PATH = Path(__file__).parent.parent / ".env"
-PROJECT_NAME = get_project_name()
-RESOURCE_PACK_DIR = Path(__file__).parent.parent / "resource_packs" / PROJECT_NAME
-BEHAVIOR_PACK_DIR = Path(__file__).parent.parent / "behavior_packs" / PROJECT_NAME
-SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 
 def list_bbomdel_files():
     bbmodel_files = list(BBMODEL_DIR.glob("*.bbmodel"))
@@ -46,7 +35,7 @@ def setup_basic(bbmodel_file: Path):
     for idx, texture in enumerate(textures):
         texture["name"] = f"{bbmodel_file.stem}_{idx}"
         texture["path"] = str((RESOURCE_PACK_DIR / "textures" / "entity" / f"{texture['name']}").resolve())
-    bbmodel_file.write_text(json.dumps(data, indent=2))
+    bbmodel_file.write_text(json.dumps(data, indent=JSON_INDENT))
 
 def setup_name_mapping():
     data = {}
@@ -75,9 +64,9 @@ def setup_name_mapping():
             "particles": particles,
             "sounds": {}    
         }
-    NAME_MAPPING_PATH.write_text(json.dumps(data, indent=2))
+    NAME_MAPPING_PATH.write_text(json.dumps(data, indent=JSON_INDENT))
     (SCRIPTS_DIR / "json").mkdir(exist_ok=True)
-    (SCRIPTS_DIR / "json" / "name_mapping.json").write_text(json.dumps(data, indent=2))
+    (SCRIPTS_DIR / "json" / "name_mapping.json").write_text(json.dumps(data, indent=JSON_INDENT))
 
 def save_base64_image(base64_str, output_path):
     if base64_str.startswith('data:image'):
@@ -189,7 +178,7 @@ def export_animation(bbmodel_file: Path):
     target_path.write_text(json.dumps({
         "format_version": "1.8.0",
         "animations": output_animations
-    }, indent=2))
+    }, indent=JSON_INDENT))
     
 
 def deploy_bbmodel(bbmodel_file: Path):

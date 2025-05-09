@@ -345,6 +345,14 @@ export class EntityUtils {
         return EntityUtils
     }
 
+    static particles(particleIds: string[], location: (target: Entity)=>Vector3) {
+        this.ENTITIES.forEach(target=>{
+            if(!target.isValid()) return
+            particleIds.forEach(particleId=>target.dimension.spawnParticle(particleId, location(target)))
+        })
+        return EntityUtils
+    }
+
     static setOnFire(seconds: number, useEffects?: boolean) {
         this.ENTITIES.forEach(target => target.setOnFire(seconds, useEffects))
         return EntityUtils
