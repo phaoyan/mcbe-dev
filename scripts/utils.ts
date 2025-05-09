@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, EntityProjectileComponent, ItemStack, system, Vector3, world } from "@minecraft/server";
+import { Entity, EntityEffectOptions, EntityProjectileComponent, ItemStack, system, Vector3, World, world } from "@minecraft/server";
 
 
 export class MathUtils {
@@ -404,31 +404,39 @@ export class DPUtils {
         }))
     }
 
-    static set(target: Entity | ItemStack, key: string, value: any, placeHolder?: any) {
-        if (typeof value === "function")
+    static temp(target: Entity | ItemStack | World, ticks: number, key: string, value: any, placeHolder?: any){
+        const curr = DPUtils.curr(target, key, placeHolder)
+        if (typeof value === "function") 
+            value = value(curr)
+        DPUtils.set(target, key, value, placeHolder)
+        TimeUtils.timeout(()=>DPUtils.set(target, key, curr), ticks)
+    }
+
+    static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any) {
+        if (typeof value === "function") 
             value = value(DPUtils.curr(target, key, placeHolder))
-        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))
+        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))   
         target.setDynamicProperty(key, JSON.stringify(value))
     }
 
-    static curr(target: Entity | ItemStack, key: string, placeHolder: any = undefined) {
+    static curr(target: Entity | ItemStack | World, key: string, placeHolder: any=undefined){
         const raw = target.getDynamicProperty(key)
         if (raw === undefined) return placeHolder
         return JSON.parse(target.getDynamicProperty(key) as string)
     }
 
-    static prev(target: Entity | ItemStack, key: string, placeHolder: any) {
+    static prev(target: Entity | ItemStack | World, key: string, placeHolder: any){
         return this.curr(target, `${key}_prev`, placeHolder)
     }
 
-    static both(target: Entity | ItemStack, key: string, placeHolder: any = undefined) {
+    static both(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
         return {
             curr: this.curr(target, key, placeHolder),
             prev: this.prev(target, key, placeHolder),
         }
     }
 
-    static sync(target: Entity | ItemStack, key: string) {
+    static sync(target: Entity | ItemStack | World, key: string) {
         target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))   
     }
 }
