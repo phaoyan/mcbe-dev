@@ -1,11 +1,45 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, EntityProjectileComponent, ItemStack, system, Vector3, World, world } from "@minecraft/server";
+import { Block, BlockComponentTypes, BlockInventoryComponent, Container, Entity, EntityComponentTypes, EntityEffectOptions, EntityInventoryComponent, EntityProjectileComponent, ItemStack, Player, system, Vector3, World, world } from "@minecraft/server";
 
 
 export class MathUtils {
     static randomInt(from: number, to: number) {
         return Math.floor(Math.random() * (to - from)) + from
     }
+
+    static randomPickItems<T>(array: T[]): T {
+        if (array.length === 0) {
+            throw new Error("Cannot pick from an empty array");
+        }
+
+        const randomIndex = Math.floor(Math.random() * array.length);
+        return array[randomIndex];
+    }
+
+    static randomPickIndex(list: number[]) {
+        if (list.length === 0) return 0
+        const totalWeight = list.reduce((sum, weight) => sum + weight, 0);
+        if (totalWeight === 0) {
+            return Math.floor(Math.random() * list.length);
+        }
+        let random = Math.random() * totalWeight;
+        for (let i = 0; i < list.length; i++) {
+            random -= list[i];
+            if (random < 0) {
+                return i;
+            }
+        }
+        return list.length - 1;
+    }
+
+    static tanToDegrees(tanValue: number): number {
+        // 计算反正切（返回弧度）
+        const radians = Math.atan(tanValue);
+        // 将弧度转换为角度
+        const degrees = radians * (180 / Math.PI);
+        return degrees;
+    }
+
 }
 
 export class VecUtils {
@@ -262,15 +296,35 @@ export class TimeUtils {
         return Array.from({ length }, (_, i) => start + i * step);
     }
 
-    static timeout(callback: () => void, tick: number) {
-        system.runTimeout(callback, tick)
+    static timeout(callback: () => void, tick: number, trycatch: boolean=false) {
+        if (tick === 0) {
+            callback()
+            return TimeUtils
+        }
+        if(trycatch) {
+            try {system.runTimeout(callback, tick)} catch{}
+        } else system.runTimeout(callback, tick)
         return TimeUtils
     }
 
-    static timeseries<T>(callback: (param: T | undefined, index: number) => void, ticks: number[], params: (T | undefined)[] = []) {
+    static timeseries<T>(
+        callback: (param: T | undefined, index: number) => void, 
+        ticks: number[], 
+        params: (T | undefined)[] = [], 
+        stop: ()=>boolean = ()=>false, 
+        trycatch: boolean=false
+    ) {
         if (params.length < ticks.length)
             params = ticks.map((_, i) => i < params.length ? params[i] : undefined)
-        ticks.forEach((tick, index) => { system.runTimeout(() => callback(params[index], index), tick) })
+
+        let stopMark: boolean = false
+        ticks.forEach((tick, index) => { system.runTimeout(() => {
+            if (stopMark) return
+            if (stop()) { stopMark = true; return }
+            if (trycatch) {
+                try {callback(params[index], index)} catch{}
+            } else callback(params[index], index)
+        }, tick) })
         return TimeUtils
     }
 }
@@ -299,7 +353,7 @@ export class EntityUtils {
 
     static foreach(callback: (e: Entity) => void) {
         this.ENTITIES.forEach(callback)
-        this.ENTITIES = []
+        return EntityUtils
     }
 
     static enumerate(entities: Entity | Entity[]) {
@@ -345,14 +399,6 @@ export class EntityUtils {
         return EntityUtils
     }
 
-    static particles(particleIds: string[], location: (target: Entity)=>Vector3) {
-        this.ENTITIES.forEach(target=>{
-            if(!target.isValid()) return
-            particleIds.forEach(particleId=>target.dimension.spawnParticle(particleId, location(target)))
-        })
-        return EntityUtils
-    }
-
     static setOnFire(seconds: number, useEffects?: boolean) {
         this.ENTITIES.forEach(target => target.setOnFire(seconds, useEffects))
         return EntityUtils
@@ -392,48 +438,146 @@ export class EntityUtils {
     }
 }
 
+export class NavUtils {
+    static PATH: { loc: Vector3, ticks: number }[] = []
+
+    static interpolateVectors(start: Vector3, end: Vector3, segments: number): Vector3[] {
+        if (segments <= 0 || !Number.isInteger(segments)) {
+            throw new Error("Segments must be a positive integer");
+        }
+
+        const points: Vector3[] = [];
+
+        // 包括起点和终点，所以总点数是 segments + 1
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            points.push({
+                x: start.x + (end.x - start.x) * t,
+                y: start.y + (end.y - start.y) * t,
+                z: start.z + (end.z - start.z) * t
+            });
+        }
+
+        return points;
+    }
+
+    static rotation(start: Vector3, end: Vector3) {
+        const diff = Vector3Utils.subtract(end, start)
+        return { x: MathUtils.tanToDegrees(diff.z / diff.x), y: MathUtils.tanToDegrees(diff.y / Vector3Utils.magnitude({ ...diff, y: 0 })) }
+    }
+
+    static start() {
+        this.PATH = []
+        return NavUtils
+    }
+
+    static mark(loc: Vector3, ticks: number) {
+        this.PATH.push({ loc, ticks })
+        return NavUtils
+    }
+
+    static end(entity: Entity, stop: (entity: Entity) => boolean = () => false) {
+        entity.runCommand("say PATH " + JSON.stringify(this.PATH))
+        if (this.PATH.length === 0) return
+        const path = [{ loc: entity.location, ticks: 0 }, ...this.PATH]
+        let series: Vector3[] = []
+        for (let i = 0; i < path.length - 1; i++) {
+            const curr = path[i]
+            const next = path[i + 1]
+            series = series.concat(this.interpolateVectors(curr.loc, next.loc, next.ticks))
+        }
+        let stopMark: boolean = false
+        TimeUtils.timeseries((idx) => {
+            if (stopMark) return
+            if (stop(entity)) { stopMark = true; return }
+            try { entity.teleport(series[idx! - 1], { facingLocation: series[idx!] }) } catch { }
+        }, TimeUtils.ticks(1, 1, series.length), TimeUtils.ticks(1, 1, series.length - 1))
+    }
+}
+
+export class InventoryUtils {
+
+    static TARGET: Player | undefined = undefined
+    static CONTAINER: Container | undefined = undefined
+
+    static container(target: Entity | Block) {
+        if (target instanceof Entity) {
+            this.CONTAINER = (target.getComponent(EntityComponentTypes.Inventory) as EntityInventoryComponent).container
+            if (target instanceof Player) this.TARGET = this.TARGET
+        } else {
+            this.CONTAINER = (target.getComponent(BlockComponentTypes.Inventory) as BlockInventoryComponent).container
+        }
+        return InventoryUtils
+    }
+
+    // For Player Only
+    static selected() {
+        if(this.TARGET===undefined) return undefined;
+        const selectedIndex = (this.TARGET as Player).selectedSlotIndex
+        return this.CONTAINER?.getItem(selectedIndex)
+    }
+
+    static index(condition: (item: ItemStack | undefined) => boolean) {
+        if (!this.CONTAINER) return -1
+        for (let i = 0; i < this.CONTAINER.size; i++) {
+            if (condition(this.CONTAINER.getItem(i))) return i
+        }
+        return -1
+    }
+
+    static set(condition: (item: ItemStack | undefined, idx: number) => boolean, item: ItemStack) {
+        if (!this.CONTAINER) return
+        for (let i = 0; i < this.CONTAINER.size; i++) {
+            const curr = this.CONTAINER.getItem(i)
+            if (condition(curr, i)) {
+                this.CONTAINER.setItem(i, item)
+            }
+        }
+    }
+}
+
 export class DPUtils {
 
     static STORE = {}
-    
+
+    static REGISTRATION: {[key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any)=>any)[]} = {}
+
     private static mapValues<T extends object, U>(obj: T, fn: (value: T[keyof T], key: keyof T) => U): Record<keyof T, U> {
         return Object.fromEntries(
             Object.entries(obj).map(([key, value]) => [key, fn(value, key as keyof T)])
         ) as Record<keyof T, U>;
     }
-    
+
     static store() {
         return this.mapValues(this.STORE, (v, k) => ({
             id: v,
-            curr: (target: Entity | ItemStack, placeHolder?: any) => this.curr(target, k, placeHolder),
-            prev: (target: Entity | ItemStack, placeHolder?: any) => this.prev(target, k, placeHolder),
-            both: (target: Entity | ItemStack, placeHolder?: any) => this.both(target, k, placeHolder),
-            set: (target: Entity | ItemStack, value: any, placeHolder?: any) => this.set(target, k, value, placeHolder)
+            curr: (target: Entity | ItemStack | World, placeHolder?: any) => this.curr(target, k, placeHolder),
+            prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, k, placeHolder),
+            both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, k, placeHolder),
+            set: (target: Entity | ItemStack | World, value: any, placeHolder?: any) => this.set(target, k, value, placeHolder),
+            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any)=>any) => this.register(k, callback),
         }))
     }
 
-    static temp(target: Entity | ItemStack | World, ticks: number, key: string, value: any, placeHolder?: any){
-        const curr = DPUtils.curr(target, key, placeHolder)
-        if (typeof value === "function") 
-            value = value(curr)
-        DPUtils.set(target, key, value, placeHolder)
-        TimeUtils.timeout(()=>DPUtils.set(target, key, curr), ticks)
-    }
-
     static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any) {
-        if (typeof value === "function") 
+        if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
-        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))   
+        const prev = target.getDynamicProperty(key)
+        target.setDynamicProperty(`${key}_prev`, prev)
         target.setDynamicProperty(key, JSON.stringify(value))
+
+        if (Object.keys(this.REGISTRATION).includes(key)) {
+            this.REGISTRATION[key].forEach(callback=>callback(target, value, prev))
+        }
     }
 
-    static curr(target: Entity | ItemStack | World, key: string, placeHolder: any=undefined){
+    static curr(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
         const raw = target.getDynamicProperty(key)
         if (raw === undefined) return placeHolder
         return JSON.parse(target.getDynamicProperty(key) as string)
     }
 
-    static prev(target: Entity | ItemStack | World, key: string, placeHolder: any){
+    static prev(target: Entity | ItemStack | World, key: string, placeHolder: any) {
         return this.curr(target, `${key}_prev`, placeHolder)
     }
 
@@ -444,7 +588,12 @@ export class DPUtils {
         }
     }
 
+    static register(key: string, callback: (target: Entity | ItemStack | World, curr: any, prev: any)=>any) {
+        this.REGISTRATION[key] = Object.keys(this.REGISTRATION).includes(key) ? [...this.REGISTRATION[key], callback] : [callback]
+        return DPUtils
+    }
+
     static sync(target: Entity | ItemStack | World, key: string) {
-        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))   
+        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))
     }
 }
