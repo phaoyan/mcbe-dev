@@ -2,7 +2,7 @@
   "format_version": "1.21.10",
   "minecraft:entity": {
       "description": {
-          "identifier": "cubee:ID",
+          "identifier": "mcbe_dev:ID",
           "is_spawnable": true,
           "is_summonable": true,
           "is_experimental": false
@@ -11,8 +11,7 @@
           "minecraft:collision_box": {
               "width": 1,
               "height": 1
-          },
-          "minecraft:physics": {}
+          }
       }
   }
 }
