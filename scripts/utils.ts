@@ -156,6 +156,10 @@ export class VecUtils {
     }
 
     static unit(direction: Vector3, scale: number = 1): Vector3 {
+        const magnitude = Vector3Utils.magnitude(direction)
+        if (magnitude === 0) {
+            return { x: 0, y: 0, z: 0 }
+        }
         return Vector3Utils.scale(Vector3Utils.normalize(direction), scale);
     }
 
@@ -168,9 +172,16 @@ export class VecUtils {
         return VecUtils
     }
 
-    static start(entity: Entity) {
-        this.LOCATION = { ...entity.location }
-        this.DIRECTION = { ...entity.getViewDirection() }
+    static start(target: Entity | Vector3) {
+        if ('location' in target && 'getViewDirection' in target) {
+            // 传入的是 Entity
+            this.LOCATION = { ...target.location }
+            this.DIRECTION = { ...target.getViewDirection() }
+        } else {
+            // 传入的是 Vector3
+            this.LOCATION = { ...target as Vector3 }
+            this.DIRECTION = { x: 0, y: 0, z: 0 }
+        }
         return VecUtils
     }
 
@@ -195,13 +206,13 @@ export class VecUtils {
 
     static moveL(dist: number) {
         const hori = VecUtils.unit(VecUtils.hori(this.DIRECTION))
-        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(VecUtils.rotate(hori, Math.PI / 4, 0), dist))
+        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(VecUtils.rotate(hori, Math.PI / 2, 0), dist))
         return VecUtils
     }
 
     static moveR(dist: number) {
         const hori = VecUtils.unit(VecUtils.hori(this.DIRECTION))
-        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(VecUtils.rotate(hori, -Math.PI / 4, 0), dist))
+        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(VecUtils.rotate(hori, -Math.PI / 2, 0), dist))
         return VecUtils
     }
 
@@ -296,35 +307,37 @@ export class TimeUtils {
         return Array.from({ length }, (_, i) => start + i * step);
     }
 
-    static timeout(callback: () => void, tick: number, trycatch: boolean=false) {
+    static timeout(callback: () => void, tick: number, trycatch: boolean = false) {
         if (tick === 0) {
             callback()
             return TimeUtils
         }
-        if(trycatch) {
-            try {system.runTimeout(callback, tick)} catch{}
+        if (trycatch) {
+            try { system.runTimeout(callback, tick) } catch { }
         } else system.runTimeout(callback, tick)
         return TimeUtils
     }
 
     static timeseries<T>(
-        callback: (param: T | undefined, index: number) => void, 
-        ticks: number[], 
-        params: (T | undefined)[] = [], 
-        stop: ()=>boolean = ()=>false, 
-        trycatch: boolean=false
+        callback: (param: T | undefined, index: number) => void,
+        ticks: number[],
+        params: (T | undefined)[] = [],
+        stop: () => boolean = () => false,
+        trycatch: boolean = false
     ) {
         if (params.length < ticks.length)
             params = ticks.map((_, i) => i < params.length ? params[i] : undefined)
 
         let stopMark: boolean = false
-        ticks.forEach((tick, index) => { system.runTimeout(() => {
-            if (stopMark) return
-            if (stop()) { stopMark = true; return }
-            if (trycatch) {
-                try {callback(params[index], index)} catch{}
-            } else callback(params[index], index)
-        }, tick) })
+        ticks.forEach((tick, index) => {
+            system.runTimeout(() => {
+                if (stopMark) return
+                if (stop()) { stopMark = true; return }
+                if (trycatch) {
+                    try { callback(params[index], index) } catch { }
+                } else callback(params[index], index)
+            }, tick)
+        })
         return TimeUtils
     }
 }
@@ -463,7 +476,13 @@ export class NavUtils {
 
     static rotation(start: Vector3, end: Vector3) {
         const diff = Vector3Utils.subtract(end, start)
-        return { x: MathUtils.tanToDegrees(diff.z / diff.x), y: MathUtils.tanToDegrees(diff.y / Vector3Utils.magnitude({ ...diff, y: 0 })) }
+        const horiMagnitude = Vector3Utils.magnitude({ ...diff, y: 0 })
+
+        // 防止除零错误
+        const x = diff.x === 0 ? 0 : MathUtils.tanToDegrees(diff.z / diff.x)
+        const y = horiMagnitude === 0 ? 0 : MathUtils.tanToDegrees(diff.y / horiMagnitude)
+
+        return { x, y }
     }
 
     static start() {
@@ -503,7 +522,7 @@ export class InventoryUtils {
     static container(target: Entity | Block) {
         if (target instanceof Entity) {
             this.CONTAINER = (target.getComponent(EntityComponentTypes.Inventory) as EntityInventoryComponent).container
-            if (target instanceof Player) this.TARGET = this.TARGET
+            if (target instanceof Player) this.TARGET = target
         } else {
             this.CONTAINER = (target.getComponent(BlockComponentTypes.Inventory) as BlockInventoryComponent).container
         }
@@ -512,7 +531,7 @@ export class InventoryUtils {
 
     // For Player Only
     static selected() {
-        if(this.TARGET===undefined) return undefined;
+        if (this.TARGET === undefined) return undefined;
         const selectedIndex = (this.TARGET as Player).selectedSlotIndex
         return this.CONTAINER?.getItem(selectedIndex)
     }
@@ -540,7 +559,7 @@ export class DPUtils {
 
     static STORE = {}
 
-    static REGISTRATION: {[key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any)=>any)[]} = {}
+    static REGISTRATION: { [key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any) => any)[] } = {}
 
     private static mapValues<T extends object, U>(obj: T, fn: (value: T[keyof T], key: keyof T) => U): Record<keyof T, U> {
         return Object.fromEntries(
@@ -555,7 +574,8 @@ export class DPUtils {
             prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, k, placeHolder),
             both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, k, placeHolder),
             set: (target: Entity | ItemStack | World, value: any, placeHolder?: any) => this.set(target, k, value, placeHolder),
-            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any)=>any) => this.register(k, callback),
+            temp: (target: Entity | ItemStack | World, value: any, ticks: number) => this.temp(target, k, value, ticks),
+            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(k, callback),
         }))
     }
 
@@ -567,8 +587,17 @@ export class DPUtils {
         target.setDynamicProperty(key, JSON.stringify(value))
 
         if (Object.keys(this.REGISTRATION).includes(key)) {
-            this.REGISTRATION[key].forEach(callback=>callback(target, value, prev))
+            this.REGISTRATION[key].forEach(callback => callback(target, value, prev))
         }
+    }
+
+    static temp(target: Entity | ItemStack | World, key: string, value: any, ticks: number) {
+        const prev = this.curr(target, key)
+        this.set(target, key, value)
+        TimeUtils.timeout(() => {
+            this.set(target, key, prev)
+        }, ticks, true)
+        return DPUtils
     }
 
     static curr(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
@@ -588,7 +617,7 @@ export class DPUtils {
         }
     }
 
-    static register(key: string, callback: (target: Entity | ItemStack | World, curr: any, prev: any)=>any) {
+    static register(key: string, callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) {
         this.REGISTRATION[key] = Object.keys(this.REGISTRATION).includes(key) ? [...this.REGISTRATION[key], callback] : [callback]
         return DPUtils
     }
