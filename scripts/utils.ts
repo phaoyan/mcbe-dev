@@ -582,11 +582,11 @@ export class DPUtils {
     static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any) {
         if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
-        const prev = target.getDynamicProperty(key)
-        target.setDynamicProperty(`${key}_prev`, prev)
+        const prev = this.curr(target, key, placeHolder)  // 获取解析后的之前值，保持类型一致
+        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))  // 保存原始值用于prev方法
         target.setDynamicProperty(key, JSON.stringify(value))
 
-        if (Object.keys(this.REGISTRATION).includes(key)) {
+        if (key in this.REGISTRATION) {
             this.REGISTRATION[key].forEach(callback => callback(target, value, prev))
         }
     }
@@ -618,7 +618,11 @@ export class DPUtils {
     }
 
     static register(key: string, callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) {
-        this.REGISTRATION[key] = Object.keys(this.REGISTRATION).includes(key) ? [...this.REGISTRATION[key], callback] : [callback]
+        if (key in this.REGISTRATION) {
+            this.REGISTRATION[key].push(callback)
+        } else {
+            this.REGISTRATION[key] = [callback]
+        }
         return DPUtils
     }
 
