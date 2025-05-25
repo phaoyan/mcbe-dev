@@ -16,28 +16,32 @@ def setup_basic(bbmodel_file: Path):
     data["model_identifier"] = bbmodel_file.stem
     data["name"] = bbmodel_file.stem
     model: str = data["model_identifier"]
-    textures: list[dict] = data["textures"]
-    animations: list[dict] = data["animations"]
+    textures: list[dict] = data.get("textures", [])
+    animations: list[dict] = data.get("animations", [])
 
     for animation in animations:
         animation["path"] = str(
             (RESOURCE_PACK_DIR / "animations" / f"{model}.animation.json").resolve()
         )
-        anim_name: str = animation["name"]
+        anim_name: str = animation.get("name", "")
         if not anim_name.startswith("animation."):
             animation["name"] = f"animation.{bbmodel_file.stem}.{anim_name}"
         animators: dict[str, dict] = animation.get("animators", {})
         for animator in animators.values():
-            for keyframe in animator["keyframes"]:
+            keyframes = animator.get("keyframes", [])
+            for keyframe in keyframes:
                 keyframe: dict[str, Any] = keyframe
-                if keyframe["channel"].__eq__("particle"):
-                    for datapoint in keyframe["data_points"]:
-                        particle_file = Path(datapoint["file"])
-                        datapoint["file"] = str(
-                            (
-                                RESOURCE_PACK_DIR / "particles" / particle_file.name
-                            ).resolve()
-                        )
+                if keyframe.get("channel") == "particle":
+                    data_points = keyframe.get("data_points", [])
+                    for datapoint in data_points:
+                        file_path = datapoint.get("file")
+                        if file_path:
+                            particle_file = Path(file_path)
+                            datapoint["file"] = str(
+                                (
+                                    RESOURCE_PACK_DIR / "particles" / particle_file.name
+                                ).resolve()
+                            )
     for idx, texture in enumerate(textures):
         texture["name"] = f"{bbmodel_file.stem}_{idx}"
         texture["path"] = str(
@@ -50,37 +54,47 @@ def setup_bbmodel_json():
     data = {}
     for bbmodel_file in BBMODEL_DIR.rglob("*.bbmodel"):
         bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
+        animations = bbmodel.get("animations", [])
         effects_list = [
             animation["animators"]["effects"]
-            for animation in bbmodel["animations"]
+            for animation in animations
             if animation.get("animators", {}).get("effects") is not None
         ]
         particles = {}
         for effects in effects_list:
-            for kf in effects["keyframes"]:
-                if kf["channel"].__eq__("particle"):
-                    for dp in kf["data_points"]:
-                        name = dp["effect"]
+            keyframes = effects.get("keyframes", [])
+            for kf in keyframes:
+                if kf.get("channel") == "particle":
+                    data_points = kf.get("data_points", [])
+                    for dp in data_points:
+                        name = dp.get("effect")
                         file = dp.get("file")
                         if file is None or not Path(file).exists():
-                            continue
+                            print(f"Particle File Not Found: {bbmodel_file.name} -> {Path(file).name if file else 'None'}")
                         try:
-                            particle_id = json.loads(Path(file).read_text())[
-                                "particle_effect"
-                            ]["description"]["identifier"]
-                            particles[name] = particle_id
+                            if file:
+                                particle_data = json.loads(Path(file).read_text())
+                                particle_id = particle_data.get("particle_effect", {}).get("description", {}).get("identifier")
+                                if particle_id and name:
+                                    particles[name] = particle_id
                         except:
                             continue
+        
+        model_identifier = bbmodel.get("model_identifier", bbmodel_file.stem)
+        textures = bbmodel.get("textures", [])
+        
         data[bbmodel_file.stem] = {
-            "geometry": bbmodel["model_identifier"],
-            "textures": [texture["name"] for texture in bbmodel["textures"]],
+            "geometry": model_identifier,
+            "textures": [texture.get("name", f"{bbmodel_file.stem}_{i}") for i, texture in enumerate(textures)],
             "animations": {
-                animation["name"].split(".")[-1]: animation["name"]
-                for animation in bbmodel["animations"]
+                animation.get("name", "").split(".")[-1]: animation.get("name", "")
+                for animation in animations
+                if animation.get("name")
             },
             "animation_length": {
-                animation["name"].split(".")[-1]: animation["length"]
-                for animation in bbmodel["animations"]
+                animation.get("name", "").split(".")[-1]: animation.get("length", 0)
+                for animation in animations
+                if animation.get("name")
             },
             "particles": particles,
             "sounds": {},
@@ -107,19 +121,23 @@ def save_base64_image(base64_str, output_path):
 def export_texture(bbmodel_file: Path):
     output_dir = RESOURCE_PACK_DIR / "textures" / "entity"
     bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
-    for texture in bbmodel["textures"]:
-        image_base64 = texture["source"]
-        save_base64_image(
-            image_base64, f"{output_dir}/{texture['name'].replace('.png','')}.png"
-        )
+    textures = bbmodel.get("textures", [])
+    for texture in textures:
+        image_base64 = texture.get("source")
+        texture_name = texture.get("name", f"{bbmodel_file.stem}_texture")
+        if image_base64:
+            save_base64_image(
+                image_base64, f"{output_dir}/{texture_name.replace('.png','')}.png"
+            )
 
 
 def export_geometry(bbmodel_file: Path, ignores: list[str]):
     target_model_path = RESOURCE_PACK_DIR / "models" / "entity" / bbmodel_file.name
     target_model_path.parent.mkdir(parents=True, exist_ok=True)
     bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
+    elements = bbmodel.get("elements", [])
     bbmodel["elements"] = [
-        element for element in bbmodel["elements"] if not element["name"] in ignores
+        element for element in elements if element.get("name", "") not in ignores
     ]
     target_model_path.write_text(json.dumps(bbmodel))
     os.system(f"node {RESOURCE_PACK_DIR}/bbmodel-converter.js")
@@ -135,99 +153,109 @@ def is_float(s):
 
 def export_animation(bbmodel_file: Path):
     bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
+    model_identifier = bbmodel.get("model_identifier", bbmodel_file.stem)
     target_path = (
         RESOURCE_PACK_DIR
         / "animations"
-        / f"{bbmodel['model_identifier']}.animation.json"
+        / f"{model_identifier}.animation.json"
     )
     target_path.parent.mkdir(exist_ok=True)
-    animations: list[dict[str, Any]] = bbmodel["animations"]
+    animations: list[dict[str, Any]] = bbmodel.get("animations", [])
     output_animations: dict[str, dict[str, Any]] = {}
     for animation in animations:
         if animation.get("animators") is None:
             continue
 
-        name = animation["name"]
-        animation_length = animation["length"]
-        override_previous_animation = animation["override"]
+        name = animation.get("name", "")
+        animation_length = animation.get("length", 0)
+        override_previous_animation = animation.get("override", False)
+        loop_mode = animation.get("loop", "once")
         loop = (
             True
-            if animation["loop"].__eq__("loop")
-            else "hold_on_last_frame" if animation["loop"].__eq__("hold") else False
+            if loop_mode == "loop"
+            else "hold_on_last_frame" if loop_mode == "hold" else False
         )
 
         bones: dict[str, dict[str, Any]] = {}
         particle_effects: dict[str, Any] = {}
         sound_effects: dict[str, Any] = {}
 
-        animators: dict[str, dict[str, Any]] = animation["animators"]
+        animators: dict[str, dict[str, Any]] = animation.get("animators", {})
         for animator in animators.values():
-            animator_name: str = animator["name"]
-            animator_type: str = animator["type"]
-            keyframes: list[dict[str, Any]] = animator["keyframes"]
-            if animator_type.__eq__("bone"):
+            animator_name: str = animator.get("name", "")
+            animator_type: str = animator.get("type", "")
+            keyframes: list[dict[str, Any]] = animator.get("keyframes", [])
+            if animator_type == "bone":
                 bone_data = {}
                 for keyframe in keyframes:
-                    channel = keyframe["channel"]
-                    time = keyframe["time"]
-                    data_points = keyframe["data_points"]
-                    interpolation = keyframe["interpolation"]
-                    data_points = [
-                        data_points[0]["x"],
-                        data_points[0]["y"],
-                        data_points[0]["z"],
-                    ]
-                    data_points = [
-                        float(dp) if is_float(dp) else dp for dp in data_points
-                    ]
-                    fillin = (
-                        data_points
-                        if interpolation.__eq__("linear")
-                        else (
-                            {
-                                "pre": data_points,
-                                "post": data_points,
-                                "lerp_mode": "catmullrom",
-                            }
-                            if interpolation.__eq__("catmullrom")
-                            else None
+                    channel = keyframe.get("channel", "")
+                    time = keyframe.get("time", 0)
+                    data_points = keyframe.get("data_points", [])
+                    interpolation = keyframe.get("interpolation", "linear")
+                    if len(data_points) > 0:
+                        first_point = data_points[0]
+                        data_points = [
+                            first_point.get("x", 0),
+                            first_point.get("y", 0),
+                            first_point.get("z", 0),
+                        ]
+                        data_points = [
+                            float(dp) if is_float(dp) else dp for dp in data_points
+                        ]
+                        fillin = (
+                            data_points
+                            if interpolation == "linear"
+                            else (
+                                {
+                                    "pre": data_points,
+                                    "post": data_points,
+                                    "lerp_mode": "catmullrom",
+                                }
+                                if interpolation == "catmullrom"
+                                else None
+                            )
                         )
-                    )
-                    if fillin is None:
-                        continue
-                    bone_data[channel] = bone_data.get(channel, {}) | {
-                        str(time): fillin
-                    }
-                bones[animator_name] = bone_data
+                        if fillin is not None:
+                            bone_data[channel] = bone_data.get(channel, {}) | {
+                                str(time): fillin
+                            }
+                if bone_data:
+                    bones[animator_name] = bone_data
 
-            elif animator_type.__eq__("effect"):
+            elif animator_type == "effect":
                 for keyframe in keyframes:
-                    channel = keyframe["channel"]
-                    time = keyframe["time"]
-                    if channel.__eq__("particle"):
+                    channel = keyframe.get("channel", "")
+                    time = keyframe.get("time", 0)
+                    if channel == "particle":
                         data_points = [
-                            {"effect": dp["effect"], "locator": dp["locator"]}
-                            for dp in keyframe["data_points"]
+                            {"effect": dp.get("effect", ""), "locator": dp.get("locator", "")}
+                            for dp in keyframe.get("data_points", [])
+                            if dp.get("effect")
                         ]
-                        particle_effects[str(time)] = data_points
-                    elif channel.__eq__("sound"):
+                        if data_points:
+                            particle_effects[str(time)] = data_points
+                    elif channel == "sound":
                         data_points = [
-                            {"effect": dp["effect"]} for dp in keyframe["data_points"]
+                            {"effect": dp.get("effect", "")} 
+                            for dp in keyframe.get("data_points", [])
+                            if dp.get("effect")
                         ]
-                        sound_effects[str(time)] = data_points
+                        if data_points:
+                            sound_effects[str(time)] = data_points
 
-        output_animations[name] = {
-            "animation_length": animation_length,
-            "override_previous_animation": override_previous_animation,
-            "loop": loop,
-        }
+        if name:
+            output_animations[name] = {
+                "animation_length": animation_length,
+                "override_previous_animation": override_previous_animation,
+                "loop": loop,
+            }
 
-        if len(bones.keys()) > 0:
-            output_animations[name]["bones"] = bones
-        if len(particle_effects.keys()) > 0:
-            output_animations[name]["particle_effects"] = particle_effects
-        if len(sound_effects.keys()) > 0:
-            output_animations[name]["sound_effects"] = sound_effects
+            if len(bones.keys()) > 0:
+                output_animations[name]["bones"] = bones
+            if len(particle_effects.keys()) > 0:
+                output_animations[name]["particle_effects"] = particle_effects
+            if len(sound_effects.keys()) > 0:
+                output_animations[name]["sound_effects"] = sound_effects
 
     if len(output_animations.keys()) == 0:
         return
