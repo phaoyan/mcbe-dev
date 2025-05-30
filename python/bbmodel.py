@@ -7,7 +7,8 @@ from utils import *
 
 
 def list_bbomdel_files():
-    bbmodel_files = list(BBMODEL_DIR.glob("*.bbmodel"))
+    bbpack_dir = PYTHON_DIR / "bbpack"
+    bbmodel_files = list(bbpack_dir.rglob("*.bbmodel"))
     return bbmodel_files
 
 
@@ -26,22 +27,6 @@ def setup_basic(bbmodel_file: Path):
         anim_name: str = animation.get("name", "")
         if not anim_name.startswith("animation."):
             animation["name"] = f"animation.{bbmodel_file.stem}.{anim_name}"
-        animators: dict[str, dict] = animation.get("animators", {})
-        for animator in animators.values():
-            keyframes = animator.get("keyframes", [])
-            for keyframe in keyframes:
-                keyframe: dict[str, Any] = keyframe
-                if keyframe.get("channel") == "particle":
-                    data_points = keyframe.get("data_points", [])
-                    for datapoint in data_points:
-                        file_path = datapoint.get("file")
-                        if file_path:
-                            particle_file = Path(file_path)
-                            datapoint["file"] = str(
-                                (
-                                    RESOURCE_PACK_DIR / "particles" / particle_file.name
-                                ).resolve()
-                            )
     for idx, texture in enumerate(textures):
         texture["name"] = f"{bbmodel_file.stem}_{idx}"
         texture["path"] = str(
@@ -52,7 +37,8 @@ def setup_basic(bbmodel_file: Path):
 
 def setup_bbmodel_json():
     data = {}
-    for bbmodel_file in BBMODEL_DIR.rglob("*.bbmodel"):
+    bbpack_dir = PYTHON_DIR / "bbpack"
+    for bbmodel_file in bbpack_dir.rglob("*.bbmodel"):
         bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
         animations = bbmodel.get("animations", [])
         effects_list = [
@@ -68,17 +54,7 @@ def setup_bbmodel_json():
                     data_points = kf.get("data_points", [])
                     for dp in data_points:
                         name = dp.get("effect")
-                        file = dp.get("file")
-                        if file is None or not Path(file).exists():
-                            print(f"Particle File Not Found: {bbmodel_file.name} -> {Path(file).name if file else 'None'}")
-                        try:
-                            if file:
-                                particle_data = json.loads(Path(file).read_text())
-                                particle_id = particle_data.get("particle_effect", {}).get("description", {}).get("identifier")
-                                if particle_id and name:
-                                    particles[name] = particle_id
-                        except:
-                            continue
+                        particles[name] = f"{NAME_SPACE}:{name}"
         
         model_identifier = bbmodel.get("model_identifier", bbmodel_file.stem)
         textures = bbmodel.get("textures", [])
@@ -99,7 +75,8 @@ def setup_bbmodel_json():
             "particles": particles,
             "sounds": {},
         }
-    BBMODEL_JSON_PATH.write_text(json.dumps(data, indent=JSON_INDENT))
+    bbmodel_json_path = bbpack_dir / "bbmodel.json"
+    bbmodel_json_path.write_text(json.dumps(data, indent=JSON_INDENT))
     (SCRIPTS_DIR / "json").mkdir(exist_ok=True)
     (SCRIPTS_DIR / "json" / "bbmodel.json").write_text(
         json.dumps(data, indent=JSON_INDENT)

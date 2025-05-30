@@ -7,12 +7,7 @@ def get_project_name():
     return project_name
 
 
-NAME_MAPPING = json.loads(BBMODEL_JSON_PATH.read_text())
-BBMODEL_NAMES = [bbmodel.stem for bbmodel in BBMODEL_DIR.rglob("*.bbmodel")]
-BBMODEL_DATA = {
-    bbmodel.stem: json.loads((BBMODEL_DIR / bbmodel.name).read_text())
-    for bbmodel in BBMODEL_DIR.rglob("*.bbmodel")
-}
+BBMODEL_JSON = json.loads(BBMODEL_JSON_PATH.read_text())
 TARGET_DIRS = {
     "item": BEHAVIOR_PACK_DIR / "items",
     "se": BEHAVIOR_PACK_DIR / "entities",
@@ -42,46 +37,46 @@ def str_replace(data, old: str, new: str) -> dict:
 
 
 def setup_ce(data: dict, bbmodel: str) -> dict:
-    textures = NAME_MAPPING[bbmodel].get("textures")
+    textures = BBMODEL_JSON[bbmodel].get("textures")
     data["minecraft:client_entity"]["description"]["geometry"] = {
-        "default": f"geometry.{NAME_MAPPING[bbmodel].get('geometry')}"
+        "default": f"geometry.{BBMODEL_JSON[bbmodel].get('geometry')}"
     }
     data["minecraft:client_entity"]["description"]["textures"] = {
         "default": f"textures/entity/{textures[0] if len(textures) > 0 else 'empty'}"
     }
-    if len(NAME_MAPPING[bbmodel].get("animations")) > 0:
-        data["minecraft:client_entity"]["description"]["animations"] = NAME_MAPPING[
+    if len(BBMODEL_JSON[bbmodel].get("animations")) > 0:
+        data["minecraft:client_entity"]["description"]["animations"] = BBMODEL_JSON[
             bbmodel
         ].get("animations")
-    if len(NAME_MAPPING[bbmodel].get("particles").keys()) > 0:
+    if len(BBMODEL_JSON[bbmodel].get("particles").keys()) > 0:
         data["minecraft:client_entity"]["description"]["particle_effects"] = (
-            NAME_MAPPING[bbmodel].get("particles")
+            BBMODEL_JSON[bbmodel].get("particles")
         )
-    if len(NAME_MAPPING[bbmodel].get("sounds").keys()) > 0:
-        data["minecraft:client_entity"]["description"]["sound_effects"] = NAME_MAPPING[
+    if len(BBMODEL_JSON[bbmodel].get("sounds").keys()) > 0:
+        data["minecraft:client_entity"]["description"]["sound_effects"] = BBMODEL_JSON[
             bbmodel
         ].get("sounds")
     return data
 
 
 def setup_att(data: dict, bbmodel: str) -> dict:
-    textures = NAME_MAPPING[bbmodel].get("textures")
+    textures = BBMODEL_JSON[bbmodel].get("textures")
     data["minecraft:attachable"]["description"]["geometry"] = {
-        "default": f"geometry.{NAME_MAPPING[bbmodel].get('geometry')}"
+        "default": f"geometry.{BBMODEL_JSON[bbmodel].get('geometry')}"
     }
     data["minecraft:attachable"]["description"]["textures"] = {
         "default": f"textures/entity/{textures[0] if len(textures) > 0 else 'empty'}"
     }
-    if len(NAME_MAPPING[bbmodel].get("animations")) > 0:
-        data["minecraft:attachable"]["description"]["animations"] = NAME_MAPPING[
+    if len(BBMODEL_JSON[bbmodel].get("animations")) > 0:
+        data["minecraft:attachable"]["description"]["animations"] = BBMODEL_JSON[
             bbmodel
         ].get("animations")
-    if len(NAME_MAPPING[bbmodel].get("particles").keys()) > 0:
-        data["minecraft:attachable"]["description"]["particle_effects"] = NAME_MAPPING[
+    if len(BBMODEL_JSON[bbmodel].get("particles").keys()) > 0:
+        data["minecraft:attachable"]["description"]["particle_effects"] = BBMODEL_JSON[
             bbmodel
         ].get("particles")
-    if len(NAME_MAPPING[bbmodel].get("sounds").keys()) > 0:
-        data["minecraft:attachable"]["description"]["sound_effects"] = NAME_MAPPING[
+    if len(BBMODEL_JSON[bbmodel].get("sounds").keys()) > 0:
+        data["minecraft:attachable"]["description"]["sound_effects"] = BBMODEL_JSON[
             bbmodel
         ].get("sounds")
     return data
