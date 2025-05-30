@@ -1,12 +1,16 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Block, BlockComponentTypes, BlockInventoryComponent, Container, Entity, EntityComponentTypes, EntityEffectOptions, EntityInventoryComponent, EntityProjectileComponent, ItemStack, Player, system, Vector3, World, world } from "@minecraft/server";
+import { Block, BlockComponentTypes, BlockInventoryComponent, Container, Dimension, Entity, EntityComponentTypes, EntityEffectOptions, EntityInventoryComponent, EntityProjectileComponent, ItemStack, Player, system, Vector3, World, world } from "@minecraft/server";
 
 
 export class MathUtils {
-    static randomInt(from: number, to: number) {
-        return Math.floor(Math.random() * (to - from)) + from
+    static valueMap(state: any, from: any[], to: any[]): any {
+        return to[from.indexOf(state)]
     }
 
+
+    static randomInt(from: number, to: number){
+        return Math.floor(Math.random() * (to-from)) + from
+    }
     static randomPickItems<T>(array: T[]): T {
         if (array.length === 0) {
             throw new Error("Cannot pick from an empty array");
@@ -15,7 +19,6 @@ export class MathUtils {
         const randomIndex = Math.floor(Math.random() * array.length);
         return array[randomIndex];
     }
-
     static randomPickIndex(list: number[]) {
         if (list.length === 0) return 0
         const totalWeight = list.reduce((sum, weight) => sum + weight, 0);
@@ -32,6 +35,12 @@ export class MathUtils {
         return list.length - 1;
     }
 
+    static multiply(arr: number[]){
+        return arr.reduce((acc, curr) => acc * curr, 1)
+    }
+    static square(vector: Vector3){
+        return vector.x**2 + vector.y**2 + vector.z**2
+    }
     static tanToDegrees(tanValue: number): number {
         // 计算反正切（返回弧度）
         const radians = Math.atan(tanValue);
@@ -442,6 +451,16 @@ export class EntityUtils {
         return EntityUtils
     }
 
+    static knockbackBaseFYR(entity: Entity, f: number, y: number, r: number){
+        if (!entity.isValid()) return EntityUtils
+        this.ENTITIES.forEach(target=>{
+            const x = entity.getViewDirection().x
+            const z = entity.getViewDirection().z
+            target.applyKnockback(x*f+z*r, z*f-x*r,f,y)
+        })
+        return EntityUtils
+    }
+
     static projectile(owner: Entity, typeId: string, location: Vector3, velocity: Vector3) {
         const proj = owner.dimension.spawnEntity(typeId, location)
         const projComp = proj.getComponent(EntityProjectileComponent.componentId) as EntityProjectileComponent
@@ -450,6 +469,183 @@ export class EntityUtils {
         return proj
     }
 }
+
+export class BlockUtils {
+    // 方块硬度映射表
+    static readonly BLOCK_HARDNESS: { [key: string]: number } = {
+        "minecraft:air": 0,
+        "minecraft:water": 0,
+        "minecraft:lava": 0,
+        "minecraft:grass_block": 0.6,
+        "minecraft:dirt": 0.5,
+        "minecraft:sand": 0.5,
+        "minecraft:gravel": 0.6,
+        "minecraft:stone": 1.5,
+        "minecraft:cobblestone": 2.0,
+        "minecraft:wood": 2.0,
+        "minecraft:planks": 2.0,
+        "minecraft:glass": 0.3,
+        "minecraft:iron_ore": 3.0,
+        "minecraft:gold_ore": 3.0,
+        "minecraft:diamond_ore": 3.0,
+        "minecraft:iron_block": 5.0,
+        "minecraft:gold_block": 3.0,
+        "minecraft:diamond_block": 5.0,
+        "minecraft:obsidian": 50.0,
+        "minecraft:bedrock": 3600000.0,
+        "minecraft:netherrack": 0.4,
+        "minecraft:end_stone": 3.0,
+        "minecraft:deepslate": 3.0,
+        "minecraft:tuff": 1.5,
+        "minecraft:blackstone": 1.5,
+        "minecraft:basalt": 1.25,
+        "minecraft:concrete": 1.8,
+        "minecraft:terracotta": 1.25,
+        "minecraft:bricks": 2.0,
+        "minecraft:nether_bricks": 2.0,
+        "minecraft:quartz_block": 0.8,
+        "minecraft:sandstone": 0.8,
+        "minecraft:red_sandstone": 0.8,
+        "minecraft:prismarine": 1.5,
+        "minecraft:purpur_block": 1.5,
+        "minecraft:coal_ore": 3.0,
+        "minecraft:redstone_ore": 3.0,
+        "minecraft:lapis_ore": 3.0,
+        "minecraft:emerald_ore": 3.0,
+        "minecraft:copper_ore": 3.0,
+        "minecraft:ancient_debris": 30.0
+    };
+
+    // 获取方块硬度
+    static getBlockHardness(blockTypeId: string): number {
+        // 移除命名空间前缀进行匹配
+        const normalizedId = blockTypeId.includes(':') ? blockTypeId : `minecraft:${blockTypeId}`;
+        
+        // 精确匹配
+        if (this.BLOCK_HARDNESS[normalizedId] !== undefined) {
+            return this.BLOCK_HARDNESS[normalizedId];
+        }
+        
+        // 模糊匹配常见类型
+        const baseId = normalizedId.split(':')[1];
+        
+        if (baseId.includes('ore')) return 3.0;
+        if (baseId.includes('stone')) return 1.5;
+        if (baseId.includes('wood') || baseId.includes('log') || baseId.includes('planks')) return 2.0;
+        if (baseId.includes('glass')) return 0.3;
+        if (baseId.includes('wool') || baseId.includes('carpet')) return 0.8;
+        if (baseId.includes('concrete')) return 1.8;
+        if (baseId.includes('terracotta')) return 1.25;
+        if (baseId.includes('brick')) return 2.0;
+        if (baseId.includes('sand')) return 0.5;
+        if (baseId.includes('dirt') || baseId.includes('grass')) return 0.5;
+        if (baseId.includes('leaves')) return 0.2;
+        if (baseId.includes('flower') || baseId.includes('plant')) return 0.0;
+        
+        // 默认硬度
+        return 1.0;
+    }
+
+    // 检查方块是否可破坏
+    static isDestructible(blockTypeId: string): boolean {
+        const hardness = this.getBlockHardness(blockTypeId);
+        return hardness < 3600000.0 && blockTypeId !== "minecraft:bedrock";
+    }
+
+    // 计算爆炸强度衰减
+    static calculateExplosionIntensity(
+        distance: number, 
+        baseIntensity: number, 
+        falloffType: "linear" | "quadratic" | "cubic" = "quadratic"
+    ): number {
+        if (distance <= 0) return baseIntensity;
+        
+        switch (falloffType) {
+            case "linear":
+                return Math.max(0, baseIntensity * (1 - distance / baseIntensity));
+            case "quadratic":
+                return Math.max(0, baseIntensity / (1 + distance * distance));
+            case "cubic":
+                return Math.max(0, baseIntensity / (1 + distance * distance * distance));
+            default:
+                return Math.max(0, baseIntensity / (1 + distance * distance));
+        }
+    }
+
+    // 球形爆炸
+    static sphereExplosion(
+        dimension: Dimension, 
+        center: Vector3, 
+        radius: number, 
+        intensity: number = 10.0,
+        options: {
+            respectHardness?: boolean;
+            falloffType?: "linear" | "quadratic" | "cubic";
+            dropItems?: boolean;
+            damageEntities?: boolean;
+            entityDamage?: number;
+        } = {}
+    ) {
+        const {
+            respectHardness,
+            falloffType,
+            dropItems,
+        } = options;
+
+        const destroyedBlocks: Vector3[] = [];
+        const centerFloor = {
+            x: Math.floor(center.x),
+            y: Math.floor(center.y),
+            z: Math.floor(center.z)
+        };
+
+        // 遍历爆炸范围内的所有方块
+        for (let x = centerFloor.x - Math.ceil(radius); x <= centerFloor.x + Math.ceil(radius); x++) {
+            for (let y = Math.max(centerFloor.y - Math.ceil(radius), -64); y <= centerFloor.y + Math.ceil(radius); y++) {
+                for (let z = centerFloor.z - Math.ceil(radius); z <= centerFloor.z + Math.ceil(radius); z++) {
+                    const blockPos = { x, y, z };
+                    const distance = Vector3Utils.distance(blockPos, center);
+                    
+                    if (distance <= radius) {
+                        const block = dimension.getBlock(blockPos);
+                        if (!block) continue;
+                        
+                        const blockTypeId = block.typeId;
+                        if (!this.isDestructible(blockTypeId)) continue;
+                        
+                        const explosionIntensity = this.calculateExplosionIntensity(distance, intensity, falloffType);
+                        const blockHardness = respectHardness ? this.getBlockHardness(blockTypeId) : 1.0;
+                        
+                        // 计算破坏概率
+                        const destructionChance = Math.min(1.0, explosionIntensity / blockHardness);
+                        
+                        if (Math.random() < destructionChance) {
+                            // 掉落物品
+                            if (dropItems && blockTypeId !== "minecraft:air") {
+                                try {
+                                    dimension.runCommand(`loot spawn ${x} ${y} ${z} loot "${blockTypeId}"`);
+                                } catch (e) {
+                                    // 如果没有对应的战利品表，直接掉落方块
+                                    try {
+                                        dimension.spawnItem(new ItemStack(blockTypeId, 1), blockPos);
+                                    } catch (e2) {}
+                                }
+                            }
+                            
+                            // 破坏方块
+                            block.setType("minecraft:air");
+                            destroyedBlocks.push(blockPos);
+                        }
+                    }
+                }
+            }
+        }
+
+        return destroyedBlocks;
+    }
+
+}
+
 
 export class NavUtils {
     static PATH: { loc: Vector3, ticks: number }[] = []
