@@ -1,5 +1,6 @@
 import json
 import shutil
+import re
 from pathlib import Path
 from typing import List, Set
 from utils import *
@@ -12,7 +13,7 @@ def check_particle_references() -> None:
     Args:
         bbpack_dir: bbpack文件夹的路径
     """
-    bbpack_path = Path(PYTHON_DIR / "bbpack")
+    bbpack_path = Path(BBPACK_DIR)
     
     print("开始检查bbmodel与particle.json文件的引用关系...")
     print("="*60)
@@ -136,7 +137,7 @@ def get_particle_ids(particle_files: List[Path]) -> Set[str]:
 
 def check_single_bbmodel(bbmodel_file: Path, available_particle_ids: Set[str]) -> List[str]:
     """
-    检查单个bbmodel文件中的粒子引用
+    检查单个bbmodel文件中的粒子引用和动画命名规范
     
     Args:
         bbmodel_file: bbmodel文件路径
@@ -150,6 +151,9 @@ def check_single_bbmodel(bbmodel_file: Path, available_particle_ids: Set[str]) -
     try:
         with open(bbmodel_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
+        
+        # 添加标志位来记录文件是否被修改
+        file_modified = False
             
         # 检查是否有animations
         animations = data.get('animations', [])
@@ -161,7 +165,7 @@ def check_single_bbmodel(bbmodel_file: Path, available_particle_ids: Set[str]) -
         for animation in animations:
             if not isinstance(animation, dict):
                 continue
-                
+            
             # 检查animators
             animators = animation.get('animators', {})
             if not isinstance(animators, dict):
@@ -215,7 +219,7 @@ def copy_bbpack_files() -> None:
     
     注意：bbmodel文件不再需要复制，因为处理程序现在直接从bbpack文件夹读取
     """
-    bbpack_path = Path(PYTHON_DIR / "bbpack")
+    bbpack_path = Path(BBPACK_DIR)
     
     rename_bbmodel_files()
 
@@ -289,7 +293,7 @@ def rename_bbmodel_files() -> None:
     """
     对于bbpack中的所有子文件夹，将其下的bbmodel文件重命名为和文件夹名一致
     """
-    bbpack_path = Path(PYTHON_DIR / "bbpack")
+    bbpack_path = Path(BBPACK_DIR)
     if not bbpack_path.exists():
         print("❌ bbpack文件夹不存在！")
         return
@@ -337,7 +341,122 @@ def rename_bbmodel_files() -> None:
     print(f"成功重命名了 {total_renamed} 个bbmodel文件")
 
 
+def check_animation_names() -> None:
+    """
+    检查bbpack目录下所有bbmodel文件中的动画名称是否符合规范
+    规范要求：
+    1. 以animation.开头
+    2. 仅包含小写字母、下划线、数字和小数点
+    
+    如果发现不符合规范的命名，将提示用户输入正确的命名并自动修改
+    """
+    bbpack_path = Path(BBPACK_DIR)
+    
+    if not bbpack_path.exists():
+        print("❌ bbpack文件夹不存在！")
+        return
+    
+    invalid_names = []
+    total_dirs = 0
+    total_files = 0
+    total_fixed = 0
+    
+    print("开始检查bbmodel文件中的动画名称规范...")
+    print("="*60)
+    
+    # 遍历bbpack下的所有子目录
+    for subdir in bbpack_path.iterdir():
+        if not subdir.is_dir():
+            continue
+            
+        total_dirs += 1
+        
+        # 获取目录中的所有bbmodel文件
+        bbmodel_files = list(subdir.glob("*.bbmodel"))
+        
+        for bbmodel_file in bbmodel_files:
+            total_files += 1
+            try:
+                with open(bbmodel_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                file_modified = False
+                
+                # 检查是否有animations键
+                if 'animations' in data and isinstance(data['animations'], list):
+                    # 遍历animations列表
+                    for i, animation in enumerate(data['animations']):
+                        if isinstance(animation, dict) and 'name' in animation:
+                            name = animation['name']
+                            
+                            # 检查名称是否符合规范
+                            if not is_valid_animation_name(name):
+                                print(f"\n❌ 发现不符合规范的动画名称：")
+                                print(f"📁 文件: {bbmodel_file.relative_to(bbpack_path)}")
+                                print(f"🎬 当前名称: {name}")
+                                print("\n规范要求：")
+                                print("1. 必须以 'animation.' 开头")
+                                print("2. 仅能包含小写字母、下划线、数字和小数点")
+                                
+                                # 提示用户输入正确的命名
+                                while True:
+                                    new_name = input(f"\n请输入正确的动画名称 (当前: {name}): ").strip()
+                                    
+                                    if not new_name:
+                                        print("⚠️  名称不能为空，请重新输入")
+                                        continue
+                                    
+                                    if is_valid_animation_name(new_name):
+                                        # 修改动画名称
+                                        data['animations'][i]['name'] = new_name
+                                        file_modified = True
+                                        total_fixed += 1
+                                        print(f"✅ 名称已修改: {name} -> {new_name}")
+                                        break
+                                    else:
+                                        print("❌ 输入的名称仍不符合规范，请重新输入")
+                                        if not new_name.startswith('animation.'):
+                                            print("   提示: 名称必须以 'animation.' 开头")
+                                        if not re.match(r'^[a-z0-9_.]+$', new_name):
+                                            print("   提示: 名称只能包含小写字母、下划线、数字和小数点")
+                
+                # 如果文件被修改，保存文件
+                if file_modified:
+                    with open(bbmodel_file, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=4, ensure_ascii=False)
+                    print(f"💾 文件已保存: {bbmodel_file.relative_to(bbpack_path)}")
+            
+            except (json.JSONDecodeError, FileNotFoundError, UnicodeDecodeError) as e:
+                print(f"读取文件 {bbmodel_file.relative_to(bbpack_path)} 时出错: {e}")
+    
+    print("\n" + "="*60)
+    print(f"检查完成！")
+    print(f"总共检查了 {total_dirs} 个目录中的 {total_files} 个bbmodel文件")
+    if total_fixed > 0:
+        print(f"✅ 成功修复了 {total_fixed} 个不规范的动画名称")
+    else:
+        print("✅ 所有动画名称都符合规范！")
+    print("="*60)
+
+
+def is_valid_animation_name(name: str) -> bool:
+    """
+    检查动画名称是否符合规范
+    规范要求：
+    1. 以animation.开头
+    2. 仅包含小写字母、下划线、数字和小数点
+    """
+    # 检查是否以animation.开头
+    if not name.startswith('animation.'):
+        return False
+    
+    # 检查是否仅包含小写字母、下划线、数字和小数点
+    pattern = r'^[a-z0-9_.]+$'
+    return bool(re.match(pattern, name))
+
+
 if __name__ == "__main__":
     # check_particle_references()
+    # check_animation_names()
     copy_bbpack_files()
     

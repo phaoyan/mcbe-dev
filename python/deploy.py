@@ -1,12 +1,24 @@
 from utils import *
 from typing import *
+import yaml
 
 
 def get_project_name():
     project_name = ENV_PATH.read_text().splitlines()[0].split("=")[1].strip('"')
     return project_name
 
+def parse_analysis_yaml() -> dict:
+    """解析analysis.yaml文件，返回数据字典"""
+    with open(PYTHON_DIR / "outputs" / "analysis.yaml", 'r', encoding='utf-8') as file:
+        return yaml.safe_load(file)
 
+def deploy_analysis_yaml():
+    """将analysis.yaml数据转换为JSON并部署到scripts/json/bbpack.json"""
+    target_path = SCRIPTS_DIR / "json" / "bbpack.json"
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(json.dumps(BBPACK_DATA, indent=JSON_INDENT, ensure_ascii=False))
+
+BBPACK_DATA = parse_analysis_yaml()
 BBMODEL_JSON = json.loads(BBMODEL_JSON_PATH.read_text())
 TARGET_DIRS = {
     "item": BEHAVIOR_PACK_DIR / "items",
@@ -37,7 +49,7 @@ def str_replace(data, old: str, new: str) -> dict:
 
 
 def setup_ce(data: dict, bbmodel: str) -> dict:
-    textures = BBMODEL_JSON[bbmodel].get("textures")
+    textures = BBMODEL_JSON[bbmodel].get("textures", [])
     data["minecraft:client_entity"]["description"]["geometry"] = {
         "default": f"geometry.{BBMODEL_JSON[bbmodel].get('geometry')}"
     }
@@ -59,13 +71,13 @@ def setup_ce(data: dict, bbmodel: str) -> dict:
     return data
 
 
-def setup_att(data: dict, bbmodel: str) -> dict:
+def setup_att(data: dict, bbmodel: str, texture_idx: int=0) -> dict:
     textures = BBMODEL_JSON[bbmodel].get("textures")
     data["minecraft:attachable"]["description"]["geometry"] = {
         "default": f"geometry.{BBMODEL_JSON[bbmodel].get('geometry')}"
     }
     data["minecraft:attachable"]["description"]["textures"] = {
-        "default": f"textures/entity/{textures[0] if len(textures) > 0 else 'empty'}"
+        "default": f"textures/entity/{textures[texture_idx] if len(textures) > texture_idx else 'empty'}"
     }
     if len(BBMODEL_JSON[bbmodel].get("animations")) > 0:
         data["minecraft:attachable"]["description"]["animations"] = BBMODEL_JSON[
@@ -81,29 +93,11 @@ def setup_att(data: dict, bbmodel: str) -> dict:
         ].get("sounds")
     return data
 
-
-def comp_se(data: dict, name: str, replace: dict[str, str]):
-    comps: dict[str, dict] = json.loads((TEMPLATES_DIR / name).read_text())
-    for k, v in replace.items():
-        comps = str_replace(comps, k, v)
-    for k, v in comps.items():
-        data["minecraft:entity"]["component_groups"][k] |= v
-    return data
+if __name__ == "__main__":
 
 
-def comp_item(data: dict, name: str, replace: dict[str, str]):
-    comps: dict[str, dict] = json.loads((TEMPLATES_DIR / name).read_text())
-    for k, v in replace.items():
-        comps = str_replace(comps, k, v)
-    for k, v in comps.items():
-        data["minecraft:item"]["component_groups"][k] |= v
-    return data
+    import resources
+    resources.main()
 
-
-def export(data, name: str, type: str):
-    filename = f"{name}.{type}.json"
-    if filename in IGNORE_LIST:
-        return
-    target_path = TARGET_DIRS[type] / filename
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    target_path.write_text(json.dumps(data, indent=JSON_INDENT))
+    import reference
+    reference.main()

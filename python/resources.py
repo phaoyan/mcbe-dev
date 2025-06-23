@@ -49,9 +49,13 @@ def setup_sound_type_json():
     target_path.parent.mkdir(exist_ok=True)
     target_path.write_text(json.dumps(prompt_json, indent=JSON_INDENT))
 
-if __name__ == "__main__":
+def main():
     generate_item_texture_list()
     setup_item_texture_json()
     deploy_item_texture()
     setup_sounds_definition()
-    setup_sound_type_json()
+    setup_sound_type_json() 
+
+if __name__ == "__main__":
+    main()
+    

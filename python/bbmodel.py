@@ -7,7 +7,7 @@ from utils import *
 
 
 def list_bbomdel_files():
-    bbpack_dir = PYTHON_DIR / "bbpack"
+    bbpack_dir = BBPACK_DIR
     bbmodel_files = list(bbpack_dir.rglob("*.bbmodel"))
     return bbmodel_files
 
@@ -37,7 +37,7 @@ def setup_basic(bbmodel_file: Path):
 
 def setup_bbmodel_json():
     data = {}
-    bbpack_dir = PYTHON_DIR / "bbpack"
+    bbpack_dir = BBPACK_DIR
     for bbmodel_file in bbpack_dir.rglob("*.bbmodel"):
         bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
         animations = bbmodel.get("animations", [])
@@ -75,7 +75,7 @@ def setup_bbmodel_json():
             "particles": particles,
             "sounds": {},
         }
-    bbmodel_json_path = bbpack_dir / "bbmodel.json"
+    bbmodel_json_path = BBPACK_DIR / "bbmodel.json"
     bbmodel_json_path.write_text(json.dumps(data, indent=JSON_INDENT))
     (SCRIPTS_DIR / "json").mkdir(exist_ok=True)
     (SCRIPTS_DIR / "json" / "bbmodel.json").write_text(
