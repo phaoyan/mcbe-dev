@@ -14,7 +14,7 @@ def list_bbomdel_files():
 
 def setup_basic(bbmodel_file: Path):
     data = json.loads(bbmodel_file.read_text(encoding="utf-8"))
-    data["model_identifier"] = bbmodel_file.stem
+    data["model_identifier"] = f"{NAME_SPACE}.{bbmodel_file.stem}"
     data["name"] = bbmodel_file.stem
     model: str = data["model_identifier"]
     textures: list[dict] = data.get("textures", [])
@@ -26,7 +26,7 @@ def setup_basic(bbmodel_file: Path):
         )
         anim_name: str = animation.get("name", "")
         if not anim_name.startswith("animation."):
-            animation["name"] = f"animation.{bbmodel_file.stem}.{anim_name}"
+            animation["name"] = f"animation.{NAME_SPACE}.{bbmodel_file.stem}.{anim_name}"
     for idx, texture in enumerate(textures):
         texture["name"] = f"{bbmodel_file.stem}_{idx}"
         texture["path"] = str(
@@ -130,12 +130,7 @@ def is_float(s):
 
 def export_animation(bbmodel_file: Path):
     bbmodel = json.loads(bbmodel_file.read_text(encoding="utf-8"))
-    model_identifier = bbmodel.get("model_identifier", bbmodel_file.stem)
-    target_path = (
-        RESOURCE_PACK_DIR
-        / "animations"
-        / f"{model_identifier}.animation.json"
-    )
+    target_path = RESOURCE_PACK_DIR / "animations" / f"{bbmodel_file.stem}.animation.json"
     target_path.parent.mkdir(exist_ok=True)
     animations: list[dict[str, Any]] = bbmodel.get("animations", [])
     output_animations: dict[str, dict[str, Any]] = {}

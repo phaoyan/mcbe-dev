@@ -1,9 +1,12 @@
 {
-  "resource_pack_name": "mcbe_dev",
-  "texture_name": "atlas.items",
-  "texture_data": {
-    "book": {
-      "textures": "textures/items/book"
+    "resource_pack_name": "mcbe_dev",
+    "texture_name": "atlas.items",
+    "texture_data": {
+        "book": {
+            "textures": "textures/items/book"
+        },
+        "demonic_sword": {
+            "textures": "textures/items/book"
+        }
     }
-  }
 }

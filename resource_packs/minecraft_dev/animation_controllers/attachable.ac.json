@@ -1,0 +1,19 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.rclick_fpp": {
+            "states": {
+                "default": {
+                    "animations": ["idle_fpp"],
+                    "transitions": [{"rclick": "t.is_using_item"}],
+                    "blend_transition": 0.0
+                },
+                "rclick": {
+                    "animations": ["rclick_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                }
+            }
+        }
+    }
+}
