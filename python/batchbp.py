@@ -110,10 +110,7 @@ def setup_rclick(type_id: str, cd: float):
     return data
 
 def main():
-    data = setup_rclick(f"{NAME_SPACE}:demonic_sword", 1)
-    export(data, "demonic_sword")
-    data = setup_effect(f"{NAME_SPACE}:big_wolf")
-    export(data, "big_wolf")
+    pass
 
 if __name__ == "__main__":
     main()

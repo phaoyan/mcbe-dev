@@ -136,14 +136,7 @@ def setup_rclick(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
     return data
 
 
-def test():
-    data = setup_rclick("demonic_sword","demonic_sword","demonic_sword_fpp")
-    export(data, "demonic_sword")
-    data = setup_entity(f"big_wolf")
-    export(data, "big_wolf")
-
 if __name__ == "__main__":
-    test()
 
     import resources
     import reference
