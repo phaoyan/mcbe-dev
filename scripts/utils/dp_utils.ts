@@ -1,9 +1,35 @@
-import { Entity, ItemStack, World } from "@minecraft/server";
+import { Entity, ItemStack, system, world, World } from "@minecraft/server";
 import { TimeUtils } from "./time_utils";
+import { dpList } from "./dp_list";
+
+system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+    if (id !== "dp:set") return
+    if (!sourceEntity) {
+        world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
+        return
+    }
+    if(message.includes("=")) {
+        const [key, value] = [message.split("=")[0], message.split("=")[1]]
+        DPUtils.set(sourceEntity, key, value)
+    }else {
+        DPUtils.set(sourceEntity, message, true)
+    }
+    sourceEntity.runCommand("say DP Set Success")
+})
+
+system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+    if (id !== "dp:reset") return
+    if (!sourceEntity) {
+        world.getDimension("minecraft:overworld").runCommand("say DP Reset Error: No Source Entity")
+        return
+    }
+    DPUtils.set(sourceEntity, message, undefined)
+    sourceEntity.runCommand("say DP Reset Success")
+})
 
 export class DPUtils {
 
-    static STORE = {}
+    static STORE = {...dpList}
 
     static REGISTRATION: { [key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any) => any)[] } = {}
 

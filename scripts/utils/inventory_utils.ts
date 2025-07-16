@@ -5,6 +5,11 @@ export interface GiveOptions {
     unremovable?: boolean
 }
 
+export interface EquipOptions {
+    onlyOnce?: boolean
+    override?: boolean
+}
+
 export class InventoryUtils {
     static entity(target: Entity) {
         return (target.getComponent(EntityComponentTypes.Inventory) as EntityInventoryComponent).container
@@ -42,6 +47,24 @@ export class InventoryUtils {
         }else {
             target.runCommand(`give @s ${item.typeId} ${item.amount}`)
         }
+    }
+
+    static equip(target: Entity, itemId: string, slot: EquipmentSlot, options: EquipOptions) {
+        if (options.onlyOnce && this.items(target).filter(i => i?.typeId === itemId).length > 0) {
+            return
+        }
+        if (!options.override && this.equippables(target).getEquipment(slot)) {
+            return
+        }
+        const slots = {
+            [EquipmentSlot.Head]: "slot.armor.head",
+            [EquipmentSlot.Chest]: "slot.armor.chest",
+            [EquipmentSlot.Legs]: "slot.armor.legs",
+            [EquipmentSlot.Feet]: "slot.armor.feet",
+            [EquipmentSlot.Mainhand]: "slot.weapon.mainhand",
+            [EquipmentSlot.Offhand]: "slot.weapon.offhand",
+        }
+        target.runCommand(`replaceitem entity @s ${slots[slot]} 0 ${itemId}`)
     }
 
     static clear(target: Entity, typeId: string) {

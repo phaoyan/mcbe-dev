@@ -1,17 +1,30 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, Vector3 } from "@minecraft/server";
+import { Entity, EntityComponentTypes, EntityEffectOptions, EntityQueryOptions, Vector3 } from "@minecraft/server";
 import { VecUtils } from "./vec_utils";
+
+export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
+    Normal: {
+        maxDistance: 128,
+        excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
+        excludeFamilies: ["projectile", "dummy"],
+    },
+    Dummy: {
+        maxDistance: 128,
+        families: ["dummy"],
+    },
+    All: {
+        maxDistance: 128,
+    }
+}
 
 export class EntityUtils {
     static ENTITIES: Entity[]
-    static entities(entity: Entity, maxDist: number = 128, closest?: number) {
-        this.ENTITIES = entity.dimension.getEntities({
-            location: entity.location,
-            maxDistance: maxDist,
-            excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
-            excludeFamilies: ["projectile", "dummy"],
-            closest: closest
-        }).filter(e => e.id !== entity.id)
+    static entities(
+        entity: Entity, 
+        options: EntityQueryOptions = EntityUtilsOptions.Normal, 
+        self: boolean = false
+    ) {
+        this.ENTITIES = entity.dimension.getEntities(options).filter(e => self ? true : e.id !== entity.id)
         return EntityUtils
     }
 
@@ -33,8 +46,29 @@ export class EntityUtils {
         return EntityUtils
     }
 
+    static selectById(id: string) {
+        this.ENTITIES = this.ENTITIES.filter(e => e.id === id)
+        return EntityUtils
+    }
+
+    
+    static selectByTypeId(typeId: string) {
+        this.ENTITIES = this.ENTITIES.filter(e => e.typeId === typeId)
+        return EntityUtils
+    }
+
+    static selectByFamily(family: string) {
+        this.ENTITIES = this.ENTITIES.filter(e => e.getComponent(EntityComponentTypes.TypeFamily)?.hasTypeFamily(family))
+        return EntityUtils
+    }
+
     static get() {
         return this.ENTITIES
+    }
+
+    static getFirst(){
+        if (this.ENTITIES.length === 0) return undefined
+        return this.ENTITIES[0]
     }
 
     static damage(amount: number) {
