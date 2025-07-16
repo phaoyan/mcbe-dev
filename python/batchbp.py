@@ -48,16 +48,16 @@ def events(data: dict) -> dict:
     return data["minecraft:entity"]["events"]
 
 # se
-def comp_collision_box(data: dict, width: float, height: float) -> dict:
+def comp_collision_box(data: dict, width: float, height: float):
     components(data)["minecraft:collision_box"] = { "width": width, "height": height }
 
-def comp_health(data: dict, max: int, value: int) -> dict:
+def comp_health(data: dict, max: int, value: int):
     components(data)["minecraft:health"] = { "max": max, "value": value }
 
-def comp_type_family(data: dict, family: list[str]) -> dict:
+def comp_type_family(data: dict, family: list[str]):
     components(data)["minecraft:type_family"] = { "family": family }
 
-def comp_damage_sensor_undeath(data: dict) -> dict:
+def comp_damage_sensor_undeath(data: dict):
     components(data)["minecraft:damage_sensor"] = {
         "triggers": {
             "on_damage": {
@@ -72,7 +72,7 @@ def comp_damage_sensor_undeath(data: dict) -> dict:
     }
 
 # items
-def comp_rclick(data: dict, cd: float) -> dict:
+def comp_rclick(data: dict, cd: float):
     components(data)["minecraft:food"] = {
         "can_always_eat": True,
         "nutrition": 0,

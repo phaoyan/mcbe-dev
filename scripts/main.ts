@@ -1,12 +1,12 @@
-import "./utils"
-import { world, system } from "@minecraft/server";
+import { system, world } from "@minecraft/server";
+import "./utils/dp_utils";
+import "./utils/entity_utils";
+import "./utils/inventory_utils";
+import "./utils/math_utils";
+import "./utils/menu_utils";
+import "./utils/time_utils";
+import "./utils/vec_utils";
 
-function mainTick() {
-  if (system.currentTick % 100 === 0) {
-    world.sendMessage("Hello starter! Tick: " + system.currentTick);
-  }
-
-  system.run(mainTick);
-}
-
-system.run(mainTick);
+system.runInterval(()=>{
+    world.getDimension("minecraft:overworld").runCommand("say Current Tick: " + system.currentTick)
+}, 20)

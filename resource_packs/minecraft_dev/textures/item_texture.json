@@ -4,9 +4,6 @@
     "texture_data": {
         "book": {
             "textures": "textures/items/book"
-        },
-        "demonic_sword": {
-            "textures": "textures/items/book"
         }
     }
 }
