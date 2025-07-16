@@ -109,8 +109,17 @@ def setup_rclick(type_id: str, cd: float):
     comp_rclick(data, cd)
     return data
 
+effect_list = []
+rclick_list = []
+
 def main():
-    pass
+    for bbmodel in effect_list:
+        data = setup_effect(bbmodel)
+        export(data, f"effects/{bbmodel}")
+
+    for bbmodel in rclick_list:
+        data = setup_rclick(bbmodel, 0)
+        export(data, f"rclicks/{bbmodel}")
 
 if __name__ == "__main__":
     main()

@@ -4,13 +4,99 @@
         "controller.animation.rclick_fpp": {
             "states": {
                 "default": {
-                    "animations": ["idle_fpp"],
-                    "transitions": [{"rclick": "t.is_using_item"}],
+                    "animations": [
+                        "idle_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "rclick": "t.is_using_item"
+                        }
+                    ],
                     "blend_transition": 0.0
                 },
                 "rclick": {
-                    "animations": ["rclick_fpp"],
-                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "animations": [
+                        "rclick_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "default": "q.any_animation_finished"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                }
+            }
+        },
+        "controller.animation.lclick_fpp": {
+            "states": {
+                "default": {
+                    "animations": [
+                        "idle_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "lclick": "t.player_attacking"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                },
+                "lclick": {
+                    "animations": [
+                        "lclick_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "default": "q.any_animation_finished"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                }
+            }
+        },
+        "controller.animation.lrclick_fpp": {
+            "states": {
+                "default": {
+                    "transitions": [
+                        {
+                            "idle_fpp": "c.is_first_person"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                },
+                "idle_fpp": {
+                    "animations": [
+                        "idle_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "rclick_fpp": "t.is_using_item"
+                        },
+                        {
+                            "lclick_fpp": "t.player_attacking"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                },
+                "rclick_fpp": {
+                    "animations": [
+                        "rclick_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "idle_fpp": "q.any_animation_finished"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                },
+                "lclick_fpp": {
+                    "animations": [
+                        "lclick_fpp"
+                    ],
+                    "transitions": [
+                        {
+                            "idle_fpp": "q.any_animation_finished"
+                        }
+                    ],
                     "blend_transition": 0.0
                 }
             }
