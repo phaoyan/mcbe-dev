@@ -1,4 +1,3 @@
-from operator import ge
 from utils import *
 from typing import *
 
@@ -128,91 +127,39 @@ def setup_attachable(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
     scripts(data)["parent_setup"] = "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;"
     return data
 
-def setup_void_rclick(type_id: str, bbmodel_fpp: str, animation: str):
-    data = init("att", type_id)
-    geo(data)["default"] = geo_path(bbgeo(bbmodel_fpp))
-    txr(data)["default"] = txr_path(bbtxr(bbmodel_fpp)[0])
-    mtr(data)["default"] = "entity_alphatest"
+def setup_rclick(data: dict, rclick_fpp: str, idle_fpp: str):
     desc(data)["animations"] = {
         "ctrl_fpp": "controller.animation.rclick_fpp",
-        "rclick_fpp": f"animation.{bbmodel_fpp}.{animation}",
-        "idle_fpp": f"animation.{bbmodel_fpp}.idle_fpp",
-    }
-    rc(data).append({"controller.render.default": "c.is_first_person"})
-    scripts(data)["parent_setup"] = "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;"
-    scripts(data)["animate"] = [{"ctrl": "c.is_first_person"}]
-    return data
-
-def setup_rclick(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
-    data = setup_attachable(type_id, bbmodel_tpp, bbmodel_fpp)
-    anims = desc(data).get("animations")
-    if anims.get("rclick_fpp") is None or anims.get("idle_fpp") is None:
-        print(f"Warning: {type_id} has no rclick_fpp or idle_fpp")
-        
-    desc(data)["animations"] = {
-        "ctrl_fpp": "controller.animation.rclick_fpp",
-        "rclick_fpp": f"animation.{bbmodel_fpp}.rclick_fpp",
-        "idle_fpp": f"animation.{bbmodel_fpp}.idle_fpp",
+        "rclick_fpp": rclick_fpp,
+        "idle_fpp": idle_fpp,
     }
     scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
     return data
 
-def setup_lclick(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
-    data = setup_attachable(type_id, bbmodel_tpp, bbmodel_fpp)
-    anims = desc(data).get("animations")
-    if anims.get("lclick_fpp") is None or anims.get("idle_fpp") is None:
-        print(f"Warning: {type_id} has no lclick_fpp or idle_fpp")
-
+def setup_lclick(data: dict, lclick_fpp: str, idle_fpp: str):
     desc(data)["animations"] = {
         "ctrl_fpp": "controller.animation.lclick_fpp",
-        "lclick_fpp": f"animation.{bbmodel_fpp}.lclick_fpp",
-        "idle_fpp": f"animation.{bbmodel_fpp}.idle_fpp",
+        "lclick_fpp": lclick_fpp,
+        "idle_fpp": idle_fpp,
     }
     scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
     return data
 
-def setup_lrclick(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
-    data = setup_attachable(type_id, bbmodel_tpp, bbmodel_fpp)
-    anims = desc(data).get("animations")
-    if anims.get("lclick_fpp") is None or anims.get("idle_fpp") is None:
-        print(f"Warning: {type_id} has no lclick_fpp or idle_fpp")
-
+def setup_lrclick(data: dict, lclick_fpp: str, rclick_fpp: str, idle_fpp: str):
     desc(data)["animations"] = {
         "ctrl_fpp": "controller.animation.lrclick_fpp",
-        "rclick_fpp": f"animation.{bbmodel_fpp}.rclick_fpp",
-        "lclick_fpp": f"animation.{bbmodel_fpp}.lclick_fpp",
-        "idle_fpp": f"animation.{bbmodel_fpp}.idle_fpp",
+        "rclick_fpp": rclick_fpp,
+        "lclick_fpp": lclick_fpp,
+        "idle_fpp": idle_fpp,
     }
     scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
     return data
 
 entity_list = []
 mobs_list = []
-void_rclick_list = []
 rclick_list = []
 lclick_list = []
 lrclick_list = []
-
-def main():
-    for bbmodel in entity_list:
-        data = setup_entity(bbmodel)
-        export(data, bbmodel)
-
-    for bbmodel in mobs_list:
-        data = setup_mobs(bbmodel, "controller.animation.default")
-        export(data, bbmodel)
-        
-    for bbmodel in void_rclick_list:
-        data = setup_void_rclick(bbmodel, bbmodel, "rclick_fpp")
-        export(data, bbmodel)
-    
-    for bbmodel in rclick_list:
-        data = setup_rclick(bbmodel, bbmodel, bbmodel)
-        export(data, bbmodel)
-    
-    for bbmodel in lclick_list:
-        data = setup_lclick(bbmodel, bbmodel, bbmodel)
-        export(data, bbmodel)
 
 if __name__ == "__main__":
 

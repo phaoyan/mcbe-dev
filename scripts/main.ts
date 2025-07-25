@@ -4,7 +4,7 @@ import "./system/lclick";
 import "./system/rclick";
 import "./utils/dp_utils";
 import "./utils/entity_utils";
-import "./system/gamerules";
+import "./system/init";
 import "./utils/inventory_utils";
 import "./utils/math_utils";
 import "./utils/menu_utils";

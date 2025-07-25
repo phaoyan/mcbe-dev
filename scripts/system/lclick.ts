@@ -27,6 +27,7 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
 // 将Dummy TP到正确的位置
 system.runInterval(() => {
     world.getAllPlayers().forEach(player => {
+        if(!DPUtils.store().lclick_enable.curr(player), false) return
         const entities = EntityUtils.entities(player, EntityUtilsOptions.All).get()
         EntityUtils.enumerate(entities).selectByTypeId(entity_ids.lclick_dummy).foreach(e=>{
             const host = EntityUtils.enumerate(entities).selectById(DPUtils.store().lclick_host.curr(e)).getFirst()

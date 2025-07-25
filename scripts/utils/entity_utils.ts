@@ -1,6 +1,7 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityComponentTypes, EntityEffectOptions, EntityQueryOptions, Vector3 } from "@minecraft/server";
+import { Entity, EntityComponentTypes, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, Vector3 } from "@minecraft/server";
 import { VecUtils } from "./vec_utils";
+import { DPUtils } from "./dp_utils";
 
 export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
     Normal: {
@@ -71,9 +72,21 @@ export class EntityUtils {
         return this.ENTITIES[0]
     }
 
-    static damage(amount: number) {
-        this.ENTITIES.forEach(target => target.applyDamage(amount))
-        return EntityUtils
+    static damage(amount: number, source?: Entity, tags: string[] = []) {
+        if (!source) {
+            this.ENTITIES.forEach(target => !!target && target.applyDamage(amount, { cause: EntityDamageCause.entityAttack, damagingEntity: source }))
+            return EntityUtils
+        } else {
+            const attackerMultiplier = DPUtils.store().attacker_damage_multipliers.curr(source, {})
+            const defenderMultiplier = DPUtils.store().defender_damage_multipliers.curr(source, {})
+            let damage = amount
+            tags.forEach(tag => damage *= attackerMultiplier[tag] ?? 1)
+            tags.forEach(tag => damage *= defenderMultiplier[tag] ?? 1)
+            damage *= attackerMultiplier.common ?? 1
+            damage *= defenderMultiplier.common ?? 1
+            this.ENTITIES.forEach(target => !!target && target.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: source }))
+            return EntityUtils
+        }
     }
 
     static effect(effect: string, ticks: number, options?: EntityEffectOptions) {
