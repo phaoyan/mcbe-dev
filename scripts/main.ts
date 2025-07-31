@@ -1,10 +1,13 @@
+import "./utils/anim_utils";
 import "./system/debug";
-import "./system/itembind";
+import "./system/init";
 import "./system/lclick";
 import "./system/rclick";
+import "./system/skills";
+import "./utils/comp_utils";
+import "./utils/dp_list";
 import "./utils/dp_utils";
 import "./utils/entity_utils";
-import "./system/init";
 import "./utils/inventory_utils";
 import "./utils/math_utils";
 import "./utils/menu_utils";

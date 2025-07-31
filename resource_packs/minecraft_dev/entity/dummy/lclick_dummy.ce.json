@@ -1,0 +1,20 @@
+{
+    "format_version": "1.21.10",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "minecraft_dev:lclick_dummy",
+            "textures": {
+                "default": "textures/entity/player_0"
+            },
+            "geometry": {
+                "default": "geometry.minecraft_dev.lclick_dummy"
+            },
+            "materials": {
+                "default": "entity_alphatest"
+            },
+            "render_controllers": [
+                "controller.render.default"
+            ]
+        }
+    }
+}

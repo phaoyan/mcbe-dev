@@ -1,26 +1,49 @@
 import { ItemStack, Player, system, world } from "@minecraft/server";
 import { DPUtils } from "../utils/dp_utils";
-import { EntityUtils, EntityUtilsOptions } from "../utils/entity_utils";
+import { EntityUtils } from "../utils/entity_utils";
 import entity_ids from "../json/entity_ids.json"
 import { Vector3Utils } from "@minecraft/math";
 import { InventoryUtils } from "../utils/inventory_utils";
+import itemIds from "../json/item_ids.json"
+import { TimeUtils } from "../utils/time_utils";
+import { VecUtils } from "../utils/vec_utils";
 
 // 返回值为动画时长
 const lclickMap: { [key: string]: (player: Player, item: ItemStack) => number } = {
-    
+    [itemIds.combo]: (player, item) => {
+        const count = DPUtils.store().lclick_combo_count.curr(player, 0)
+        player.runCommand("say Combo " + count)
+        count === 0 && TimeUtils.timeout(()=>DPUtils.store().lclick_combo_count.set(player, (curr:any)=>curr===1 ? 0 : curr, 0), 19)
+        count === 1 && TimeUtils.timeout(()=>DPUtils.store().lclick_combo_count.set(player, (curr:any)=>curr===2 ? 0 : curr, 0), 19)
+        DPUtils.store().lclick_combo_count.set(player, (curr:any)=>(curr+1)%3, 0)
+        TimeUtils.timeout(()=>{
+            EntityUtils.entities(player).filter(e=>VecUtils.sphere(e.location, VecUtils.start(player).moveF(2).end(), 4)).damage(1,player)
+        }, 4)
+        return [9,9,12][count]
+    }
 }
+
+const DummyOffsets = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
 
 // 监听并管理Dummy
 DPUtils.store().lclick_enable.register((target, curr, prev) => {
     if (!(target instanceof Player)) return
-    const dummy = EntityUtils.entities(target).filter(e => DPUtils.store().lclick_host.curr(e) === target.id).getFirst()
-    if (!curr) {
-        if (!dummy) return
-        dummy.remove()
-    } else {
-        if (dummy) return
-        const lclick = target.dimension.spawnEntity(entity_ids.lclick_dummy, target.location)
-        DPUtils.store().lclick_host.set(lclick, target.id)
+    const dummies = EntityUtils
+        .entitiesByType(target, entity_ids.lclick_dummy, 128)
+        .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
+        .get()
+
+    for (let i = 0; i < DummyOffsets.length; i++) {
+        const dummy = dummies.filter(e=>DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
+        if (!curr) {
+            if (!dummy) return
+            dummy.remove()
+        } else {
+            if (dummy) return
+            const lclick = target.dimension.spawnEntity(entity_ids.lclick_dummy, target.location)
+            DPUtils.store().lclick_host.set(lclick, target.id)
+            DPUtils.store().lclick_dummy_idx.set(lclick, i)
+        }
     }
 })
 
@@ -28,26 +51,27 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
 system.runInterval(() => {
     world.getAllPlayers().forEach(player => {
         if(!DPUtils.store().lclick_enable.curr(player), false) return
-        const entities = EntityUtils.entities(player, EntityUtilsOptions.All).get()
-        EntityUtils.enumerate(entities).selectByTypeId(entity_ids.lclick_dummy).foreach(e=>{
-            const host = EntityUtils.enumerate(entities).selectById(DPUtils.store().lclick_host.curr(e)).getFirst()
-            if (!host) return
-            const correction = Vector3Utils.magnitude(player.getVelocity())*12
-            const loc = {
-                x: host.location.x + host.getViewDirection().x*correction,
-                y: host.location.y + host.getViewDirection().y,
-                z: host.location.z + host.getViewDirection().z*correction
-            }
-            e.teleport(loc, { rotation: host.getRotation() })
-        })
+        const move = player.inputInfo.getMovementVector()
+        const dummies = EntityUtils
+            .entitiesByType(player, entity_ids.lclick_dummy, 128)
+            .filter(e=>DPUtils.store().lclick_host.curr(e) === player.id)
+            .get()
+        if (!dummies) return
+        for (let i = 0; i < DummyOffsets.length; i++) {
+            const dummy = dummies.filter(e=>DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
+            if (!dummy) return
+            const offset = Vector3Utils.magnitude(player.getVelocity())*DummyOffsets[i]
+            const vy = player.getViewDirection().y
+            const loc = VecUtils.start(player).moveF(offset * Math.max(move.y,-3)).moveY(vy*i*0.25).moveR(offset*move.x*0.4).end()
+            dummy.teleport(loc, { rotation: player.getRotation() })
+        }
     })
 })
 
 // 监听并执行左键动画，包括CD计时功能
 world.afterEvents.entityHitEntity.subscribe(({ hitEntity, damagingEntity }) => {
     if (!DPUtils.store().lclick_enable.curr(damagingEntity)) return
-    if (DPUtils.store().lclick_host.curr(hitEntity) !== damagingEntity.id) return
-    if (DPUtils.store().lclick_cooldown.curr(damagingEntity) > system.currentTick) return
+    if (DPUtils.store().lclick_cooldown.curr(damagingEntity, 0) > system.currentTick) return
     const player = damagingEntity as Player
     const selected = InventoryUtils.entity(player).getItem(player.selectedSlotIndex)
     if (!selected) return

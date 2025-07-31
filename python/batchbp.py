@@ -86,6 +86,7 @@ def comp_rclick(data: dict, cd: float):
         "use_duration": 9999999,
         "movement_modifier": 1
     }
+    components(data)["minecraft:can_destroy_in_creative"] = False
     
 def export(data, name: str):
     type = json_type(data)
@@ -110,7 +111,7 @@ def setup_rclick(type_id: str, cd: float):
     return data
 
 effect_list = []
-rclick_list = []
+rclick_list = ["combo"]
 
 def main():
     for bbmodel in effect_list:
@@ -120,6 +121,11 @@ def main():
     for bbmodel in rclick_list:
         data = setup_rclick(bbmodel, 0)
         export(data, f"rclicks/{bbmodel}")
+    
+    import resources
+    import reference
+    resources.main()
+    reference.main()
 
 if __name__ == "__main__":
     main()

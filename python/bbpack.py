@@ -345,7 +345,7 @@ def check_animation_names() -> None:
     """
     检查bbpack目录下所有bbmodel文件中的动画名称是否符合规范
     规范要求：
-    1. 以animation.开头
+    1. 以animation.minecraft_dev.开头
     2. 仅包含小写字母、下划线、数字和小数点
     
     如果发现不符合规范的命名，将提示用户输入正确的命名并自动修改
@@ -395,7 +395,7 @@ def check_animation_names() -> None:
                                 print(f"📁 文件: {bbmodel_file.relative_to(bbpack_path)}")
                                 print(f"🎬 当前名称: {name}")
                                 print("\n规范要求：")
-                                print("1. 必须以 'animation.' 开头")
+                                print("1. 必须以 'animation.minecraft_dev.' 开头")
                                 print("2. 仅能包含小写字母、下划线、数字和小数点")
                                 
                                 # 提示用户输入正确的命名
@@ -415,8 +415,8 @@ def check_animation_names() -> None:
                                         break
                                     else:
                                         print("❌ 输入的名称仍不符合规范，请重新输入")
-                                        if not new_name.startswith('animation.'):
-                                            print("   提示: 名称必须以 'animation.' 开头")
+                                        if not new_name.startswith('animation.minecraft_dev.'):
+                                            print("   提示: 名称必须以 'animation.minecraft_dev.' 开头")
                                         if not re.match(r'^[a-z0-9_.]+$', new_name):
                                             print("   提示: 名称只能包含小写字母、下划线、数字和小数点")
                 
@@ -443,16 +443,25 @@ def is_valid_animation_name(name: str) -> bool:
     """
     检查动画名称是否符合规范
     规范要求：
-    1. 以animation.开头
+    1. 以animation.minecraft_dev.开头
     2. 仅包含小写字母、下划线、数字和小数点
+    3. 在命名空间后必须有实际的动画名称
     """
-    # 检查是否以animation.开头
-    if not name.startswith('animation.'):
+    # 检查是否以animation.minecraft_dev.开头
+    if not name.startswith('animation.minecraft_dev.'):
         return False
     
     # 检查是否仅包含小写字母、下划线、数字和小数点
     pattern = r'^[a-z0-9_.]+$'
-    return bool(re.match(pattern, name))
+    if not re.match(pattern, name):
+        return False
+    
+    # 检查在animation.minecraft_dev.后是否有实际的动画名称（不能为空，不能以点结尾）
+    suffix = name[len('animation.minecraft_dev.'):]
+    if not suffix or suffix.endswith('.'):
+        return False
+    
+    return True
 
 
 if __name__ == "__main__":

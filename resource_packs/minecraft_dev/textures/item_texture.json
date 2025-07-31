@@ -4,6 +4,15 @@
     "texture_data": {
         "book": {
             "textures": "textures/items/book"
+        },
+        "debug_menu": {
+            "textures": "textures/items/book"
+        },
+        "combo": {
+            "textures": "textures/items/book"
+        },
+        "demonic_punishment": {
+            "textures": "textures/items/book"
         }
     }
 }

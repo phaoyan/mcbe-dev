@@ -15,7 +15,7 @@ def get_project_name():
 
 PROJECT_NAME = get_project_name()
 PYTHON_DIR = Path(__file__).parent
-BBPACK_DIR = # Path("")
+BBPACK_DIR = PYTHON_DIR / "bbpacks"
 BBMODEL_JSON_PATH = BBPACK_DIR / "bbmodel.json"
 ENTITY_EXPORT_DIR = Path(__file__).parent / "entity"
 ENV_PATH = Path(__file__).parent.parent / ".env"

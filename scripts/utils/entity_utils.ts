@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityComponentTypes, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, Vector3 } from "@minecraft/server";
+import { Entity, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, Vector3, world } from "@minecraft/server";
 import { VecUtils } from "./vec_utils";
 import { DPUtils } from "./dp_utils";
 
@@ -13,8 +13,10 @@ export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
         maxDistance: 128,
         families: ["dummy"],
     },
-    All: {
+    Both: {
         maxDistance: 128,
+        excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
+        excludeFamilies: ["projectile"],
     }
 }
 
@@ -25,12 +27,21 @@ export class EntityUtils {
         options: EntityQueryOptions = EntityUtilsOptions.Normal, 
         self: boolean = false
     ) {
-        this.ENTITIES = entity.dimension.getEntities(options).filter(e => self ? true : e.id !== entity.id)
+        this.ENTITIES = entity.dimension.getEntities({...options, location: entity.location}).filter(e => self ? true : e.id !== entity.id)
         return EntityUtils
     }
 
-    static foreach(callback: (e: Entity) => void) {
-        this.ENTITIES.forEach(callback)
+    static entitiesByType(entity: Entity, type: string, distance: number = 128) {
+        this.ENTITIES = entity.dimension.getEntities({
+            location: entity.location,
+            maxDistance: distance,
+            type: type,
+        })
+        return EntityUtils
+    }
+
+    static entityById(id: string) {
+        this.ENTITIES = world.getEntity(id) ? [world.getEntity(id) as Entity] : []
         return EntityUtils
     }
 
@@ -47,21 +58,6 @@ export class EntityUtils {
         return EntityUtils
     }
 
-    static selectById(id: string) {
-        this.ENTITIES = this.ENTITIES.filter(e => e.id === id)
-        return EntityUtils
-    }
-
-    
-    static selectByTypeId(typeId: string) {
-        this.ENTITIES = this.ENTITIES.filter(e => e.typeId === typeId)
-        return EntityUtils
-    }
-
-    static selectByFamily(family: string) {
-        this.ENTITIES = this.ENTITIES.filter(e => e.getComponent(EntityComponentTypes.TypeFamily)?.hasTypeFamily(family))
-        return EntityUtils
-    }
 
     static get() {
         return this.ENTITIES
@@ -70,6 +66,11 @@ export class EntityUtils {
     static getFirst(){
         if (this.ENTITIES.length === 0) return undefined
         return this.ENTITIES[0]
+    }
+
+    static foreach(callback: (e: Entity) => void) {
+        this.ENTITIES.forEach(callback)
+        return EntityUtils
     }
 
     static damage(amount: number, source?: Entity, tags: string[] = []) {

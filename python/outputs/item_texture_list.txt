@@ -1,1 +1,2 @@
-demonic_sword.item.json
+debug_menu.item.json
+combo.item.json

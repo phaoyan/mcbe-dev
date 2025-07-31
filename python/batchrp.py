@@ -94,8 +94,8 @@ def export(data, name: str):
     target_path.write_text(json.dumps(data, indent=JSON_INDENT))
 
 
-def setup_entity(bbmodel: str):
-    data = init("ce", f"{NAME_SPACE}:{bbmodel}")
+def setup_entity(bbmodel: str, path: str = None):
+    data = init("ce", bbmodel)
     geo(data)["default"] = geo_path(bbgeo(bbmodel))
     txr(data)["default"] = txr_path(bbtxr(bbmodel)[0])
     mtr(data)["default"] = "entity_alphatest"
@@ -103,6 +103,8 @@ def setup_entity(bbmodel: str):
     desc(data)["particle_effects"] |= bbparticles(bbmodel)
     desc(data)["sound_effects"] |= bbsounds(bbmodel)
     rc(data).append("controller.render.default")
+    if path is not None:
+        export(data, path)
     return data
 
 def setup_mobs(bbmodel: str, ac: str):
@@ -127,43 +129,54 @@ def setup_attachable(type_id: str, bbmodel_tpp: str, bbmodel_fpp: str):
     scripts(data)["parent_setup"] = "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;"
     return data
 
-def setup_rclick(data: dict, rclick_fpp: str, idle_fpp: str):
+def setup_combo(
+    type_id: str, 
+    bbmodel_tpp: str, 
+    bbmodel_fpp: str,
+    combo_fpps: list[str], 
+    combo_tpps: list[str], 
+    idle_fpp: str, 
+    idle_tpp: str,
+    trigger: bool, # true for lclick, false for rclick
+    combo_max: int = 1,
+    path: str = None
+):
+    data = setup_attachable(type_id, bbmodel_tpp, bbmodel_fpp)
     desc(data)["animations"] = {
-        "ctrl_fpp": "controller.animation.rclick_fpp",
-        "rclick_fpp": rclick_fpp,
+        "ctrl": "controller.animation.combo",
+        **{f"combo{i+1}_fpp": combo_fpps[min(i, combo_max-1)] for i in range(10)},
+        **{f"combo{i+1}_tpp": combo_tpps[min(i, combo_max-1)] for i in range(10)},
         "idle_fpp": idle_fpp,
+        "idle_tpp": idle_tpp,
     }
-    scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
-    return data
+    scripts(data)["animate"] = ["ctrl"]
+    scripts(data)["pre_animation"] = [f"v.combo_max = {combo_max};", f"v.trigger = {1 if trigger else 0};"]
 
-def setup_lclick(data: dict, lclick_fpp: str, idle_fpp: str):
-    desc(data)["animations"] = {
-        "ctrl_fpp": "controller.animation.lclick_fpp",
-        "lclick_fpp": lclick_fpp,
-        "idle_fpp": idle_fpp,
-    }
-    scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
+    if path is not None:
+        export(data, path)
     return data
-
-def setup_lrclick(data: dict, lclick_fpp: str, rclick_fpp: str, idle_fpp: str):
-    desc(data)["animations"] = {
-        "ctrl_fpp": "controller.animation.lrclick_fpp",
-        "rclick_fpp": rclick_fpp,
-        "lclick_fpp": lclick_fpp,
-        "idle_fpp": idle_fpp,
-    }
-    scripts(data)["animate"] = [{"ctrl_fpp": "c.is_first_person"}]
-    return data
-
-entity_list = []
-mobs_list = []
-rclick_list = []
-lclick_list = []
-lrclick_list = []
 
 if __name__ == "__main__":
+    setup_combo(
+        type_id="combo",
+        bbmodel_tpp="player",
+        bbmodel_fpp="player_fpp",
+        combo_fpps=[
+            "animation.player_fpp.combo1",
+            "animation.player_fpp.combo2",
+            "animation.player_fpp.combo3",
+        ],
+        combo_tpps=[
+            "animation.player.combo1",
+            "animation.player.combo2",
+            "animation.player.combo3",
+        ],
+        idle_fpp="animation.player_fpp.idle",
+        idle_tpp="animation.player.idle",
+        trigger=True,
+        combo_max=3,
+        path="combo"
+    )
 
-    import resources
-    import reference
-    resources.main()
-    reference.main()
+    setup_entity("lclick_dummy", "dummy/lclick_dummy")
+    

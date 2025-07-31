@@ -1,6 +1,31 @@
 import { Entity, ItemStack, system, world, World } from "@minecraft/server";
 import { dpList } from "./dp_list";
 
+system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+    if (id !== "dp:set") return
+    if (!sourceEntity) {
+        world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
+        return
+    }
+    if(message.includes("=")) {
+        const [key, value] = [message.split("=")[0], message.split("=")[1]]
+        DPUtils.set(sourceEntity, key, value)
+    }else {
+        DPUtils.set(sourceEntity, message, true)
+    }
+    sourceEntity.runCommand("say DP Set Success")
+})
+
+system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+    if (id !== "dp:reset") return
+    if (!sourceEntity) {
+        world.getDimension("minecraft:overworld").runCommand("say DP Reset Error: No Source Entity")
+        return
+    }
+    DPUtils.set(sourceEntity, message, undefined)
+    sourceEntity.runCommand("say DP Reset Success")
+})
+
 // DP Timeline
 system.runInterval(()=>{
     const timeline = DPUtils.store().world_dp_timeline.curr(world, {})
@@ -50,14 +75,14 @@ export class DPUtils {
     static store() {
         return this.mapValues(this.STORE, (v, k) => ({
             id: v,
-            curr: (target: Entity | ItemStack | World, placeHolder?: any) => this.curr(target, k, placeHolder),
-            prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, k, placeHolder),
-            both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, k, placeHolder),
-            set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, k, value, placeHolder, delay),
-            temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, k, value, ticks, placeHolder),
-            activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, k, value, duration, placeHolder),
-            deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, k, placeHolder),
-            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(k, callback),
+            curr: (target: Entity | ItemStack | World, placeHolder?: any) => this.curr(target, dpList[k as keyof typeof dpList], placeHolder),
+            prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, dpList[k as keyof typeof dpList], placeHolder),
+            both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, dpList[k as keyof typeof dpList], placeHolder),
+            set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, dpList[k as keyof typeof dpList], value, placeHolder, delay),
+            temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, dpList[k as keyof typeof dpList], value, ticks, placeHolder),
+            activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, dpList[k as keyof typeof dpList], value, duration, placeHolder),
+            deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, dpList[k as keyof typeof dpList], placeHolder),
+            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(dpList[k as keyof typeof dpList], callback),
         }))
     }
 

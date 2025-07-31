@@ -23,10 +23,39 @@ def entity_id_refs():
 
 def animation_id_refs():
     animation_ids = {}
+    
+    def set_nested_value(dictionary, keys, value):
+        """递归设置嵌套字典的值，处理冲突情况"""
+        current = dictionary
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            elif isinstance(current[key], str):
+                # 如果当前键的值是字符串（叶子节点），需要转换为字典
+                # 将原字符串值保存到特殊键_value下
+                old_value = current[key]
+                current[key] = {"_value": old_value}
+            current = current[key]
+        
+        # 设置最终值
+        final_key = keys[-1]
+        if final_key in current and isinstance(current[final_key], dict):
+            # 如果最终键已经是字典（有子节点），将当前值保存到_value
+            current[final_key]["_value"] = value
+        else:
+            current[final_key] = value
+    
     for animation_file in RESOURCE_PACK_DIR.rglob("*.animation.json"):
         animation_data = json.loads(animation_file.read_text())
-        animation_ids |= {animation.replace("animation.", "").replace(".","_"):animation for animation in animation_data["animations"].keys()}
-    (SCRIPTS_DIR / "json" / "particle_ids.json").write_text(json.dumps(animation_ids, indent=JSON_INDENT))
+        for animation in animation_data["animations"].keys():
+            # 移除 "animation." 前缀
+            clean_name = animation.replace("animation.", "")
+            # 按"."分割成层级
+            keys = clean_name.split(".")
+            # 设置嵌套值
+            set_nested_value(animation_ids, keys, animation)
+    
+    (SCRIPTS_DIR / "json" / "animation_ids.json").write_text(json.dumps(animation_ids, indent=JSON_INDENT))
 
 def particle_id_refs():
     particle_ids = {}
