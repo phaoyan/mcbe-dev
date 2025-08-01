@@ -63,21 +63,16 @@
                         "deals_damage": false
                     }
                 ]
-            }
-        },
-        "component_groups": {
-            "despawn": {
-                "minecraft:instant_despawn": {}
+            },
+            "minecraft:timer": {
+                "time": 0.05,
+                "time_down_event": {
+                    "event": "event:timer"
+                }
             }
         },
         "events": {
-            "event:despawn": {
-                "add": {
-                    "component_groups": [
-                        "despawn"
-                    ]
-                }
-            }
+            "event:timer": {}
         }
     }
 }

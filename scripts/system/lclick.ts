@@ -1,10 +1,11 @@
-import { ItemStack, Player, system, world } from "@minecraft/server";
+import { Entity, ItemStack, Player, system, world } from "@minecraft/server";
 import { DPUtils } from "../utils/dp_utils";
 import { EntityUtils } from "../utils/entity_utils";
 import entity_ids from "../json/entity_ids.json"
 import { Vector3Utils } from "@minecraft/math";
 import { InventoryUtils } from "../utils/inventory_utils";
 import { VecUtils } from "../utils/vec_utils";
+import { BehaviorUtils } from "../utils/behavior_utils";
 
 // 返回值为动画时长
 const lclickMap: { [key: string]: (player: Player, item: ItemStack) => number } = {
@@ -34,23 +35,18 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
 })
 
 // 将Dummy TP到正确的位置
-system.runInterval(() => {
-    world.getAllPlayers().forEach(player => {
-        if (!DPUtils.store().lclick_enable.curr(player), false) return
-        const move = player.inputInfo.getMovementVector()
-        const dummies = EntityUtils.entitiesByType(player, entity_ids.lclick_dummy)
-            .filter(e => DPUtils.store().lclick_host.curr(e) === player.id)
-            .get()
-        if (!dummies) return
-        for (let i = 0; i < DummyOffsets.length; i++) {
-            const dummy = dummies.filter(e => DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
-            if (!dummy) return
-            const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[i]
-            const vy = player.getViewDirection().y
-            const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * i * 0.25).moveR(offset * move.x * 0.4).end()
-            dummy.teleport(loc, { rotation: player.getRotation() })
-        }
-    })
+BehaviorUtils.single(entity_ids.lclick_dummy, (entity: Entity)=>{
+    const player = world.getEntity(DPUtils.store().lclick_host.curr(entity))
+    if (!player) {
+        entity.remove()
+        return
+    }
+    const move = (player as Player).inputInfo.getMovementVector()
+    const idx = DPUtils.store().lclick_dummy_idx.curr(entity)
+    const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[idx]
+    const vy = (player as Player).getViewDirection().y
+    const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end()
+    entity.teleport(loc, { rotation: player.getRotation() })
 })
 
 // 监听并执行左键动画，包括CD计时功能

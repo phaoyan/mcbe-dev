@@ -1,9 +1,10 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, Vector3, world } from "@minecraft/server";
+import { Entity, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
 import { VecUtils, GeometryUtils } from "./vec_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
 import { MathUtils } from "./math_utils";
+import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 
 export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
     Normal: {
@@ -27,9 +28,6 @@ export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
         closest: 1
     }
 }
-
-
-
 
 export class EntityOperations {
     static TARGET: Entity | undefined
@@ -63,27 +61,29 @@ export class EntityOperations {
         return EntityOperations
     }
 
-    static knockbackBaseView(entity: Entity, hori: number, vert: number, ticks: number = 1) {
+    static slowness(ticks: number, amp: number = 3, showParticles: boolean = false) {
+        if (!this.TARGET) return EntityOperations
+        this.TARGET.addEffect(MinecraftEffectTypes.Slowness, ticks, { amplifier: amp, showParticles: showParticles })
+        return EntityOperations
+    }
+
+    static knockbackBaseView(entity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1) {
         if (!entity) return EntityOperations
         TimeUtils.timeseries(() => {
             if (!this.TARGET) return EntityOperations
-            const unit = VecUtils.unit(VecUtils.hori(entity.getViewDirection()), hori)
-            this.TARGET.applyKnockback({ x: unit.x, z: unit.z }, vert)
+            const unit = VecUtils.unit(VecUtils.hori(entity.getViewDirection()))
+            this.TARGET.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
 
-    static knockbackBaseDiff(location: Entity | Vector3, direction: "intro" | "outro", hori: number, vert: number, ticks: number = 1) {
+    static knockbackBaseLoc(location: Entity | Vector3, f: number, y: number = 0, r: number = 0, ticks: number = 1) {
         if (location instanceof Entity)
             location = location.location
         TimeUtils.timeseries(() => {
             if (!this.TARGET) return EntityOperations
-            const locDiff =
-                direction === "outro" ?
-                    Vector3Utils.subtract(this.TARGET.location, location) :
-                    Vector3Utils.subtract(location, this.TARGET.location)
-            const unit = VecUtils.unit(VecUtils.hori(locDiff), hori)
-            this.TARGET.applyKnockback({ x: unit.x, z: unit.z }, vert)
+            const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(this.TARGET.location, location)))
+            this.TARGET.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
@@ -122,6 +122,21 @@ export class EntityOperations {
             }
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
+    }
+
+    static skillCooldown(skillId: string, skillCD: number, skillDuration: number) {
+        if (!this.TARGET) return EntityOperations
+        DPUtils.store().mob_skill_cooldown.set(this.TARGET, (cdList: { [key: string]: number })=>{
+            return Object.fromEntries(
+                Object.entries(cdList).map(([id,]) => [id, system.currentTick + (id === skillId ? skillCD : skillDuration)])
+            )
+        })
+        return EntityOperations
+    }
+
+    static skillAvailable(skillId: string) {
+        if (!this.TARGET) return 0
+        return DPUtils.store().mob_skill_cooldown.curr(this.TARGET)[skillId] ?? 0
     }
 }
 
@@ -178,11 +193,14 @@ export class EntityUtils {
     // 声明EntityUtils方法的类型（为了更好的TypeScript支持）
     damage!: (amount: number, source?: Entity, tags?: string[]) => EntityUtils
     effect!: (effect: string, ticks: number, options?: EntityEffectOptions) => EntityUtils
+    slowness!: (ticks: number, amp: number, showParticles: boolean) => EntityUtils
     knockbackBaseView!: (entity: Entity, hori: number, vert: number, ticks?: number) => EntityUtils
     knockbackBaseDiff!: (location: Entity | Vector3, direction: "intro" | "outro", hori: number, vert: number, ticks?: number) => EntityUtils
     rotateToDirection!: (direction: (target: Entity) => Vector3, ticks?: number) => EntityUtils
     rotateFacing!: (entity: Entity, ticks: number) => EntityUtils
     rotateToNearest!: (ticks: number, options?: EntityQueryOptions) => EntityUtils
+    skillCooldown!: (skillId: string, skillCD: number, skillDuration: number) => EntityUtils
+    skillAvailable!: (skillId: string) => number
 
     // 声明GeometryUtils几何检测方法的类型
     sphere!: (startPoint: Vector3, radius: number) => EntityUtils
@@ -228,7 +246,7 @@ export class EntityUtils {
     }
 
     // 检查是否为空
-    isEmpty(): boolean {
+    empty(): boolean {
         return this._entities.length === 0
     }
 

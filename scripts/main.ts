@@ -1,9 +1,9 @@
-import "./utils/anim_utils";
 import "./system/debug";
 import "./system/init";
 import "./system/lclick";
 import "./system/rclick";
-import "./system/skills";
+import "./utils/anim_utils";
+import "./utils/behavior_utils";
 import "./utils/comp_utils";
 import "./utils/dp_list";
 import "./utils/dp_utils";
