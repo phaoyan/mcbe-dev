@@ -4,13 +4,13 @@
         "description": {
             "identifier": "minecraft_dev:lclick_dummy",
             "textures": {
-                "default": "textures/entity/player_0"
+                "default": "textures/entity/texture_sets/test"
             },
             "geometry": {
                 "default": "geometry.minecraft_dev.lclick_dummy"
             },
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_emissive_alpha_one_sided"
             },
             "render_controllers": [
                 "controller.render.default"

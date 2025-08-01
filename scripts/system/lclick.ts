@@ -4,37 +4,24 @@ import { EntityUtils } from "../utils/entity_utils";
 import entity_ids from "../json/entity_ids.json"
 import { Vector3Utils } from "@minecraft/math";
 import { InventoryUtils } from "../utils/inventory_utils";
-import itemIds from "../json/item_ids.json"
-import { TimeUtils } from "../utils/time_utils";
 import { VecUtils } from "../utils/vec_utils";
 
 // 返回值为动画时长
 const lclickMap: { [key: string]: (player: Player, item: ItemStack) => number } = {
-    [itemIds.combo]: (player, item) => {
-        const count = DPUtils.store().lclick_combo_count.curr(player, 0)
-        player.runCommand("say Combo " + count)
-        count === 0 && TimeUtils.timeout(()=>DPUtils.store().lclick_combo_count.set(player, (curr:any)=>curr===1 ? 0 : curr, 0), 19)
-        count === 1 && TimeUtils.timeout(()=>DPUtils.store().lclick_combo_count.set(player, (curr:any)=>curr===2 ? 0 : curr, 0), 19)
-        DPUtils.store().lclick_combo_count.set(player, (curr:any)=>(curr+1)%3, 0)
-        TimeUtils.timeout(()=>{
-            EntityUtils.entities(player).filter(e=>VecUtils.sphere(e.location, VecUtils.start(player).moveF(2).end(), 4)).damage(1,player)
-        }, 4)
-        return [9,9,12][count]
-    }
+
 }
 
-const DummyOffsets = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+const DummyOffsets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
 // 监听并管理Dummy
 DPUtils.store().lclick_enable.register((target, curr, prev) => {
     if (!(target instanceof Player)) return
-    const dummies = EntityUtils
-        .entitiesByType(target, entity_ids.lclick_dummy, 128)
+    const dummies = EntityUtils.create()
+        .entitiesByType(target, entity_ids.lclick_dummy)
         .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
         .get()
-
     for (let i = 0; i < DummyOffsets.length; i++) {
-        const dummy = dummies.filter(e=>DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
+        const dummy = dummies.filter(e => DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
         if (!curr) {
             if (!dummy) return
             dummy.remove()
@@ -50,19 +37,19 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
 // 将Dummy TP到正确的位置
 system.runInterval(() => {
     world.getAllPlayers().forEach(player => {
-        if(!DPUtils.store().lclick_enable.curr(player), false) return
+        if (!DPUtils.store().lclick_enable.curr(player), false) return
         const move = player.inputInfo.getMovementVector()
-        const dummies = EntityUtils
-            .entitiesByType(player, entity_ids.lclick_dummy, 128)
-            .filter(e=>DPUtils.store().lclick_host.curr(e) === player.id)
+        const dummies = EntityUtils.create()
+            .entitiesByType(player, entity_ids.lclick_dummy)
+            .filter(e => DPUtils.store().lclick_host.curr(e) === player.id)
             .get()
         if (!dummies) return
         for (let i = 0; i < DummyOffsets.length; i++) {
-            const dummy = dummies.filter(e=>DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
+            const dummy = dummies.filter(e => DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
             if (!dummy) return
-            const offset = Vector3Utils.magnitude(player.getVelocity())*DummyOffsets[i]
+            const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[i]
             const vy = player.getViewDirection().y
-            const loc = VecUtils.start(player).moveF(offset * Math.max(move.y,-3)).moveY(vy*i*0.25).moveR(offset*move.x*0.4).end()
+            const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * i * 0.25).moveR(offset * move.x * 0.4).end()
             dummy.teleport(loc, { rotation: player.getRotation() })
         }
     })

@@ -2,7 +2,10 @@ import { Vector3Utils } from "@minecraft/math";
 import { Dimension, Entity, Vector3, world } from "@minecraft/server";
 import { MinecraftDimensionTypes } from "@minecraft/vanilla-data";
 
-export class VecUtils {
+/**
+ * 几何检测工具类 - 专门负责各种几何形状的点位检测
+ */
+export class GeometryUtils {
     static sphere(point: Vector3, startPoint: Vector3, radius: number): boolean {
         return Vector3Utils.distance(point, startPoint) < radius
     }
@@ -118,6 +121,12 @@ export class VecUtils {
 
         return cosTheta >= Math.cos(halfAngle);
     }
+}
+
+/**
+ * 向量工具类 - 专门负责向量计算和链式操作
+ */
+export class VecUtils {
 
     static unit(direction: Vector3, scale: number = 1): Vector3 {
         const magnitude = Vector3Utils.magnitude(direction)
@@ -169,7 +178,7 @@ export class VecUtils {
 
     static moveR(dist: number) {
         const hori = VecUtils.unit(VecUtils.hori(this.DIRECTION))
-        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale({x: hori.z, z: -hori.x, y: 0}, dist))
+        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale({ x: hori.z, z: -hori.x, y: 0 }, dist))
         return VecUtils
     }
 

@@ -39,12 +39,15 @@ export class MathUtils {
     static square(vector: Vector3) {
         return vector.x ** 2 + vector.y ** 2 + vector.z ** 2
     }
-    static tanToDegrees(tanValue: number): number {
-        // 计算反正切（返回弧度）
-        const radians = Math.atan(tanValue);
-        // 将弧度转换为角度
-        const degrees = radians * (180 / Math.PI);
-        return degrees;
-    }
 
+    static yaw(x: number, z: number) {
+        // 计算弧度
+        const yawRad = Math.atan2(-x, z);
+        // 转换为角度
+        let yawDeg = (yawRad * 180) / Math.PI;
+        // 规范化到[-180°, 180°]
+        yawDeg = ((yawDeg % 360) + 360) % 360; // 转正数范围[0°, 360°)
+        if (yawDeg > 180) yawDeg -= 360; // 转回[-180°, 180°]
+        return yawDeg;
+    };
 }
