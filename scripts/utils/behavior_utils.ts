@@ -46,10 +46,6 @@ export class BehaviorUtils {
             }
         })
     }
-
-    static dualTargetState(entityId: string, off: (entity: Entity) => void, on: (entity: Entity) => void) {
-        this.dual(entityId, { off, on, transition: (entity: Entity) => DPUtils.store().mob_has_target.curr(entity, false) })
-    }
 }
 
 world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
