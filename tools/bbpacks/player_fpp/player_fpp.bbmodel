@@ -460,7 +460,7 @@
     "animations": [
         {
             "uuid": "78d69e87-c71c-3358-f144-dedbb39f2d55",
-            "name": "animation.player_fpp.combo",
+            "name": "animation.minecraft_dev.player_fpp.combo",
             "loop": "once",
             "override": false,
             "length": 1.625,
@@ -1695,7 +1695,7 @@
         },
         {
             "uuid": "c93cfc52-17c6-baab-3cdf-cd44358d7a61",
-            "name": "animation.player_fpp.combo1",
+            "name": "animation.minecraft_dev.player_fpp.combo1",
             "loop": "hold",
             "override": true,
             "length": 0.41667,
@@ -2160,7 +2160,7 @@
         },
         {
             "uuid": "3ffd3d65-df74-a2c3-9112-a51dff273a0a",
-            "name": "animation.player_fpp.combo2",
+            "name": "animation.minecraft_dev.player_fpp.combo2",
             "loop": "hold",
             "override": true,
             "length": 0.41667,
@@ -2625,7 +2625,7 @@
         },
         {
             "uuid": "082bc4d5-977a-7d97-2415-6a9a52c38e25",
-            "name": "animation.player_fpp.combo3",
+            "name": "animation.minecraft_dev.player_fpp.combo3",
             "loop": "hold",
             "override": true,
             "length": 0.79167,
@@ -3188,7 +3188,7 @@
         },
         {
             "uuid": "c1169ab9-c305-088b-6c57-0e71049ec4b5",
-            "name": "animation.player_fpp.idle",
+            "name": "animation.minecraft_dev.player_fpp.idle",
             "loop": "loop",
             "override": false,
             "length": 0.5,

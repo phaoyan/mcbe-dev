@@ -9,9 +9,8 @@
             "minecraft:food": {
                 "can_always_eat": true,
                 "nutrition": 0,
-                "saturation_modifier": 0.0
+                "saturation_modifier": 0
             },
-            "minecraft:can_destroy_in_creative": false,
             "minecraft:cooldown": {
                 "category": "minecraft_dev:combo",
                 "duration": 0
@@ -19,7 +18,8 @@
             "minecraft:use_modifiers": {
                 "use_duration": 9999999,
                 "movement_modifier": 1
-            }
+            },
+            "minecraft:can_destroy_in_creative": false
         }
     }
 }

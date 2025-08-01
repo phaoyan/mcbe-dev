@@ -11,7 +11,7 @@
             "minecraft:food": {
                 "can_always_eat": true,
                 "nutrition": 0,
-                "saturation_modifier": 0.0
+                "saturation_modifier": 0
             },
             "minecraft:cooldown": {
                 "category": "minecraft_dev:debug_menu",

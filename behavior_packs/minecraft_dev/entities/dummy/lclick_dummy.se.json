@@ -9,6 +9,9 @@
         },
         "components": {
             "minecraft:conditional_bandwidth_optimization": {},
+            "minecraft:sound_volume": {
+                "value": 0.0
+            },
             "minecraft:pushable": {
                 "is_pushable": false,
                 "is_pushable_by_piston": false

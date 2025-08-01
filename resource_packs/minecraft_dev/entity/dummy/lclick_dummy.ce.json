@@ -3,14 +3,14 @@
     "minecraft:client_entity": {
         "description": {
             "identifier": "minecraft_dev:lclick_dummy",
-            "textures": {
-                "default": "textures/entity/texture_sets/test"
-            },
             "geometry": {
                 "default": "geometry.minecraft_dev.lclick_dummy"
             },
+            "textures": {
+                "default": "textures/entity/lclick_dummy_0"
+            },
             "materials": {
-                "default": "entity_emissive_alpha_one_sided"
+                "default": "entity_alphatest"
             },
             "render_controllers": [
                 "controller.render.default"

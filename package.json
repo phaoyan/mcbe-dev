@@ -6,6 +6,8 @@
   "private": true,
   "devDependencies": {
     "@minecraft/core-build-tasks": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.0",
     "eslint-plugin-minecraft-linting": "^2.0.1",
     "source-map": "^0.7.4",
     "ts-node": "^10.9.1",
@@ -18,12 +20,20 @@
     "local-deploy": "just-scripts local-deploy",
     "mcaddon": "just-scripts mcaddon",
     "enablemcloopback": "CheckNetIsolation.exe LoopbackExempt -a -p=S-1-15-2-1958404141-86561845-1752920682-3514627264-368642714-62675701-733520436",
-    "enablemcpreviewloopback": "CheckNetIsolation.exe LoopbackExempt -a -p=S-1-15-2-424268864-5579737-879501358-346833251-474568803-887069379-4040235476"
+    "enablemcpreviewloopback": "CheckNetIsolation.exe LoopbackExempt -a -p=S-1-15-2-424268864-5579737-879501358-346833251-474568803-887069379-4040235476",
+    "tools": "ts-node tools/main.ts",
+    "tools:setup": "ts-node tools/main.ts setup",
+    "tools:batch-bp": "ts-node tools/main.ts batch-bp",
+    "tools:batch-rp": "ts-node tools/main.ts batch-rp",
+    "tools:bbmodel": "ts-node tools/main.ts bbmodel",
+    "tools:bbpack": "ts-node tools/main.ts bbpack",
+    "tools:all": "ts-node tools/main.ts all"
   },
   "dependencies": {
     "@minecraft/math": "^2.2.7",
     "@minecraft/server": "^2.0.0",
     "@minecraft/server-ui": "^2.0.0",
-    "@minecraft/vanilla-data": "^1.21.90"
+    "@minecraft/vanilla-data": "^1.21.90",
+    "uuid": "^9.0.0"
   }
 }

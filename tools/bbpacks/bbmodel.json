@@ -6,8 +6,8 @@
         ],
         "animations": {},
         "animation_length": {},
-        "particles": {},
-        "sounds": {}
+        "particle_effects": {},
+        "sound_effects": {}
     },
     "player": {
         "geometry": "minecraft_dev.player",
@@ -32,8 +32,8 @@
             "wait2": 0.5,
             "idle": 0.5
         },
-        "particles": {},
-        "sounds": {}
+        "particle_effects": {},
+        "sound_effects": {}
     },
     "player_fpp": {
         "geometry": "minecraft_dev.player_fpp",
@@ -54,7 +54,7 @@
             "combo3": 0.79167,
             "idle": 0.5
         },
-        "particles": {},
-        "sounds": {}
+        "particle_effects": {},
+        "sound_effects": {}
     }
 }
