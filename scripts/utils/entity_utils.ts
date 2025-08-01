@@ -133,13 +133,46 @@ export class EntityUtils {
         this._entities = entities
         // 只在第一次创建实例时初始化方法
         if (!EntityUtils._methodsInitialized) {
-            EntityUtils.initializeMethods()
+            EntityUtils.initializeBatchMethods()
+            EntityUtils.initializeGeometryMethods()
             EntityUtils._methodsInitialized = true
         }
     }
 
-    static create(): EntityUtils {
-        return new EntityUtils([])
+    static enumerate(entities: Entity[] = []): EntityUtils {
+        return new EntityUtils(entities)
+    }
+
+    /**
+ * 根据条件查询实体
+ */
+    static entities(
+        entity: Entity,
+        options: EntityQueryOptions = EntityUtilsOptions.Normal,
+        self: boolean = false
+    ): EntityUtils {
+        const entities = entity.dimension.getEntities({ ...options, location: entity.location }).filter(e => self ? true : e.id !== entity.id)
+        return new EntityUtils(entities)
+    }
+
+    /**
+     * 根据类型查询实体
+     */
+    static entitiesByType(entity: Entity, type: string, distance: number = 128): EntityUtils {
+        const entities = entity.dimension.getEntities({
+            location: entity.location,
+            maxDistance: distance,
+            type: type,
+        })
+        return new EntityUtils(entities)
+    }
+
+    /**
+     * 根据ID查询实体
+     */
+    static entityById(id: string): EntityUtils {
+        const entity = world.getEntity(id)
+        return new EntityUtils(entity ? [entity] : [])
     }
 
     // 声明EntityUtils方法的类型（为了更好的TypeScript支持）
@@ -160,51 +193,6 @@ export class EntityUtils {
     sector!: (startPoint: Vector3, direction: Vector3, height: number, angle: number, length: number) => EntityUtils
 
     // ==================== 实例查询方法（一致的API设计） ====================
-
-    /**
-     * 根据条件查询实体
-     */
-    entities(
-        entity: Entity,
-        options: EntityQueryOptions = EntityUtilsOptions.Normal,
-        self: boolean = false
-    ): EntityUtils {
-        this._entities = entity.dimension.getEntities({ ...options, location: entity.location }).filter(e => self ? true : e.id !== entity.id)
-        return this
-    }
-
-    /**
-     * 根据类型查询实体
-     */
-    entitiesByType(entity: Entity, type: string, distance: number = 128): EntityUtils {
-        this._entities = entity.dimension.getEntities({
-            location: entity.location,
-            maxDistance: distance,
-            type: type,
-        })
-        return this
-    }
-
-    /**
-     * 根据ID查询实体
-     */
-    entityById(id: string): EntityUtils {
-        const entity = world.getEntity(id)
-        this._entities = entity ? [entity] : []
-        return this
-    }
-
-    /**
-     * 枚举给定的实体
-     */
-    enumerate(entities: Entity | Entity[]): EntityUtils {
-        if (entities instanceof Entity) {
-            this._entities = [entities]
-        } else {
-            this._entities = entities
-        }
-        return this
-    }
 
     // 链式操作：对每个实体执行操作
     each(callback: (entity: Entity) => void): EntityUtils {
@@ -242,14 +230,6 @@ export class EntityUtils {
     // 检查是否为空
     isEmpty(): boolean {
         return this._entities.length === 0
-    }
-
-    // 静态方法：一次性初始化所有动态方法
-    private static initializeMethods(): void {
-        // 初始化EntityUtils方法
-        this.initializeBatchMethods()
-        // 初始化GeometryUtils几何检测方法
-        this.initializeGeometryMethods()
     }
 
     // 动态创建EntityUtils方法的批量版本（静态执行一次）

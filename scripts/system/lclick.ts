@@ -16,8 +16,7 @@ const DummyOffsets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
 // 监听并管理Dummy
 DPUtils.store().lclick_enable.register((target, curr, prev) => {
     if (!(target instanceof Player)) return
-    const dummies = EntityUtils.create()
-        .entitiesByType(target, entity_ids.lclick_dummy)
+    const dummies = EntityUtils.entitiesByType(target, entity_ids.lclick_dummy)
         .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
         .get()
     for (let i = 0; i < DummyOffsets.length; i++) {
@@ -39,8 +38,7 @@ system.runInterval(() => {
     world.getAllPlayers().forEach(player => {
         if (!DPUtils.store().lclick_enable.curr(player), false) return
         const move = player.inputInfo.getMovementVector()
-        const dummies = EntityUtils.create()
-            .entitiesByType(player, entity_ids.lclick_dummy)
+        const dummies = EntityUtils.entitiesByType(player, entity_ids.lclick_dummy)
             .filter(e => DPUtils.store().lclick_host.curr(e) === player.id)
             .get()
         if (!dummies) return
