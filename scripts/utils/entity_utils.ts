@@ -5,6 +5,7 @@ import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
 import { MathUtils } from "./math_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
+import { DamageUtils } from "./damage_utils";
 
 export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
     Normal: {
@@ -37,22 +38,9 @@ export class EntityOperations {
         return EntityOperations
     }
 
-    static damage(amount: number, source?: Entity, tags: string[] = []) {
+    static damage(damageId: string, source?: Entity, tags: string[] = []) {
         if (!this.TARGET) return EntityOperations
-        if (!source) {
-            this.TARGET.applyDamage(amount, { cause: EntityDamageCause.entityAttack, damagingEntity: source })
-            return EntityOperations
-        } else {
-            const attackerMultiplier = DPUtils.store().attacker_damage_multipliers.curr(source, {})
-            const defenderMultiplier = DPUtils.store().defender_damage_multipliers.curr(source, {})
-            let damage = amount
-            tags.forEach(tag => damage *= attackerMultiplier[tag] ?? 1)
-            tags.forEach(tag => damage *= defenderMultiplier[tag] ?? 1)
-            damage *= attackerMultiplier.common ?? 1
-            damage *= defenderMultiplier.common ?? 1
-            this.TARGET.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: source })
-            return EntityOperations
-        }
+        DamageUtils.damage(damageId, this.TARGET, source, tags)
     }
 
     static effect(effect: string, ticks: number, options?: EntityEffectOptions) {

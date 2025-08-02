@@ -11,8 +11,7 @@ export const dpList = {
     world_dp_timeline: "minecraft_dev:world_dp_timeline",
     world_dp_activate: "minecraft_dev:world_dp_activate",
 
-    attacker_damage_multipliers: "minecraft_dev:attacker_damage_multipliers",
-    defender_damage_multipliers: "minecraft_dev:defender_damage_multipliers",
+    damage_attribute: "minecraft_dev:damage_attribute", // 玩家、怪物、装备都可能使用到这条属性
 
     mob_skill_cooldown: "minecraft_dev:mob_skill_cooldown",
     mob_behavior_state: "minecraft_dev:mob_behavior_state",
