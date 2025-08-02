@@ -22,6 +22,8 @@ const exportData = (data: any, name: string): void => {
     writeJson(targetPath, data);
 };
 
+const client_entity = "minecraft:client_entity";
+const attachable = "minecraft:attachable";
 
 // 读取bbmodel配置
 const BBMODEL_JSON = readJson(BBMODEL_JSON_PATH);
@@ -35,25 +37,25 @@ const setupEntity = (bbmodel: string) => {
     const soundEffects = bbmodelConfig.sound_effects || {};
 
     return {
-        "format_version": "1.21.10",
-        "minecraft:client_entity": {
-            "description": {
-                "identifier": `${NAME_SPACE}:${bbmodel}`,
-                "geometry": {
-                    "default": `geometry.${geometry}`
+        format_version: "1.21.10",
+        [client_entity]: {
+            description: {
+                identifier: `${NAME_SPACE}:${bbmodel}`,
+                geometry: {
+                    default: `geometry.${geometry}`
                 },
-                "textures": {
-                    "default": `textures/entity/${textures[0]}`
+                textures: {
+                    default: `textures/entity/${textures[0]}`
                 },
-                "materials": {
-                    "default": "entity_alphatest"
+                materials: {
+                    default: "entity_alphatest"
                 },
-                "render_controllers": [
+                render_controllers: [
                     "controller.render.default"
                 ],
-                ...(Object.keys(animations).length > 0 && { "animations": animations }),
-                ...(Object.keys(particleEffects).length > 0 && { "particle_effects": particleEffects }),
-                ...(Object.keys(soundEffects).length > 0 && { "sound_effects": soundEffects })
+                ...(Object.keys(animations).length > 0 && { animations }),
+                ...(Object.keys(particleEffects).length > 0 && { particle_effects: particleEffects }),
+                ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects })
             }
         }
     };
@@ -68,78 +70,31 @@ const setupMobs = (bbmodel: string, animationController: string) => {
     const soundEffects = bbmodelConfig.sound_effects || {};
 
     return {
-        "format_version": "1.21.10",
-        "minecraft:client_entity": {
-            "description": {
-                "identifier": `${NAME_SPACE}:${bbmodel}`,
-                "geometry": {
-                    "default": `geometry.${geometry}`
+        format_version: "1.21.10",
+        [client_entity]: {
+            description: {
+                identifier: `${NAME_SPACE}:${bbmodel}`,
+                geometry: {
+                    default: `geometry.${geometry}`
                 },
-                "textures": {
-                    "default": `textures/entity/${textures[0]}`
+                textures: {
+                    default: `textures/entity/${textures[0]}`
                 },
-                "materials": {
-                    "default": "entity_alphatest"
+                materials: {
+                    default: "entity_alphatest"
                 },
-                "render_controllers": [
+                render_controllers: [
                     "controller.render.default"
                 ],
-                "animations": {
+                animations: {
                     ...animations,
-                    "ctrl": animationController
+                    ctrl: animationController
                 },
-                "scripts": {
-                    "animate": ["ctrl"]
+                scripts: {
+                    animate: ["ctrl"]
                 },
-                ...(Object.keys(particleEffects).length > 0 && { "particle_effects": particleEffects }),
-                ...(Object.keys(soundEffects).length > 0 && { "sound_effects": soundEffects })
-            }
-        }
-    };
-};
-
-const setupAttachable = (typeId: string, bbmodelTpp: string, bbmodelFpp: string) => {
-    const bbmodelTppConfig = BBMODEL_JSON[bbmodelTpp] || {};
-    const bbmodelFppConfig = BBMODEL_JSON[bbmodelFpp] || {};
-
-    const geometryTpp = bbmodelTppConfig.geometry || "";
-    const geometryFpp = bbmodelFppConfig.geometry || "";
-    const texturesTpp = bbmodelTppConfig.textures || [];
-    const texturesFpp = bbmodelFppConfig.textures || [];
-    const animationsTpp = bbmodelTppConfig.animations || {};
-    const animationsFpp = bbmodelFppConfig.animations || {};
-
-    return {
-        "format_version": "1.21.10",
-        "minecraft:attachable": {
-            "description": {
-                "identifier": `${NAME_SPACE}:${typeId}`,
-                "textures": {
-                    "tpp": `textures/entity/${texturesTpp[0]}`,
-                    "fpp": `textures/entity/${texturesFpp[0]}`
-                },
-                "geometry": {
-                    "tpp": `geometry.${geometryTpp}`,
-                    "fpp": `geometry.${geometryFpp}`
-                },
-                "materials": {
-                    "default": "entity_alphatest"
-                },
-                "render_controllers": [
-                    {
-                        "controller.render.tpp": "!c.is_first_person"
-                    },
-                    {
-                        "controller.render.fpp": "c.is_first_person"
-                    }
-                ],
-                "animations": {
-                    ...animationsFpp,
-                    ...animationsTpp
-                },
-                "scripts": {
-                    "parent_setup": "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;"
-                }
+                ...(Object.keys(particleEffects).length > 0 && { particle_effects: particleEffects }),
+                ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects })
             }
         }
     };
@@ -157,22 +112,22 @@ const setupCombo = (params: {
     comboMax: number;
 }) => {
     return {
-        "format_version": "1.21.10",
-        "minecraft:attachable": {
-            "description": {
-                "identifier": `${NAME_SPACE}:${params.typeId}`,
-                "textures": {
-                    "tpp": `textures/entity/${params.bbmodelTpp}_0`,
-                    "fpp": `textures/entity/${params.bbmodelFpp}_0`
+        format_version: "1.21.10",
+        [attachable]: {
+            description: {
+                identifier: `${NAME_SPACE}:${params.typeId}`,
+                textures: {
+                    tpp: `textures/entity/${params.bbmodelTpp}_0`,
+                    fpp: `textures/entity/${params.bbmodelFpp}_0`
                 },
-                "geometry": {
-                    "tpp": `geometry.${NAME_SPACE}.${params.bbmodelTpp}`,
-                    "fpp": `geometry.${NAME_SPACE}.${params.bbmodelFpp}`
+                geometry: {
+                    tpp: `geometry.${NAME_SPACE}.${params.bbmodelTpp}`,
+                    fpp: `geometry.${NAME_SPACE}.${params.bbmodelFpp}`
                 },
-                "materials": {
-                    "default": "entity_alphatest"
+                materials: {
+                    default: "entity_alphatest"
                 },
-                "render_controllers": [
+                render_controllers: [
                     {
                         "controller.render.tpp": "!c.is_first_person"
                     },
@@ -180,37 +135,21 @@ const setupCombo = (params: {
                         "controller.render.fpp": "c.is_first_person"
                     }
                 ],
-                "animations": {
-                    "ctrl": "controller.animation.combo",
-                    "combo1_fpp": params.comboFpps[Math.min(0, params.comboMax - 1)],
-                    "combo1_tpp": params.comboTpps[Math.min(0, params.comboMax - 1)],
-                    "combo2_fpp": params.comboFpps[Math.min(1, params.comboMax - 1)],
-                    "combo2_tpp": params.comboTpps[Math.min(1, params.comboMax - 1)],
-                    "combo3_fpp": params.comboFpps[Math.min(2, params.comboMax - 1)],
-                    "combo3_tpp": params.comboTpps[Math.min(2, params.comboMax - 1)],
-                    "combo4_fpp": params.comboFpps[Math.min(3, params.comboMax - 1)],
-                    "combo4_tpp": params.comboTpps[Math.min(3, params.comboMax - 1)],
-                    "combo5_fpp": params.comboFpps[Math.min(4, params.comboMax - 1)],
-                    "combo5_tpp": params.comboTpps[Math.min(4, params.comboMax - 1)],
-                    "combo6_fpp": params.comboFpps[Math.min(5, params.comboMax - 1)],
-                    "combo6_tpp": params.comboTpps[Math.min(5, params.comboMax - 1)],
-                    "combo7_fpp": params.comboFpps[Math.min(6, params.comboMax - 1)],
-                    "combo7_tpp": params.comboTpps[Math.min(6, params.comboMax - 1)],
-                    "combo8_fpp": params.comboFpps[Math.min(7, params.comboMax - 1)],
-                    "combo8_tpp": params.comboTpps[Math.min(7, params.comboMax - 1)],
-                    "combo9_fpp": params.comboFpps[Math.min(8, params.comboMax - 1)],
-                    "combo9_tpp": params.comboTpps[Math.min(8, params.comboMax - 1)],
-                    "combo10_fpp": params.comboFpps[Math.min(9, params.comboMax - 1)],
-                    "combo10_tpp": params.comboTpps[Math.min(9, params.comboMax - 1)],
-                    "idle_fpp": params.idleFpp,
-                    "idle_tpp": params.idleTpp
+                animations: {
+                    ctrl: "controller.animation.combo",
+                    ...Array.from({ length: params.comboMax }, (_, i) => ({
+                        [`combo${i + 1}_fpp`]: params.comboFpps[i],
+                        [`combo${i + 1}_tpp`]: params.comboTpps[i]
+                    })).reduce((acc, obj) => ({ ...acc, ...obj }), {}),
+                    idle_fpp: params.idleFpp,
+                    idle_tpp: params.idleTpp
                 },
-                "scripts": {
-                    "parent_setup": "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;",
-                    "animate": [
+                scripts: {
+                    parent_setup: "t.player_attacking = v.attack_time; t.is_using_item = q.is_using_item;",
+                    animate: [
                         "ctrl"
                     ],
-                    "pre_animation": [
+                    pre_animation: [
                         `v.combo_max = ${params.comboMax};`,
                         `v.trigger = ${params.trigger ? 1 : 0};`
                     ]
