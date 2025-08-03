@@ -162,29 +162,7 @@ const setupCombo = (params: {
  * 主函数
  */
 export async function main(): Promise<void> {
-    const comboData = setupCombo({
-        typeId: "combo",
-        bbmodelTpp: "player",
-        bbmodelFpp: "player_fpp",
-        comboFpps: [
-            animationIds.minecraft_dev.player_fpp.combo1,
-            animationIds.minecraft_dev.player_fpp.combo2,
-            animationIds.minecraft_dev.player_fpp.combo3
-        ],
-        comboTpps: [
-            animationIds.minecraft_dev.player.combo1,
-            animationIds.minecraft_dev.player.combo2,
-            animationIds.minecraft_dev.player.combo3
-        ],
-        idleFpp: animationIds.minecraft_dev.player_fpp.idle,
-        idleTpp: animationIds.minecraft_dev.player.idle,
-        trigger: true,
-        comboMax: 3,
-    });
-    exportData(comboData, "combo");
-
-    const entityData = setupEntity("lclick_dummy");
-    exportData(entityData, "dummy/lclick_dummy");
+    
 }
 
 // 如果直接运行此文件

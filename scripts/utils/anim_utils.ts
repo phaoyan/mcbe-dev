@@ -1,60 +1,5 @@
 import { Entity, ItemStack, Player, World } from "@minecraft/server"
 import animation_ids from "../json/animation_ids.json"
-import { DPUtils } from "./dp_utils"
-
-const ComboAC: AnimCtrl = {
-    "controller.animation.player.combo": {
-        [animation_ids.minecraft_dev.player.idle]: {
-            blendOutTime: .2,
-            transitions: [
-                {
-                    [animation_ids.minecraft_dev.player_fpp.idle]: "v.is_first_person"
-                },
-                {
-                    [animation_ids.minecraft_dev.player.combo1]: "v.attack_time"
-                }
-            ]
-        },
-        [animation_ids.minecraft_dev.player_fpp.idle]: {
-            blendOutTime: .2,
-            transitions: [
-                {
-                    [animation_ids.minecraft_dev.player.idle]: "!v.is_first_person"
-                }
-            ]
-        },
-        [animation_ids.minecraft_dev.player.combo1]: {
-            blendOutTime: .2,
-            transitions: [
-                {
-                    [animation_ids.minecraft_dev.player.idle]: "q.any_animation_finished && !v.attack_time"
-                },
-                {
-                    [animation_ids.minecraft_dev.player.combo2]: "q.any_animation_finished && v.attack_time"
-                }
-            ]
-        },
-        [animation_ids.minecraft_dev.player.combo2]: {
-            blendOutTime: .2,
-            transitions: [
-                {
-                    [animation_ids.minecraft_dev.player.idle]: "q.any_animation_finished && !v.attack_time"
-                },
-                {
-                    [animation_ids.minecraft_dev.player.combo3]: "q.any_animation_finished && v.attack_time"
-                }
-            ]
-        },
-        [animation_ids.minecraft_dev.player.combo3]: {
-            blendOutTime: .2,
-            transitions: [
-                {
-                    [animation_ids.minecraft_dev.player.idle]: "q.any_animation_finished"
-                }
-            ]
-        },
-    },
-}
 
 // Player Invert ACs
 export const PILegsAC: AnimCtrl = {
@@ -148,14 +93,3 @@ export const registerAnimbinds = (animbinds: { [key: string]: AnimCtrl }) => {
         }
     }
 }
-
-DPUtils.store().player_animation_combo.register(registerAnimbinds({
-    combo: {
-        ...ComboAC,
-        ...PIArmsAC,
-        ...PIHoldingAC,
-        ...PILookAtTargetAC,
-        ...PIAttackRotationsAC,
-        ...PISneakingAC,
-    }
-}))

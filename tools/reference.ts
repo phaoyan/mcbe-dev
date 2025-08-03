@@ -94,6 +94,7 @@ function setNestedValue(dictionary: any, keys: string[], value: string): void {
  */
 export function animationIdRefs(): void {
     const animationIds: any = {};
+    const animationLengths: Record<string, number> = {};
 
     const animationFiles = rglob('.*\\.animation\\.json$', RESOURCE_PACK_DIR);
     for (const animationFile of animationFiles) {
@@ -108,6 +109,15 @@ export function animationIdRefs(): void {
                 const keys = cleanName.split(".");
                 // 设置嵌套值
                 setNestedValue(animationIds, keys, animation);
+
+                // 提取动画长度信息
+                const animationObj = animations[animation];
+                if (animationObj && typeof animationObj.animation_length === 'number') {
+                    animationLengths[animation] = animationObj.animation_length;
+                } else {
+                    // 对于没有animation_length的动画，输出0
+                    animationLengths[animation] = 0;
+                }
             }
         } catch (error) {
             console.error(`读取动画文件失败 ${animationFile}: ${error}`);
@@ -117,6 +127,10 @@ export function animationIdRefs(): void {
     const outputPath = path.join(SCRIPTS_DIR, "json", "animation_ids.json");
     ensureDir(path.dirname(outputPath));
     writeJson(outputPath, animationIds);
+
+    // 同时输出动画长度信息
+    const lengthOutputPath = path.join(SCRIPTS_DIR, "json", "animation_length.json");
+    writeJson(lengthOutputPath, animationLengths);
 }
 
 /**

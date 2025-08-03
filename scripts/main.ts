@@ -5,7 +5,7 @@ import "./system/rclick";
 import "./utils/anim_utils";
 import "./utils/behavior_utils";
 import "./utils/comp_utils";
-import "./utils/dp_list";
+import "./lists/dp_list";
 import "./utils/dp_utils";
 import "./utils/entity_utils";
 import "./utils/inventory_utils";

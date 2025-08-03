@@ -1,22 +1,22 @@
 import { Entity, ItemStack, system, world, World } from "@minecraft/server";
-import { dpList } from "./dp_list";
+import { dpList } from "../lists/dp_list";
 
-system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
     if (id !== "dp:set") return
     if (!sourceEntity) {
         world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
         return
     }
-    if(message.includes("=")) {
+    if (message.includes("=")) {
         const [key, value] = [message.split("=")[0], message.split("=")[1]]
         DPUtils.set(sourceEntity, key, value)
-    }else {
+    } else {
         DPUtils.set(sourceEntity, message, true)
     }
     sourceEntity.runCommand("say DP Set Success")
 })
 
-system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
+system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
     if (id !== "dp:reset") return
     if (!sourceEntity) {
         world.getDimension("minecraft:overworld").runCommand("say DP Reset Error: No Source Entity")
@@ -27,16 +27,16 @@ system.afterEvents.scriptEventReceive.subscribe(({id, sourceEntity, message})=>{
 })
 
 // DP Timeline
-system.runInterval(()=>{
+system.runInterval(() => {
     const timeline = DPUtils.store().world_dp_timeline.curr(world, {})
     if (!!timeline[system.currentTick]) {
         for (const todo of timeline[system.currentTick]) {
             const entity = world.getEntity(todo.e)
             if (!entity) return
-            DPUtils.set(entity, todo.k, todo.v)  
+            DPUtils.set(entity, todo.k, todo.v)
         }
-        DPUtils.store().world_dp_timeline.set(world, (curr: any)=>{
-            const newTimeline = {...curr}
+        DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
+            const newTimeline = { ...curr }
             delete newTimeline[system.currentTick]
             return newTimeline
         })
@@ -44,17 +44,17 @@ system.runInterval(()=>{
 })
 
 // DP Activate
-system.runInterval(()=>{
+system.runInterval(() => {
     const activate = DPUtils.store().world_dp_activate.curr(world, {})
-    Object.values(activate).forEach((todo: any)=>{
+    Object.values(activate).forEach((todo: any) => {
         for (const item of todo) {
             const entity = world.getEntity(item.e)
             if (!entity) return
             DPUtils.set(entity, item.k, item.v)
         }
     })
-    DPUtils.store().world_dp_activate.set(world, (curr: any)=>{
-        const newTimeline = {...curr}
+    DPUtils.store().world_dp_activate.set(world, (curr: any) => {
+        const newTimeline = { ...curr }
         delete newTimeline[system.currentTick]
         return newTimeline
     })
@@ -62,7 +62,7 @@ system.runInterval(()=>{
 
 export class DPUtils {
 
-    static STORE = {...dpList}
+    static STORE = { ...dpList }
 
     static REGISTRATION: { [key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any) => any)[] } = {}
 
@@ -99,9 +99,9 @@ export class DPUtils {
             }
         } else {
             if (!(target instanceof Entity)) return
-            DPUtils.store().world_dp_timeline.set(world, (curr: any)=>{
-                const newTimeline = {...curr}
-                const newItem = {e: target.id,k: key,v: value}
+            DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
+                const newTimeline = { ...curr }
+                const newItem = { e: target.id, k: key, v: value }
                 newTimeline[system.currentTick + delay] = [...(newTimeline[system.currentTick + delay] ?? []), newItem]
                 return newTimeline
             }, {})
@@ -120,20 +120,20 @@ export class DPUtils {
         if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
 
-        DPUtils.store().world_dp_activate.set(world, (curr: any)=>{
-            const newTimeline = {...curr}
-            const newItem = {e: target.id,k: key,v: value}
-            newTimeline[system.currentTick + (duration??99999999)] = [...(newTimeline[system.currentTick + (duration??99999999)] ?? []), newItem]
+        DPUtils.store().world_dp_activate.set(world, (curr: any) => {
+            const newTimeline = { ...curr }
+            const newItem = { e: target.id, k: key, v: value }
+            newTimeline[system.currentTick + (duration ?? 99999999)] = [...(newTimeline[system.currentTick + (duration ?? 99999999)] ?? []), newItem]
             return newTimeline
         }, {})
     }
 
     static deactivate(target: Entity | ItemStack | World, key: string, placeHolder?: any) {
         if (!(target instanceof Entity)) return
-        DPUtils.store().world_dp_activate.set(world, (curr: any)=>{
-            const newTimeline = {...curr}
+        DPUtils.store().world_dp_activate.set(world, (curr: any) => {
+            const newTimeline = { ...curr }
             for (let t of Object.keys(newTimeline)) {
-                newTimeline[t] = newTimeline[t].filter((item:any)=>item.e!==target.id || item.k!==key)
+                newTimeline[t] = newTimeline[t].filter((item: any) => item.e !== target.id || item.k !== key)
             }
             return newTimeline
         }, {})

@@ -1,6 +1,6 @@
 import { Entity, EntityDamageCause, EquipmentSlot, ItemStack } from "@minecraft/server"
 import { DPUtils } from "./dp_utils"
-import { DamageRateList, DamageTags } from "./damage_list"
+import { DamageRateList, DamageTags } from "../lists/damage_list"
 import { InventoryUtils } from "./inventory_utils"
 
 // 伤害公式：技能倍率×攻击力×（1+暴击率×暴击伤害）×攻击方伤害加成×防御方伤害减免×（攻击方防御力/防御方防御力）×调节常数

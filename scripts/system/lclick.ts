@@ -12,7 +12,7 @@ const lclickMap: { [key: string]: (player: Player, item: ItemStack) => number } 
 
 }
 
-const DummyOffsets = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+const DummyOffsets = [3, 5, 7, 9, 11, 13, 15, 17, 19]
 
 // 监听并管理Dummy
 DPUtils.store().lclick_enable.register((target, curr, prev) => {
@@ -35,7 +35,8 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
 })
 
 // 将Dummy TP到正确的位置
-BehaviorUtils.single(entity_ids.lclick_dummy, (entity: Entity)=>{
+BehaviorUtils
+.initSingle((entity: Entity) => {
     const player = world.getEntity(DPUtils.store().lclick_host.curr(entity))
     if (!player) {
         entity.remove()
@@ -48,6 +49,7 @@ BehaviorUtils.single(entity_ids.lclick_dummy, (entity: Entity)=>{
     const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end()
     entity.teleport(loc, { rotation: player.getRotation() })
 })
+.register(entity_ids.lclick_dummy)
 
 // 监听并执行左键动画，包括CD计时功能
 world.afterEvents.entityHitEntity.subscribe(({ hitEntity, damagingEntity }) => {

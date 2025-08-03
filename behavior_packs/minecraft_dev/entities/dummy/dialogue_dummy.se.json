@@ -1,0 +1,41 @@
+{
+    "format_version": "1.21.10",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "minecraft_dev:dialogue_dummy",
+            "is_spawnable": false,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "components": {
+            "minecraft:conditional_bandwidth_optimization": {},
+            "minecraft:persistent": {},
+            "minecraft:type_family": {
+                "family": ["dummy"]
+            },
+            "minecraft:collision_box": {
+                "height": 0,
+                "width": 0
+            },
+            "minecraft:health": {
+                "value": 1e4
+            },
+            "minecraft:tick_world": {},
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "has_damage",
+                                "value": "all"
+                            }
+                        }
+                    },
+                    {
+                        "deals_damage": false
+                    }
+                ]
+            }
+        }
+    }
+}

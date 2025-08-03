@@ -4,13 +4,6 @@
             "none": "animation.minecraft_dev.common.none"
         },
         "player": {
-            "combo": "animation.minecraft_dev.player.combo",
-            "combo1": "animation.minecraft_dev.player.combo1",
-            "combo2": "animation.minecraft_dev.player.combo2",
-            "combo3": "animation.minecraft_dev.player.combo3",
-            "wait1": "animation.minecraft_dev.player.wait1",
-            "wait2": "animation.minecraft_dev.player.wait2",
-            "idle": "animation.minecraft_dev.player.idle",
             "attack": {
                 "positions": {
                     "reverse": "animation.minecraft_dev.player.attack.positions.reverse",
@@ -109,13 +102,6 @@
                 "_value": "animation.minecraft_dev.player.crawl",
                 "legs": "animation.minecraft_dev.player.crawl.legs"
             }
-        },
-        "player_fpp": {
-            "combo": "animation.minecraft_dev.player_fpp.combo",
-            "combo1": "animation.minecraft_dev.player_fpp.combo1",
-            "combo2": "animation.minecraft_dev.player_fpp.combo2",
-            "combo3": "animation.minecraft_dev.player_fpp.combo3",
-            "idle": "animation.minecraft_dev.player_fpp.idle"
         }
     }
 }
