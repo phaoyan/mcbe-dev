@@ -127,6 +127,45 @@ const setupNpc = (typeId: string)=>{
     }
 }
 
+const setupItem = (typeId: string, stackSize: number = 64)=>{
+    return {
+        "format_version": "1.21.10",
+        "minecraft:item": {
+            "description": {
+                "identifier": `${NAME_SPACE}:${typeId}`,
+                "menu_category": {
+                    "category": "items"
+                }
+            },
+            "components": {
+                "minecraft:icon": `${typeId}`,
+                "minecraft:max_stack_size": stackSize
+            }
+        }
+    }
+}
+
+const setupEntityPlacer = (typeId: string, entityId: string)=>{
+    return {
+        "format_version": "1.21.10",
+        "minecraft:item": {
+            "description": {
+                "identifier": `${NAME_SPACE}:${typeId}`,
+                "menu_category": {
+                    "category": "items"
+                }
+            },
+            "components": {
+                "minecraft:icon": `${typeId}`,
+                "minecraft:max_stack_size": 1,
+                "minecraft:entity_placer": {
+                    "entity": entityId.includes(":") ? entityId : `${NAME_SPACE}:${entityId}`
+                }
+            }
+        }
+    }
+}
+
 const setupRclick = (typeId: string, cd: number) => {
     return {
         "format_version": "1.21.10",
@@ -154,6 +193,27 @@ const setupRclick = (typeId: string, cd: number) => {
         }
     };
 };
+
+const setupArmor = (typeId: string, slot: string)=>{
+    return {
+        "format_version": "1.21.10",
+        "minecraft:item": {
+            "description": {
+                "identifier": `${NAME_SPACE}:${typeId}`,
+                "menu_category": {
+                    "category": "items"
+                }
+            },
+            "components": {
+                "minecraft:wearable": {
+                    "slot": `slot.armor.${slot}`
+                },
+                "minecraft:icon": `${typeId}`,
+                "minecraft:max_stack_size": 1
+            }
+        }
+    }
+}
 
 /**
  * 主函数
