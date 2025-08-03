@@ -14,9 +14,11 @@ export const dpList = {
     damage_attribute: "minecraft_dev:damage_attribute", // 玩家、怪物、装备都可能使用到这条属性
 
     mob_skill_cooldown: "minecraft_dev:mob_skill_cooldown",
+    mob_skill_locking: "minecraft_dev:mob_skill_locking",
     mob_behavior_state: "minecraft_dev:mob_behavior_state",
     mob_has_target: "minecraft_dev:mob_has_target",
     mob_dead: "minecraft_dev:mob_dead",
+    mob_blackboard: "minecraft_dev:mob_blackboard", // 行为树blackboard数据
 
     npc_initiator: "minecraft_dev:npc_initiator",
 }

@@ -5,7 +5,7 @@ import entity_ids from "../json/entity_ids.json"
 import { Vector3Utils } from "@minecraft/math";
 import { InventoryUtils } from "./inventory_utils";
 import { VecUtils } from "./math_utils";
-import { BehaviorUtils } from "./behavior_utils";
+import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { LclickList } from "../lists/lclick_list";
 import { RclickList } from "../lists/rclick_list";
 
@@ -41,22 +41,31 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
     }
 })
 
-// 将Dummy TP到正确的位置
-BehaviorUtils
-    .initSingle((entity: Entity) => {
-        const player = world.getEntity(DPUtils.store().lclick_host.curr(entity))
+// 将Dummy TP到正确的位置 - 使用follow模板
+BehaviorUtils.register(entity_ids.lclick_dummy, BehaviorTemplates.follow(
+    // followTarget: 获取要跟踪的玩家
+    (entity: Entity) => {
+        const player = world.getEntity(DPUtils.store().lclick_host.curr(entity));
         if (!player) {
-            entity.remove()
-            return
+            entity.remove();
+            return null;
         }
-        const move = (player as Player).inputInfo.getMovementVector()
-        const idx = DPUtils.store().lclick_dummy_idx.curr(entity)
-        const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[idx]
-        const vy = (player as Player).getViewDirection().y
-        const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end()
-        entity.teleport(loc, { rotation: player.getRotation() })
-    })
-    .register(entity_ids.lclick_dummy)
+        return player;
+    },
+    // moveAction: 执行移动逻辑
+    (entity: Entity, target: Entity) => {
+        const player = target as Player;
+        const move = player.inputInfo.getMovementVector();
+        const idx = DPUtils.store().lclick_dummy_idx.curr(entity);
+        const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[idx];
+        const vy = player.getViewDirection().y;
+        const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end();
+        entity.teleport(loc, { rotation: player.getRotation() });
+        return NodeState.SUCCESS;
+    },
+    // maxDistance: 设置为0使其始终跟踪
+    0
+));
 
 // 监听并执行左键动画，包括CD计时功能
 world.afterEvents.entityHitEntity.subscribe(({ hitEntity, damagingEntity }) => {
