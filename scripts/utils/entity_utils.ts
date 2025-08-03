@@ -1,9 +1,8 @@
 import { Vector3Utils } from "@minecraft/math";
 import { Entity, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
-import { VecUtils, GeometryUtils } from "./vec_utils";
+import { VecUtils, GeometryUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
-import { MathUtils } from "./math_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 
@@ -114,7 +113,7 @@ export class EntityOperations {
 
     static skillCooldown(skillId: string, skillCD: number, skillDuration: number) {
         if (!this.TARGET) return EntityOperations
-        DPUtils.store().mob_skill_cooldown.set(this.TARGET, (cdList: { [key: string]: number })=>{
+        DPUtils.store().mob_skill_cooldown.set(this.TARGET, (cdList: { [key: string]: number }) => {
             return Object.fromEntries(
                 Object.entries(cdList).map(([id,]) => [id, system.currentTick + (id === skillId ? skillCD : skillDuration)])
             )

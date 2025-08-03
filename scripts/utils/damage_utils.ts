@@ -2,6 +2,7 @@ import { Entity, EntityDamageCause, EquipmentSlot, ItemStack } from "@minecraft/
 import { DPUtils } from "./dp_utils"
 import { DamageRateList, DamageTags } from "../lists/damage_list"
 import { InventoryUtils } from "./inventory_utils"
+import { CompUtils } from "./comp_utils"
 
 // 伤害公式：技能倍率×攻击力×（1+暴击率×暴击伤害）×攻击方伤害加成×防御方伤害减免×（攻击方防御力/防御方防御力）×调节常数
 export interface DamageAttribute {

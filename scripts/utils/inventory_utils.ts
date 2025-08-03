@@ -1,4 +1,5 @@
-import { Block, BlockComponentTypes, BlockInventoryComponent, Entity, EntityComponentTypes, EntityEquippableComponent, EntityInventoryComponent, EquipmentSlot, ItemLockMode, ItemStack, Player, World } from "@minecraft/server";
+import { Block, BlockComponentTypes, BlockInventoryComponent, Entity, EntityComponentTypes, EntityEquippableComponent, EntityInventoryComponent, EquipmentSlot, ItemStack, Player, World } from "@minecraft/server";
+
 
 export interface GiveOptions {
     onlyOnce?: boolean
