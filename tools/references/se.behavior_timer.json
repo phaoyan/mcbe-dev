@@ -1,0 +1,22 @@
+{
+    "format_version": "1.21.10",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "xxx:xxx",
+            "is_spawnable": true,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "components": {
+            "minecraft:timer": {
+                "time": 0.05,
+                "time_down_event": {
+                    "event": "event:timer"
+                }
+            }
+        },
+        "events": {
+            "event:timer": {}
+        }
+    }
+}

@@ -429,14 +429,6 @@ export interface SkillConfig {
     duration?: number; // 持续时间（tick），如果设置则技能执行期间不会被其他技能打断
 }
 
-// 简化的怪物AI配置
-export interface MonsterAIConfig {
-    skills?: SkillConfig[]; // 技能列表，可选
-    deathAction?: (entity: Entity) => NodeState; // 死亡动作，可选
-    moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
-    idleBehavior?: (entity: Entity) => NodeState; // 空闲行为，可选
-}
-
 export class BehaviorTemplates {
     // 预定义的actions
     private static actions = {
@@ -496,13 +488,19 @@ export class BehaviorTemplates {
         }
     };
 
-    static monster(config: MonsterAIConfig = {}): BehaviorTree {
+    static monster(config: {
+        skills?: SkillConfig[]; // 技能列表，可选
+        deathAction?: (entity: Entity) => NodeState; // 死亡动作，可选
+        moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
+        findTarget?: (entity: Entity) => NodeState; // 寻找目标行为，可选
+        idleBehavior?: (entity: Entity) => NodeState; // 空闲行为，可选
+    }={}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
         const deathAction = config.deathAction ?? (() => NodeState.FAILURE);
         const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
         const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
-
+        const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
                 .sequence("DeathHandler")
@@ -525,6 +523,10 @@ export class BehaviorTemplates {
                         })))
                         .end()
                     .action("MoveToTarget", moveToTarget)
+                    .end()
+                .sequence("TryFindTarget")
+                    .condition("NoTarget", actions.target.noTargetCheck)
+                    .action("FindTarget", findTarget)
                     .end()
                 .sequence("NoTargetBehavior")
                     .condition("NoTarget", actions.target.noTargetCheck)
@@ -560,6 +562,7 @@ export class BehaviorTemplates {
         followTarget?: (entity: Entity) => Entity | null; // 跟随目标获取函数
         moveToTarget?: (entity: Entity, target: Entity) => NodeState; // 移动到目标行为
         moveToOwner?: (entity: Entity, owner: Entity) => NodeState; // 移动到主人行为
+        findTarget?: (entity: Entity) => NodeState; // 寻找目标行为
         maxFollowDistance?: number; // 最大跟随距离
         combatRange?: number; // 战斗距离
     } = {}): BehaviorTree {
@@ -578,7 +581,7 @@ export class BehaviorTemplates {
         const moveToOwner = config.moveToOwner ?? (() => NodeState.FAILURE);
         const maxFollowDistance = config.maxFollowDistance ?? 8;
         const combatRange = config.combatRange ?? 3;
-
+        const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
         return BehaviorTree.create()
             .selector("PetMainSelector")
                 // 死亡处理
@@ -648,7 +651,10 @@ export class BehaviorTemplates {
                             .end()
                         .end()
                     .end()
-                
+                .sequence("TryFindTarget")
+                    .condition("NoTarget", actions.target.noTargetCheck)
+                    .action("FindTarget", findTarget)
+                    .end()
                 // 跟随主人行为
                 .sequence("FollowBehavior")
                     .condition("NoTarget", actions.target.noTargetCheck)

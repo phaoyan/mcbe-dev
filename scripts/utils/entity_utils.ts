@@ -5,6 +5,7 @@ import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
+import { TagList } from "../lists/tag_list";
 
 export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
     Normal: {
@@ -124,6 +125,21 @@ export class EntityOperations {
     static skillAvailable(skillId: string) {
         if (!this.TARGET) return 0
         return DPUtils.store().mob_skill_cooldown.curr(this.TARGET)[skillId] ?? 0
+    }
+
+    static setTargetedBy(entity: Entity) {
+        if (!this.TARGET) return EntityOperations
+        this.TARGET.addTag(TagList.TargetedBy(entity.typeId))
+        return EntityOperations
+    }
+
+    static getTargets(maxDistance: number = 32) {
+        if (!this.TARGET) return EntityOperations
+        return this.TARGET.dimension.getEntities({
+            location: this.TARGET.location,
+            maxDistance: maxDistance,
+            tags: [TagList.TargetedBy(this.TARGET.typeId)]
+        })
     }
 }
 

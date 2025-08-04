@@ -1,0 +1,34 @@
+{
+    "format_version": "1.21.10",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "xxx:xxx",
+            "is_spawnable": true,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "components": {
+            "minecraft:behavior.nearest_attackable_target": {
+                "priority": 2,
+                "within_radius": 25,
+                "reselect_targets": true,
+                "entity_types": [
+                    {
+                        "filters": {
+                            "any_of": [
+                                {
+                                    "test": "has_tag",
+                                    "subject": "other",
+                                    "value": "minecraft_dev:targeted_by_xxx"
+                                }
+                            ]
+                        },
+                        "max_dist": 35
+                    }
+                ],
+                "must_see": true,
+                "must_see_forget_duration": 17.0
+            }
+        }
+    }
+}
