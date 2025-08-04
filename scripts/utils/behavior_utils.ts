@@ -426,6 +426,7 @@ export interface SkillConfig {
     id: string;
     cooldown: number; // 冷却时间（tick）
     action: (entity: Entity) => NodeState;
+    filter: (entity: Entity) => boolean;
     duration?: number; // 持续时间（tick），如果设置则技能执行期间不会被其他技能打断
 }
 
@@ -517,8 +518,8 @@ export class BehaviorTemplates {
                         .actions(skills.map(skill => ({
                             name: `Skill_${skill.id}`,
                             action: (entity: Entity) => 
-                                !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity) ? 
-                                NodeState.FAILURE : 
+                                !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity) ? NodeState.FAILURE : 
+                                !skill.filter(entity) ? NodeState.FAILURE : 
                                 actions.skill.execute(skill)(entity)
                         })))
                         .end()
@@ -611,13 +612,11 @@ export class BehaviorTemplates {
                             .selector("AvailableSkills")
                                 .actions(skills.map(skill => ({
                                     name: `UseSkill_${skill.id}`,
-                                    action: (entity: Entity) => {
-                                        // 检查技能是否可用
-                                        if (!actions.skill.checkCooldown(skill.id, skill.cooldown)(entity)) {
-                                            return NodeState.FAILURE;
-                                        }
-                                        return actions.skill.execute(skill)(entity);
-                                    }
+                                    action: (entity: Entity) =>(
+                                        !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity) ? NodeState.FAILURE: 
+                                        !skill.filter(entity) ? NodeState.FAILURE :     
+                                        actions.skill.execute(skill)(entity)
+                                    )
                                 })))
                                 .end()
                             .end()
