@@ -101,11 +101,11 @@ export class EntityOperations {
             const nearest = this.TARGET.dimension.getEntities({
                 location: this.TARGET.location,
                 maxDistance: 10,
-                closest: 1,
+                closest: 2,
                 ...options
             })
-            if (nearest.length > 0) {
-                const locDiff = Vector3Utils.subtract(nearest[0].location, this.TARGET.location)
+            if (nearest.length > 1) {
+                const locDiff = Vector3Utils.subtract(nearest[1].location, this.TARGET.location)
                 this.TARGET.setRotation({ x: 0, y: MathUtils.yaw(locDiff.x, locDiff.z) })
             }
         }, TimeUtils.ticks(1, 1, ticks))
