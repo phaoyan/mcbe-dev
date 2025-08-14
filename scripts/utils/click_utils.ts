@@ -29,43 +29,36 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
         .get()
     for (let i = 0; i < DummyOffsets.length; i++) {
         const dummy = dummies.filter(e => DPUtils.store().lclick_dummy_idx.curr(e) === i)[0]
-        if (!curr) {
-            if (!dummy) return
-            dummy.remove()
-        } else {
+        if (curr) {
             if (dummy) return
             const lclick = target.dimension.spawnEntity(entity_ids.lclick_dummy, target.location)
             DPUtils.store().lclick_host.set(lclick, target.id)
             DPUtils.store().lclick_dummy_idx.set(lclick, i)
+            const tree = BehaviorTemplates.follow(
+                (entity: Entity) => {
+                    const player = world.getEntity(DPUtils.store().lclick_host.curr(entity));
+                    if (!player || !DPUtils.store().lclick_enable.curr(player)) {
+                        entity.remove();
+                        return null;
+                    }
+                    return player;
+                },
+                (entity: Entity, target: Entity) => {
+                    const player = target as Player;
+                    const move = player.inputInfo.getMovementVector();
+                    const idx = DPUtils.store().lclick_dummy_idx.curr(entity);
+                    const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[idx];
+                    const vy = player.getViewDirection().y;
+                    const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end();
+                    entity.teleport(loc, { rotation: player.getRotation() });
+                    return NodeState.SUCCESS;
+                },
+                0
+            );
+            BehaviorUtils.register(lclick, tree);
         }
     }
 })
-
-// 将Dummy TP到正确的位置 - 使用follow模板
-BehaviorUtils.register(entity_ids.lclick_dummy, BehaviorTemplates.follow(
-    // followTarget: 获取要跟踪的玩家
-    (entity: Entity) => {
-        const player = world.getEntity(DPUtils.store().lclick_host.curr(entity));
-        if (!player) {
-            entity.remove();
-            return null;
-        }
-        return player;
-    },
-    // moveAction: 执行移动逻辑
-    (entity: Entity, target: Entity) => {
-        const player = target as Player;
-        const move = player.inputInfo.getMovementVector();
-        const idx = DPUtils.store().lclick_dummy_idx.curr(entity);
-        const offset = Vector3Utils.magnitude(player.getVelocity()) * DummyOffsets[idx];
-        const vy = player.getViewDirection().y;
-        const loc = VecUtils.start(player).moveF(offset * Math.max(move.y, -3)).moveY(vy * idx * 0.25).moveR(offset * move.x * 0.4).end();
-        entity.teleport(loc, { rotation: player.getRotation() });
-        return NodeState.SUCCESS;
-    },
-    // maxDistance: 设置为0使其始终跟踪
-    0
-));
 
 // 监听并执行左键动画，包括CD计时功能
 world.afterEvents.entityHitEntity.subscribe(({ hitEntity, damagingEntity }) => {

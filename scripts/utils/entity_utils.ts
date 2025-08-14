@@ -143,13 +143,73 @@ export class EntityOperations {
     }
 }
 
+export class EntityOperationSeries {
+    private _entity: Entity
+    private _steps: { tick: number; action: (entity: Entity) => void }[] = []
+    private _cursor: number = 0
+    private _proxy: any
+
+    constructor(entity: Entity) {
+        this._entity = entity
+    }
+
+    static for(entity: Entity) { return new EntityOperationSeries(entity)._getProxy() }
+
+    private _getProxy() {
+        if (this._proxy) return this._proxy
+        const blacklist = new Set<string>(['TARGET', 'entity', 'skillAvailable', 'getTargets'])
+        const self = this
+        this._proxy = new Proxy(this, {
+            get(target, prop: string | symbol, receiver) {
+                if (typeof prop === 'string') {
+                    if (prop in target) {
+                        const value = (target as any)[prop]
+                        return typeof value === 'function' ? value.bind(receiver) : value
+                    }
+                    const candidate = (EntityOperations as any)[prop]
+                    if (typeof candidate === 'function' && !blacklist.has(prop)) {
+                        return (...args: any[]) => {
+                            const at = self._cursor
+                            self._steps.push({ tick: at, action: (entity) => { (EntityOperations.entity(entity) as any)[prop](...args) } })
+                            return receiver
+                        }
+                    }
+                }
+                return (target as any)[prop as any]
+            }
+        })
+        return this._proxy
+    }
+
+    wait(ticks: number): EntityOperationSeries {
+        this._cursor += Math.max(0, Math.floor(ticks))
+        return this
+    }
+
+    do(callback: (ops: typeof EntityOperations, entity: Entity) => void): EntityOperationSeries {
+        const at = this._cursor
+        this._steps.push({ tick: at, action: (entity) => callback(EntityOperations.entity(entity), entity) })
+        return this
+    }
+
+    run(): EntityOperationSeries {
+        this._steps.forEach(step => {
+            TimeUtils.timeout(() => { step.action(this._entity) }, step.tick)
+        })
+        return this
+    }
+
+    start(): EntityOperationSeries { return this.run() }
+}
+
 export class EntityUtils {
     private _entities: Entity[] = []
     private static _methodsInitialized = false
+    private _seriesMap: Map<string, EntityOperationSeries> = new Map()
 
     constructor(entities: Entity[] = []) {
         this._entities = entities
-        // 只在第一次创建实例时初始化方法
+        // 只在第一次创建实例时初始化批量方法与几何方法
         if (!EntityUtils._methodsInitialized) {
             EntityUtils.initializeBatchMethods()
             EntityUtils.initializeGeometryMethods()
@@ -194,7 +254,7 @@ export class EntityUtils {
     }
 
     // 声明EntityUtils方法的类型（为了更好的TypeScript支持）
-    damage!: (amount: number, source?: Entity, tags?: string[]) => EntityUtils
+    damage!: (damageId: string, source?: Entity, tags?: string[]) => EntityUtils
     effect!: (effect: string, ticks: number, options?: EntityEffectOptions) => EntityUtils
     slowness!: (ticks: number, amp: number, showParticles: boolean) => EntityUtils
     knockbackBaseView!: (entity: Entity, hori: number, vert: number, ticks?: number) => EntityUtils
@@ -204,6 +264,10 @@ export class EntityUtils {
     rotateToNearest!: (ticks: number, options?: EntityQueryOptions) => EntityUtils
     skillCooldown!: (skillId: string, skillCD: number, skillDuration: number) => EntityUtils
     skillAvailable!: (skillId: string) => number
+    wait!: (ticks: number) => EntityUtils
+    do!: (callback: (ops: typeof EntityOperations, entity: Entity) => void) => EntityUtils
+    run!: () => EntityUtils
+    start!: () => EntityUtils
 
     // 声明GeometryUtils几何检测方法的类型
     sphere!: (startPoint: Vector3, radius: number) => EntityUtils
@@ -224,12 +288,18 @@ export class EntityUtils {
     // 过滤实体
     filter(predicate: (entity: Entity) => boolean): EntityUtils {
         this._entities = this._entities.filter(predicate)
+        // 同步序列映射，移除不存在的实体
+        const ids = new Set(this._entities.map(e => e.id))
+        this._seriesMap.forEach((_, id) => { if (!ids.has(id)) this._seriesMap.delete(id) })
         return this
     }
 
     // 限制数量
     limit(count: number): EntityUtils {
         this._entities = this._entities.slice(0, count)
+        // 同步序列映射，移除不存在的实体
+        const ids = new Set(this._entities.map(e => e.id))
+        this._seriesMap.forEach((_, id) => { if (!ids.has(id)) this._seriesMap.delete(id) })
         return this
     }
 
@@ -253,31 +323,33 @@ export class EntityUtils {
         return this._entities.length === 0
     }
 
+    private _ensureSeries(entity: Entity): EntityOperationSeries {
+        const existed = this._seriesMap.get(entity.id)
+        if (existed) return existed
+        const series = EntityOperationSeries.for(entity) as unknown as EntityOperationSeries
+        this._seriesMap.set(entity.id, series)
+        return series
+    }
+
     // 动态创建EntityUtils方法的批量版本（静态执行一次）
     private static initializeBatchMethods(): void {
-        // 获取EntityUtils类的所有静态方法名
-        const methodNames = Object.getOwnPropertyNames(EntityOperations)
+        const blacklist = new Set<string>(['constructor'])
+        const methodNames = Object.getOwnPropertyNames(EntityOperationSeries.prototype)
             .filter(name =>
-                name !== 'length' &&
-                name !== 'name' &&
-                name !== 'prototype' &&
-                name !== 'TARGET' &&
-                name !== 'entity' &&
-                typeof EntityOperations[name as keyof typeof EntityOperations] === 'function'
+                !blacklist.has(name) &&
+                typeof (EntityOperationSeries.prototype as any)[name] === 'function'
             )
 
-        // 为每个EntityUtils方法在原型上创建对应的批量方法
         methodNames.forEach(methodName => {
             EntityUtils.prototype[methodName as keyof EntityUtils] = function (this: EntityUtils, ...args: any[]) {
                 this.each(entity => {
-                    const entityUtils = EntityOperations.entity(entity);
-                    (entityUtils as any)[methodName](...args)
+                    const series = this._ensureSeries(entity) as any
+                    series[methodName](...args)
                 })
                 return this
             } as any
         })
     }
-
 
 
     // 动态创建GeometryUtils几何检测方法（静态执行一次）

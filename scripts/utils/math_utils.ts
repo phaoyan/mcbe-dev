@@ -43,6 +43,13 @@ export class MathUtils {
         return vector.x ** 2 + vector.y ** 2 + vector.z ** 2
     }
 
+    static distanceSquared(a: Vector3, b: Vector3): number {
+        const dx = a.x - b.x;
+        const dy = a.y - b.y;
+        const dz = a.z - b.z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+
     static yaw(x: number, z: number) {
         // 计算弧度
         const yawRad = Math.atan2(-x, z);
