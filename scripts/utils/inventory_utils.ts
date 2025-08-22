@@ -1,4 +1,5 @@
-import { Block, BlockComponentTypes, BlockInventoryComponent, Entity, EntityComponentTypes, EntityEquippableComponent, EntityInventoryComponent, EquipmentSlot, ItemStack, Player, World } from "@minecraft/server";
+import { Block, BlockComponentTypes, BlockInventoryComponent, Entity, EntityComponentTypes, EntityEquippableComponent, EntityInventoryComponent, EquipmentSlot, ItemStack, Player, world, World } from "@minecraft/server";
+import { DPUtils } from "./dp_utils";
 
 
 export interface GiveOptions {
@@ -9,6 +10,16 @@ export interface GiveOptions {
 export interface EquipOptions {
     onlyOnce?: boolean
     override?: boolean
+}
+
+export interface ItemBind {
+    inventory?: ((player: Player)=>ItemStack)[]
+    head?: (player: Player)=>ItemStack
+    chest?: (player: Player)=>ItemStack
+    legs?: (player: Player)=>ItemStack
+    feet?: (player: Player)=>ItemStack
+    mainhand?: (player: Player)=>ItemStack
+    offhand?: (player: Player)=>ItemStack
 }
 
 export class InventoryUtils {
@@ -53,41 +64,35 @@ export class InventoryUtils {
     static clear(target: Entity, typeId: string) {
         target.runCommand(`clear @s ${typeId}`)
     }
-}
 
-export interface ItemBind {
-    inventory?: ItemStack[]
-    head?: ItemStack
-    chest?: ItemStack
-    legs?: ItemStack
-    feet?: ItemStack
-    mainhand?: ItemStack
-    offhand?: ItemStack
-}
-
-export const registerItembinds = (itembinds: { [key: string]: ItemBind }) => {
-    return (target: Entity | ItemStack | World, curr: string, prev: string) => {
-        if (!(target instanceof Player)) return
-        if (curr === prev) return
-        if (!!prev && Object.keys(itembinds).includes(prev)) {
-            const prevItembind = itembinds[prev]
-            prevItembind.inventory?.forEach(item => InventoryUtils.clear(target, item.typeId))
-            prevItembind.head && InventoryUtils.clear(target, prevItembind.head.typeId)
-            prevItembind.chest && InventoryUtils.clear(target, prevItembind.chest.typeId)
-            prevItembind.legs && InventoryUtils.clear(target, prevItembind.legs.typeId)
-            prevItembind.feet && InventoryUtils.clear(target, prevItembind.feet.typeId)
-            prevItembind.mainhand && InventoryUtils.clear(target, prevItembind.mainhand.typeId)
-            prevItembind.offhand && InventoryUtils.clear(target, prevItembind.offhand.typeId)
-        }
-        if (Object.keys(itembinds).includes(curr)) {
-            const currItembind = itembinds[curr]
-            currItembind.inventory?.forEach(item => InventoryUtils.entity(target)?.addItem(item))
-            currItembind.head && InventoryUtils.equip(target, currItembind.head, EquipmentSlot.Head, { onlyOnce: true, override: false })
-            currItembind.chest && InventoryUtils.equip(target, currItembind.chest, EquipmentSlot.Chest, { onlyOnce: true, override: false })
-            currItembind.legs && InventoryUtils.equip(target, currItembind.legs, EquipmentSlot.Legs, { onlyOnce: true, override: false })
-            currItembind.feet && InventoryUtils.equip(target, currItembind.feet, EquipmentSlot.Feet, { onlyOnce: true, override: false })
-            currItembind.mainhand && InventoryUtils.equip(target, currItembind.mainhand, EquipmentSlot.Mainhand, { onlyOnce: true, override: false })
-            currItembind.offhand && InventoryUtils.equip(target, currItembind.offhand, EquipmentSlot.Offhand, { onlyOnce: true, override: false })
-        }
+    static itembinds(data: {dpId: string, itembinds: { [key: string]: ItemBind }}) {
+        const itembinds = data.itembinds
+        world.afterEvents.worldLoad.subscribe(()=>{
+            DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
+                if (!(target instanceof Player)) return
+                if (curr === prev) return
+                if (!!prev && Object.keys(itembinds).includes(prev)) {
+                    const prevItembind = itembinds[prev]
+                    prevItembind.inventory?.forEach(item => InventoryUtils.clear(target, item(target).typeId))
+                    prevItembind.head?.(target) && InventoryUtils.clear(target, prevItembind.head?.(target).typeId)
+                    prevItembind.chest?.(target) && InventoryUtils.clear(target, prevItembind.chest?.(target).typeId)
+                    prevItembind.legs?.(target) && InventoryUtils.clear(target, prevItembind.legs?.(target).typeId)
+                    prevItembind.feet?.(target) && InventoryUtils.clear(target, prevItembind.feet?.(target).typeId)
+                    prevItembind.mainhand?.(target) && InventoryUtils.clear(target, prevItembind.mainhand?.(target).typeId)
+                    prevItembind.offhand?.(target) && InventoryUtils.clear(target, prevItembind.offhand?.(target).typeId)
+                }
+                if (Object.keys(itembinds).includes(curr)) {
+                    const currItembind = itembinds[curr]
+                    currItembind.inventory?.forEach(item => InventoryUtils.entity(target)?.addItem(item(target)))
+                    currItembind.head?.(target) && InventoryUtils.equip(target, currItembind.head?.(target), EquipmentSlot.Head, { onlyOnce: true, override: false })
+                    currItembind.chest?.(target) && InventoryUtils.equip(target, currItembind.chest?.(target), EquipmentSlot.Chest, { onlyOnce: true, override: false })
+                    currItembind.legs?.(target) && InventoryUtils.equip(target, currItembind.legs?.(target), EquipmentSlot.Legs, { onlyOnce: true, override: false })
+                    currItembind.feet?.(target) && InventoryUtils.equip(target, currItembind.feet?.(target), EquipmentSlot.Feet, { onlyOnce: true, override: false })
+                    currItembind.mainhand?.(target) && InventoryUtils.equip(target, currItembind.mainhand?.(target), EquipmentSlot.Mainhand, { onlyOnce: true, override: false })
+                    currItembind.offhand?.(target) && InventoryUtils.equip(target, currItembind.offhand?.(target), EquipmentSlot.Offhand, { onlyOnce: true, override: false })
+                }
+            })
+        })
     }
 }
+

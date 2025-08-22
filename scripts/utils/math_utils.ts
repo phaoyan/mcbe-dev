@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Dimension, Entity, Vector3, world } from "@minecraft/server";
+import { Dimension, Entity, system, Vector3, world } from "@minecraft/server";
 import { MinecraftDimensionTypes } from "@minecraft/vanilla-data";
 
 

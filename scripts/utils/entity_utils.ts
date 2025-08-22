@@ -7,6 +7,12 @@ import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 
+export type ComboData = {
+    duration: number
+    wait: number
+    callback: (entity: Entity) => void
+}[]
+
 export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
     Normal: {
         maxDistance: 128,
@@ -57,10 +63,12 @@ export class EntityOperations {
 
     static knockbackBaseView(entity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1) {
         if (!entity) return EntityOperations
+        const target = this.TARGET
+        const viewEntity = entity
         TimeUtils.timeseries(() => {
-            if (!this.TARGET) return EntityOperations
-            const unit = VecUtils.unit(VecUtils.hori(entity.getViewDirection()))
-            this.TARGET.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
+            if (!target) return EntityOperations
+            const unit = VecUtils.unit(VecUtils.hori(viewEntity.getViewDirection()))
+            target.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
@@ -68,45 +76,51 @@ export class EntityOperations {
     static knockbackBaseLoc(location: Entity | Vector3, f: number, y: number = 0, r: number = 0, ticks: number = 1) {
         if (location instanceof Entity)
             location = location.location
+        const target = this.TARGET
+        const loc = location
         TimeUtils.timeseries(() => {
-            if (!this.TARGET) return EntityOperations
-            const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(this.TARGET.location, location)))
-            this.TARGET.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
+            if (!target) return EntityOperations
+            const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(target.location, loc)))
+            target.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
 
 
     static rotateToDirection(direction: (target: Entity) => Vector3, ticks: number = 1) {
+        const target = this.TARGET
         TimeUtils.timeseries(() => {
-            if (!this.TARGET) return EntityOperations
-            const dir = direction(this.TARGET)
-            this.TARGET.setRotation({ x: 0, y: MathUtils.yaw(dir.x, dir.z) })
+            if (!target) return EntityOperations
+            const dir = direction(target)
+            target.setRotation({ x: 0, y: MathUtils.yaw(dir.x, dir.z) })
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
 
     static rotateFacing(entity: Entity, ticks: number) {
+        const target = this.TARGET
+        const facingEntity = entity
         TimeUtils.timeseries(() => {
-            if (!this.TARGET) return EntityOperations
-            const locDiff = Vector3Utils.subtract(entity.location, this.TARGET.location)
-            this.TARGET.setRotation({ x: 0, y: MathUtils.yaw(locDiff.x, locDiff.z) })
+            if (!target) return EntityOperations
+            const locDiff = Vector3Utils.subtract(facingEntity.location, target.location)
+            target.setRotation({ x: 0, y: MathUtils.yaw(locDiff.x, locDiff.z) })
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
     }
 
     static rotateToNearest(ticks: number, options?: EntityQueryOptions) {
+        const target = this.TARGET
         TimeUtils.timeseries(() => {
-            if (!this.TARGET) return EntityOperations
-            const nearest = this.TARGET.dimension.getEntities({
-                location: this.TARGET.location,
+            if (!target) return EntityOperations
+            const nearest = target.dimension.getEntities({
+                location: target.location,
                 maxDistance: 10,
                 closest: 2,
                 ...options
             })
             if (nearest.length > 1) {
-                const locDiff = Vector3Utils.subtract(nearest[1].location, this.TARGET.location)
-                this.TARGET.setRotation({ x: 0, y: MathUtils.yaw(locDiff.x, locDiff.z) })
+                const locDiff = Vector3Utils.subtract(nearest[1].location, target.location)
+                target.setRotation({ x: 0, y: MathUtils.yaw(locDiff.x, locDiff.z) })
             }
         }, TimeUtils.ticks(1, 1, ticks))
         return EntityOperations
@@ -140,6 +154,31 @@ export class EntityOperations {
             maxDistance: maxDistance,
             tags: [TagList.TargetedBy(this.TARGET.typeId)]
         })
+    }
+
+    static triggerCombo(dpId: string, data: ComboData){
+        if (!this.TARGET) return
+        const comboState: {state: number, last: number} = DPUtils.curr(this.TARGET, dpId, {state: 0, last: 0})
+        if (comboState.state >= data.length) {
+            comboState.state = 0;
+            comboState.last = 0
+        }
+        const delta = system.currentTick - comboState.last
+        if (delta < data[comboState.state].duration - 1) return
+        if (delta >= data[comboState.state].duration + data[comboState.state].wait) {
+            comboState.state = 0
+            comboState.last  = system.currentTick
+            data[0].callback(this.TARGET)
+            DPUtils.set(this.TARGET, dpId, comboState)
+            return
+        }
+        else {
+            comboState.state = (comboState.state + 1) % data.length
+            comboState.last = system.currentTick
+            DPUtils.set(this.TARGET, dpId, comboState)
+            data[comboState.state].callback(this.TARGET)
+            return
+        }
     }
 }
 
@@ -257,8 +296,8 @@ export class EntityUtils {
     damage!: (damageId: string, source?: Entity, tags?: string[]) => EntityUtils
     effect!: (effect: string, ticks: number, options?: EntityEffectOptions) => EntityUtils
     slowness!: (ticks: number, amp: number, showParticles: boolean) => EntityUtils
-    knockbackBaseView!: (entity: Entity, hori: number, vert: number, ticks?: number) => EntityUtils
-    knockbackBaseDiff!: (location: Entity | Vector3, direction: "intro" | "outro", hori: number, vert: number, ticks?: number) => EntityUtils
+    knockbackBaseView!: (entity: Entity, f: number, y?: number, r?: number, ticks?: number) => EntityUtils
+    knockbackBaseLoc!: (location: Entity | Vector3, f: number, y?: number, r?: number, ticks?: number) => EntityUtils
     rotateToDirection!: (direction: (target: Entity) => Vector3, ticks?: number) => EntityUtils
     rotateFacing!: (entity: Entity, ticks: number) => EntityUtils
     rotateToNearest!: (ticks: number, options?: EntityQueryOptions) => EntityUtils

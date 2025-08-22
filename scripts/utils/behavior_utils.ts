@@ -2,7 +2,6 @@ import { Entity, world, system, Vector3 } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
-import { EntityUtils } from "./entity_utils";
 
 // 行为树框架
 export enum NodeState {
@@ -458,32 +457,73 @@ export class BehaviorTree {
 
 // 行为树管理器
 export class BehaviorUtils {
-    private static BEHAVIOR_TREES: { [entityId: string]: BehaviorTree } = {};
+    private static FACTORIES: { [key: string]: (entity: Entity) => BehaviorTree } = {};
 
-    // 一律按实体绑定：注册实体对应的行为树
-    static register(entity: Entity | string, tree: BehaviorTree) {
-        const id = typeof entity === 'string' ? entity : entity.id;
-        this.BEHAVIOR_TREES[id] = tree;
+    // 注册行为树逻辑：使用行为树ID注册工厂
+    static register(treeId: string, factory: (entity: Entity) => BehaviorTree) {
+        this.FACTORIES[treeId] = factory;
     }
 
+    // 绑定实体到某个工厂键，并持久化到World动态属性
+    static bind(entityId: string, factoryKey: string) {
+        DPUtils.store().world_behavior_map.set(world, (curr: any = {}) => {
+            const next = { ...curr };
+            next[entityId] = factoryKey;
+            return next;
+        }, {});
+
+    }
+
+    private static ensureTree(entity: Entity): BehaviorTree | undefined {
+        const map = DPUtils.store().world_behavior_map.curr(world, {} as Record<string, string>);
+        const key = map?.[entity.id];
+        if (key && this.FACTORIES[key]) {
+            const tree = this.FACTORIES[key](entity);
+            return tree;
+        }
+        return undefined;
+    }
+
+    // 一律按实体绑定：注册实体对应的行为树
     static getBlackboard(entity: Entity): Record<string, any> | undefined {
         return BlackboardManager.getAll(entity);
     }
 
     static tick(entity: Entity): NodeState {
-        const tree = this.BEHAVIOR_TREES[entity.id];
+        const tree = this.ensureTree(entity);
         if (!tree) return NodeState.FAILURE;
 
         return tree.tick(entity);
     }
 
     static reset(entity: Entity) {
-        const tree = this.BEHAVIOR_TREES[entity.id];
+        const tree = this.ensureTree(entity);
         if (tree) {
             tree.reset(entity);
         }
     }
 }
+
+const behaviorMapGC = ()=>{
+    try {        
+        // 清理无效实体映射
+        const map = DPUtils.store().world_behavior_map.curr(world, {} as Record<string, string>);
+        let changed = false;
+        for (const id of Object.keys(map)) {
+            const entityExists = !!world.getEntity(id);
+            if (!entityExists) {
+                delete map[id];
+                changed = true;
+            }
+        }
+        if (changed) {
+            DPUtils.store().world_behavior_map.set(world, map, {});
+        }
+    } catch {}
+}
+
+// 定时清理与迁移：
+system.runInterval(() => behaviorMapGC(), 200);
 
 // 简化的技能配置
 export interface SkillConfig {
@@ -560,7 +600,7 @@ export class BehaviorTemplates {
         moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
         findTarget?: (entity: Entity) => NodeState; // 寻找目标行为，可选
         idleBehavior?: (entity: Entity) => NodeState; // 空闲行为，可选
-    }={}): BehaviorTree {
+    } = {}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
         const deathAction = config.deathAction ?? (() => NodeState.FAILURE);

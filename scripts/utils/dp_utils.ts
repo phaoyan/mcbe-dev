@@ -87,6 +87,7 @@ export class DPUtils {
     }
 
     static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any, delay?: number) {
+        if (!target) return
         if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
         const prev = this.curr(target, key, placeHolder)  // 获取解析后的之前值，保持类型一致
@@ -109,6 +110,7 @@ export class DPUtils {
     }
 
     static temp(target: Entity | ItemStack | World, key: string, value: any, ticks: number, placeHolder?: any) {
+        if (!target) return placeHolder
         const prev = this.curr(target, key, placeHolder)
         this.set(target, key, value)
         this.set(target, key, prev, placeHolder ?? prev, ticks)
@@ -141,12 +143,14 @@ export class DPUtils {
     }
 
     static curr(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
+        if (!target) return placeHolder
         const raw = target.getDynamicProperty(key)
         if (raw === undefined) return placeHolder
         return JSON.parse(target.getDynamicProperty(key) as string)
     }
 
     static prev(target: Entity | ItemStack | World, key: string, placeHolder: any) {
+        if (!target) return placeHolder
         return this.curr(target, `${key}_prev`, placeHolder)
     }
 
@@ -166,7 +170,11 @@ export class DPUtils {
         return DPUtils
     }
 
-    static sync(target: Entity | ItemStack | World, key: string) {
-        target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))
+    // 将动态属性和静态属性同步
+    static sync(key: string, propertyId: string, placeHolder: boolean | number | string) {
+        DPUtils.register(key, (target, curr, prev) => {
+            if (!(target instanceof Entity)) return
+            target.setProperty(propertyId, (curr as typeof placeHolder) ?? placeHolder)
+        })
     }
 }

@@ -1,5 +1,6 @@
-import { Entity, ItemStack, Player, World } from "@minecraft/server"
+import { Entity, ItemStack, Player, world, World } from "@minecraft/server"
 import animation_ids from "../json/animation_ids.json"
+import { DPUtils } from "./dp_utils"
 
 // Player Invert ACs
 export const PILegsAC: AnimCtrl = {
@@ -79,17 +80,16 @@ export class AnimUtils {
             })
         }
     }
-}
 
-export const registerAnimbinds = (animbinds: { [key: string]: AnimCtrl }) => {
-    return (target: Entity | ItemStack | World, curr: string, prev: string)=>{
-        if (!(target instanceof Player)) return
-        if(curr===prev) return
-        if(!!prev && Object.keys(animbinds).includes(prev)) {
-            AnimUtils.unregister(target, animbinds[prev])
-        }
-        if(!!curr && Object.keys(animbinds).includes(curr)) {
-            AnimUtils.register(target, animbinds[curr])
-        }
+    static animbinds(data: {dpId: string, animbinds: { [key: string]: AnimCtrl }}) {
+        world.afterEvents.worldLoad.subscribe(()=>{
+            DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string)=>{
+                if (!(target instanceof Player)) return
+                if(!!prev && Object.keys(data.animbinds).includes(prev)) 
+                    AnimUtils.unregister(target, data.animbinds[prev])
+                if(!!curr && Object.keys(data.animbinds).includes(curr)) 
+                    AnimUtils.register(target, data.animbinds[curr])
+            })
+        })
     }
 }

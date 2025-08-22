@@ -36,10 +36,15 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
 
 export class MenuUtils {
 
-    static MENU_DATA: any = { buttons: [], title: "" }
+    static MENU_DATA: any = { buttons: [], title: "", body: "" }
 
     static title(title: string) {
         this.MENU_DATA.title = title
+        return MenuUtils
+    }
+
+    static body(body: string) {
+        this.MENU_DATA.body = body
         return MenuUtils
     }
 
@@ -51,13 +56,17 @@ export class MenuUtils {
     static show(player: Player) {
         const menu = new ActionFormData()
         menu.title(this.MENU_DATA.title)
-        this.MENU_DATA.buttons.forEach((button: any) => {
+        if (this.MENU_DATA.body) {
+            menu.body(this.MENU_DATA.body)
+        }
+        const menuData = {...this.MENU_DATA}
+        menuData.buttons.forEach((button: any) => {
             menu.button(button.key)
         })
         menu.show(player).then(({ selection }) => {
             if (selection === undefined) return
-            this.MENU_DATA.buttons[selection].callback()
+            menuData.buttons[selection].callback()
         })
-        this.MENU_DATA = { buttons: [], title: "" }
+        this.MENU_DATA = { buttons: [], title: "", body: "" }
     }
 }

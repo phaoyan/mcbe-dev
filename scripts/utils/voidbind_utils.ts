@@ -16,6 +16,7 @@ export interface VoidbindOptions {
         offsetR?: number
         correction?: number
         beforeAnimation?: boolean
+        randomOffset?: number
     }
 }
 
@@ -46,10 +47,12 @@ export class VoidbindUtils {
                         .moveF(follow.offsetF ?? 0)
                         .moveY(follow.offsetY ?? 0)
                         .moveR(follow.offsetR ?? 0)
+                        // 随机偏移
+                        .moveF(Math.random()*(follow.randomOffset ?? 0.05))
                         .end(),
                     Vector3Utils.scale(follow.host.getVelocity(), follow.correction ?? 6)
                 )
-                voidbind.teleport(loc, { rotation: follow.host.getRotation() })
+                voidbind.teleport(loc, { facingLocation: VecUtils.start(follow.host).moveF(128).end() })
             }, TimeUtils.ticks(1, 1, follow.beforeAnimation ? delay : duration))
         }
         return voidbind
