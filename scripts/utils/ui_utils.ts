@@ -34,38 +34,36 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
     }
 })
 
-export class MenuUtils {
+export class ActionFormUtils {
 
-    static MENU_DATA: any = { buttons: [], title: "", body: "" }
+    private MENU_DATA: { buttons: { key: string, callback: (player: Player) => void, icon?: string }[], title: string, body: string } = { buttons: [], title: "", body: "" }
 
-    static title(title: string) {
+    title(title: string) {
         this.MENU_DATA.title = title
-        return MenuUtils
+        return this
     }
 
-    static body(body: string) {
+    body(body: string) {
         this.MENU_DATA.body = body
-        return MenuUtils
+        return this
     }
 
-    static button(key: string, callback: () => void) {
-        this.MENU_DATA.buttons.push({ key, callback })
-        return MenuUtils
+    button(key: string, callback: (player: Player) => void, icon?: string) {
+        this.MENU_DATA.buttons.push({ key, callback, icon })
+        return this
     }
 
-    static show(player: Player) {
+    show(player: Player) {
         const menu = new ActionFormData()
         menu.title(this.MENU_DATA.title)
         if (this.MENU_DATA.body) {
             menu.body(this.MENU_DATA.body)
         }
         const menuData = {...this.MENU_DATA}
-        menuData.buttons.forEach((button: any) => {
-            menu.button(button.key)
-        })
+        menuData.buttons.forEach((button: any) => menu.button(button.key, button.icon))
         menu.show(player).then(({ selection }) => {
             if (selection === undefined) return
-            menuData.buttons[selection].callback()
+            menuData.buttons[selection].callback(player)
         })
         this.MENU_DATA = { buttons: [], title: "", body: "" }
     }

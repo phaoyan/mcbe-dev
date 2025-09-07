@@ -248,6 +248,11 @@ export class VecUtils {
         return VecUtils
     }
 
+    static moveView(dist: number) {
+        this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(this.DIRECTION, dist))
+        return VecUtils
+    }
+
     static moveToBlock(maxDist: number) {
         const targetBlock = this.ENTITY.getBlockFromViewDirection()
         if (!targetBlock) {

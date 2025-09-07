@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityDamageCause, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
+import { Entity, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
 import { VecUtils, GeometryUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
@@ -32,7 +32,7 @@ export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
         maxDistance: 128,
         excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
         excludeFamilies: ["projectile", "dummy"],
-        closest: 1
+        closest: 4
     }
 }
 
@@ -148,7 +148,7 @@ export class EntityOperations {
     }
 
     static getTargets(maxDistance: number = 32) {
-        if (!this.TARGET) return EntityOperations
+        if (!this.TARGET) return []
         return this.TARGET.dimension.getEntities({
             location: this.TARGET.location,
             maxDistance: maxDistance,
@@ -156,9 +156,9 @@ export class EntityOperations {
         })
     }
 
-    static triggerCombo(dpId: string, data: ComboData){
+    static triggerCombo(dpId: string, data: ComboData) {
         if (!this.TARGET) return
-        const comboState: {state: number, last: number} = DPUtils.curr(this.TARGET, dpId, {state: 0, last: 0})
+        const comboState: { state: number, last: number } = DPUtils.curr(this.TARGET, dpId, { state: 0, last: 0 })
         if (comboState.state >= data.length) {
             comboState.state = 0;
             comboState.last = 0
@@ -167,7 +167,7 @@ export class EntityOperations {
         if (delta < data[comboState.state].duration - 1) return
         if (delta >= data[comboState.state].duration + data[comboState.state].wait) {
             comboState.state = 0
-            comboState.last  = system.currentTick
+            comboState.last = system.currentTick
             data[0].callback(this.TARGET)
             DPUtils.set(this.TARGET, dpId, comboState)
             return
@@ -187,6 +187,7 @@ export class EntityOperationSeries {
     private _steps: { tick: number; action: (entity: Entity) => void }[] = []
     private _cursor: number = 0
     private _proxy: any
+    private _lastStep: { tick: number; action: (entity: Entity) => void } | undefined
 
     constructor(entity: Entity) {
         this._entity = entity
@@ -209,7 +210,9 @@ export class EntityOperationSeries {
                     if (typeof candidate === 'function' && !blacklist.has(prop)) {
                         return (...args: any[]) => {
                             const at = self._cursor
-                            self._steps.push({ tick: at, action: (entity) => { (EntityOperations.entity(entity) as any)[prop](...args) } })
+                            const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: (entity: Entity) => { (EntityOperations.entity(entity) as any)[prop](...args) } }
+                            self._steps.push(step)
+                            self._lastStep = step
                             return receiver
                         }
                     }
@@ -225,9 +228,27 @@ export class EntityOperationSeries {
         return this
     }
 
-    do(callback: (ops: typeof EntityOperations, entity: Entity) => void): EntityOperationSeries {
+    do(callback: (entity: Entity, ops: typeof EntityOperations) => void): EntityOperationSeries {
         const at = this._cursor
-        this._steps.push({ tick: at, action: (entity) => callback(EntityOperations.entity(entity), entity) })
+        const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: (entity: Entity) => callback(entity, EntityOperations.entity(entity)) }
+        this._steps.push(step)
+        this._lastStep = step
+        return this
+    }
+
+    for(ticks: number | number[]): EntityOperationSeries {
+        if (!this._lastStep) return this
+        const last = this._lastStep
+        const lastAction: (entity: Entity) => void = last.action
+        const intervals = Array.isArray(ticks) ? ticks : [ticks]
+        const baseTick = last.tick
+        for (const interval of intervals) {
+            const dt = Math.max(0, Math.floor(interval))
+            const at = baseTick + dt
+            const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: lastAction }
+            this._steps.push(step)
+            this._lastStep = step
+        }
         return this
     }
 
@@ -239,106 +260,69 @@ export class EntityOperationSeries {
     }
 
     start(): EntityOperationSeries { return this.run() }
+
+    // 声明EntityUtils方法的类型（为了更好的TypeScript支持）
+    damage!: (damageId: string, source?: Entity, tags?: string[]) => EntityOperationSeries
+    effect!: (effect: string, ticks: number, options?: EntityEffectOptions) => EntityOperationSeries
+    slowness!: (ticks: number, amp: number, showParticles: boolean) => EntityOperationSeries
+    knockbackBaseView!: (entity: Entity, f: number, y?: number, r?: number, ticks?: number) => EntityOperationSeries
+    knockbackBaseLoc!: (location: Entity | Vector3, f: number, y?: number, r?: number, ticks?: number) => EntityOperationSeries
+    rotateToDirection!: (direction: (target: Entity) => Vector3, ticks?: number) => EntityOperationSeries
+    rotateFacing!: (entity: Entity, ticks: number) => EntityOperationSeries
+    rotateToNearest!: (ticks: number, options?: EntityQueryOptions) => EntityOperationSeries
+    skillCooldown!: (skillId: string, skillCD: number, skillDuration: number) => EntityOperationSeries
+    skillAvailable!: (skillId: string) => number
+
+
 }
 
-export class EntityUtils {
+export class EntityQuery {
     private _entities: Entity[] = []
-    private static _methodsInitialized = false
-    private _seriesMap: Map<string, EntityOperationSeries> = new Map()
-
+    private static _geometryMethodsInitialized = false
     constructor(entities: Entity[] = []) {
         this._entities = entities
-        // 只在第一次创建实例时初始化批量方法与几何方法
-        if (!EntityUtils._methodsInitialized) {
-            EntityUtils.initializeBatchMethods()
-            EntityUtils.initializeGeometryMethods()
-            EntityUtils._methodsInitialized = true
+        if (!EntityQuery._geometryMethodsInitialized) {
+            EntityQuery.initializeGeometryMethods()
+            EntityQuery._geometryMethodsInitialized = true
         }
     }
 
-    static enumerate(entities: Entity[] = []): EntityUtils {
-        return new EntityUtils(entities)
+    static enumerate(entities: Entity[] = []): EntityQuery {
+        return new EntityQuery(entities)
     }
 
-    /**
- * 根据条件查询实体
- */
     static entities(
         entity: Entity,
+        maxDistance: number = 128,
         options: EntityQueryOptions = EntityUtilsOptions.Normal,
         self: boolean = false
-    ): EntityUtils {
-        const entities = entity.dimension.getEntities({ ...options, location: entity.location }).filter(e => self ? true : e.id !== entity.id)
-        return new EntityUtils(entities)
+    ): EntityQuery {
+        const entities = entity.dimension.getEntities({ ...options, location: entity.location, maxDistance: maxDistance }).filter(e => self ? true : e.id !== entity.id)
+        return new EntityQuery(entities)
     }
 
-    /**
-     * 根据类型查询实体
-     */
-    static entitiesByType(entity: Entity, type: string, distance: number = 128): EntityUtils {
+    static entitiesByType(entity: Entity, type: string, distance: number = 128): EntityQuery {
         const entities = entity.dimension.getEntities({
             location: entity.location,
             maxDistance: distance,
             type: type,
         })
-        return new EntityUtils(entities)
+        return new EntityQuery(entities)
     }
 
-    /**
-     * 根据ID查询实体
-     */
-    static entityById(id: string): EntityUtils {
+    static entityById(id: string): EntityQuery {
         const entity = world.getEntity(id)
-        return new EntityUtils(entity ? [entity] : [])
+        return new EntityQuery(entity ? [entity] : [])
     }
 
-    // 声明EntityUtils方法的类型（为了更好的TypeScript支持）
-    damage!: (damageId: string, source?: Entity, tags?: string[]) => EntityUtils
-    effect!: (effect: string, ticks: number, options?: EntityEffectOptions) => EntityUtils
-    slowness!: (ticks: number, amp: number, showParticles: boolean) => EntityUtils
-    knockbackBaseView!: (entity: Entity, f: number, y?: number, r?: number, ticks?: number) => EntityUtils
-    knockbackBaseLoc!: (location: Entity | Vector3, f: number, y?: number, r?: number, ticks?: number) => EntityUtils
-    rotateToDirection!: (direction: (target: Entity) => Vector3, ticks?: number) => EntityUtils
-    rotateFacing!: (entity: Entity, ticks: number) => EntityUtils
-    rotateToNearest!: (ticks: number, options?: EntityQueryOptions) => EntityUtils
-    skillCooldown!: (skillId: string, skillCD: number, skillDuration: number) => EntityUtils
-    skillAvailable!: (skillId: string) => number
-    wait!: (ticks: number) => EntityUtils
-    do!: (callback: (ops: typeof EntityOperations, entity: Entity) => void) => EntityUtils
-    run!: () => EntityUtils
-    start!: () => EntityUtils
-
-    // 声明GeometryUtils几何检测方法的类型
-    sphere!: (startPoint: Vector3, radius: number) => EntityUtils
-    cylinder!: (startPoint: Vector3, direction: Vector3, radius: number, length: number) => EntityUtils
-    cone!: (startPoint: Vector3, direction: Vector3, angle: number, length: number) => EntityUtils
-    cuboid!: (startPoint: Vector3, width: number, height: number) => EntityUtils
-    rect!: (startPoint: Vector3, direction: Vector3, leftToRightLength: number, upToDownLength: number, backToFrontLength: number) => EntityUtils
-    sector!: (startPoint: Vector3, direction: Vector3, height: number, angle: number, length: number) => EntityUtils
-
-    // ==================== 实例查询方法（一致的API设计） ====================
-
-    // 链式操作：对每个实体执行操作
-    each(callback: (entity: Entity) => void): EntityUtils {
-        this._entities.forEach(callback)
-        return this
-    }
-
-    // 过滤实体
-    filter(predicate: (entity: Entity) => boolean): EntityUtils {
+    filter(predicate: (entity: Entity) => boolean): EntityQuery {
         this._entities = this._entities.filter(predicate)
-        // 同步序列映射，移除不存在的实体
-        const ids = new Set(this._entities.map(e => e.id))
-        this._seriesMap.forEach((_, id) => { if (!ids.has(id)) this._seriesMap.delete(id) })
         return this
     }
 
     // 限制数量
-    limit(count: number): EntityUtils {
+    limit(count: number): EntityQuery {
         this._entities = this._entities.slice(0, count)
-        // 同步序列映射，移除不存在的实体
-        const ids = new Set(this._entities.map(e => e.id))
-        this._seriesMap.forEach((_, id) => { if (!ids.has(id)) this._seriesMap.delete(id) })
         return this
     }
 
@@ -362,56 +346,49 @@ export class EntityUtils {
         return this._entities.length === 0
     }
 
-    private _ensureSeries(entity: Entity): EntityOperationSeries {
-        const existed = this._seriesMap.get(entity.id)
-        if (existed) return existed
-        const series = EntityOperationSeries.for(entity) as unknown as EntityOperationSeries
-        this._seriesMap.set(entity.id, series)
-        return series
-    }
-
-    // 动态创建EntityUtils方法的批量版本（静态执行一次）
-    private static initializeBatchMethods(): void {
-        const blacklist = new Set<string>(['constructor'])
-        const methodNames = Object.getOwnPropertyNames(EntityOperationSeries.prototype)
-            .filter(name =>
-                !blacklist.has(name) &&
-                typeof (EntityOperationSeries.prototype as any)[name] === 'function'
-            )
-
-        methodNames.forEach(methodName => {
-            EntityUtils.prototype[methodName as keyof EntityUtils] = function (this: EntityUtils, ...args: any[]) {
-                this.each(entity => {
-                    const series = this._ensureSeries(entity) as any
-                    series[methodName](...args)
-                })
-                return this
-            } as any
-        })
-    }
-
+    // 声明GeometryUtils几何检测方法的类型
+    sphere!: (startPoint: Vector3, radius: number) => EntityQuery
+    cylinder!: (startPoint: Vector3, direction: Vector3, radius: number, length: number) => EntityQuery
+    cone!: (startPoint: Vector3, direction: Vector3, angle: number, length: number) => EntityQuery
+    cuboid!: (startPoint: Vector3, width: number, height: number) => EntityQuery
+    rect!: (startPoint: Vector3, direction: Vector3, leftToRightLength: number, upToDownLength: number, backToFrontLength: number) => EntityQuery
+    sector!: (startPoint: Vector3, direction: Vector3, height: number, angle: number, length: number) => EntityQuery
 
     // 动态创建GeometryUtils几何检测方法（静态执行一次）
     private static initializeGeometryMethods(): void {
-        // 获取所有几何检测方法名
         const geometryMethods = Object.getOwnPropertyNames(GeometryUtils)
             .filter(name =>
                 name !== 'length' &&
                 name !== 'name' &&
                 name !== 'prototype' &&
-                typeof GeometryUtils[name as keyof typeof GeometryUtils] === 'function'
+                typeof (GeometryUtils as any)[name] === 'function'
             )
 
         geometryMethods.forEach(methodName => {
-            // 为每个GeometryUtils几何检测方法在原型上创建对应的筛选方法
-            EntityUtils.prototype[methodName as keyof EntityUtils] = function (this: EntityUtils, ...args: any[]) {
-                // 使用GeometryUtils的对应方法筛选实体
+            (EntityQuery.prototype as any)[methodName] = function (this: EntityQuery, ...args: any[]) {
                 this._entities = this._entities.filter(entity => {
-                    // 将实体位置作为第一个参数传入GeometryUtils方法
                     return (GeometryUtils as any)[methodName](entity.location, ...args)
                 })
                 return this
-            } as any
+            }
         })
     }
+}
+
+export class EntityQuerySchedule {
+    private schedule: { query: EntityQuery, operation: EntityOperationSeries, tick: number }[] = []
+
+    static create(){
+        return new EntityQuerySchedule()
+    }
+
+    for(params: { query: EntityQuery, operation: EntityOperationSeries, ticks: number[] }){
+        params.ticks.forEach(tick => this.schedule.push({ query: params.query, operation: params.operation, tick }))
+        return this
+    }
+
+    run(){
+        this.schedule.forEach(item => TimeUtils.timeout(() => { item.operation.run() }, item.tick))
+    }
+
 }

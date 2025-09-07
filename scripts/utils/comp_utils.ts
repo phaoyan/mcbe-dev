@@ -68,13 +68,14 @@ const createCompUtils = (): CompUtils => {
                 };
             }
 
-            // 将驼峰命名转换为 PascalCase 以匹配 EntityComponentTypes
-            const componentType = prop.replace(/([A-Z])/g, '_$1').toUpperCase();
+            // 将属性名转为 PascalCase 以匹配 EntityComponentTypes 的键
+            const componentKey = prop.charAt(0).toUpperCase() + prop.slice(1);
 
             return function (entity: Entity) {
-                const componentTypeEnum = EntityComponentTypes[componentType as keyof typeof EntityComponentTypes];
+                const typeKey = componentKey as keyof typeof EntityComponentTypes;
+                const componentTypeEnum = EntityComponentTypes[typeKey];
                 if (!componentTypeEnum) {
-                    throw new Error(`Unknown component type: ${componentType}`);
+                    throw new Error(`Unknown component type: ${String(componentKey)}`);
                 }
                 return entity.getComponent(componentTypeEnum) as any;
             };

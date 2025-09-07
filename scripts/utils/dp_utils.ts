@@ -87,7 +87,7 @@ export class DPUtils {
     }
 
     static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any, delay?: number) {
-        if (!target) return
+        if (!target || (target instanceof Entity && !target.isValid)) return
         if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
         const prev = this.curr(target, key, placeHolder)  // 获取解析后的之前值，保持类型一致
@@ -110,7 +110,7 @@ export class DPUtils {
     }
 
     static temp(target: Entity | ItemStack | World, key: string, value: any, ticks: number, placeHolder?: any) {
-        if (!target) return placeHolder
+        if (!target || (target instanceof Entity && !target.isValid)) return placeHolder
         const prev = this.curr(target, key, placeHolder)
         this.set(target, key, value)
         this.set(target, key, prev, placeHolder ?? prev, ticks)
@@ -118,6 +118,7 @@ export class DPUtils {
     }
 
     static activate(target: Entity | ItemStack | World, key: string, value: any, duration?: number, placeHolder?: any) {
+        if (!target || (target instanceof Entity && !target.isValid)) return
         if (!(target instanceof Entity)) return
         if (typeof value === "function")
             value = value(DPUtils.curr(target, key, placeHolder))
@@ -131,6 +132,7 @@ export class DPUtils {
     }
 
     static deactivate(target: Entity | ItemStack | World, key: string, placeHolder?: any) {
+        if (!target || (target instanceof Entity && !target.isValid)) return
         if (!(target instanceof Entity)) return
         DPUtils.store().world_dp_activate.set(world, (curr: any) => {
             const newTimeline = { ...curr }
@@ -143,14 +145,14 @@ export class DPUtils {
     }
 
     static curr(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
-        if (!target) return placeHolder
+        if (!target || (target instanceof Entity && !target.isValid)) return placeHolder
         const raw = target.getDynamicProperty(key)
         if (raw === undefined) return placeHolder
         return JSON.parse(target.getDynamicProperty(key) as string)
     }
 
     static prev(target: Entity | ItemStack | World, key: string, placeHolder: any) {
-        if (!target) return placeHolder
+        if (!target || (target instanceof Entity && !target.isValid)) return placeHolder
         return this.curr(target, `${key}_prev`, placeHolder)
     }
 
@@ -173,6 +175,7 @@ export class DPUtils {
     // 将动态属性和静态属性同步
     static sync(key: string, propertyId: string, placeHolder: boolean | number | string) {
         DPUtils.register(key, (target, curr, prev) => {
+            if (!target || (target instanceof Entity && !target.isValid)) return
             if (!(target instanceof Entity)) return
             target.setProperty(propertyId, (curr as typeof placeHolder) ?? placeHolder)
         })

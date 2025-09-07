@@ -11,11 +11,11 @@ export enum NodeState {
 }
 
 // 行为树调试开关（按需打开）
-const BT_TRACE = false;
+const BT_TRACE = true;
 function btTrace(message: string): void {
     if (!BT_TRACE) return;
     try {
-        console.log(`[BT] ${message}`);
+        console.warn(`[BT] ${message}`);
     } catch { /* ignore */ }
 }
 
@@ -504,8 +504,8 @@ export class BehaviorUtils {
     }
 }
 
-const behaviorMapGC = ()=>{
-    try {        
+const behaviorMapGC = () => {
+    try {
         // 清理无效实体映射
         const map = DPUtils.store().world_behavior_map.curr(world, {} as Record<string, string>);
         let changed = false;
@@ -519,7 +519,7 @@ const behaviorMapGC = ()=>{
         if (changed) {
             DPUtils.store().world_behavior_map.set(world, map, {});
         }
-    } catch {}
+    } catch { }
 }
 
 // 定时清理与迁移：
@@ -532,6 +532,7 @@ export interface SkillConfig {
     action: (entity: Entity) => NodeState;
     filter: (entity: Entity) => boolean;
     duration?: number; // 持续时间（tick），如果设置则技能执行期间不会被其他技能打断
+    once?: boolean; // 是否仅在技能开始时执行一次action，锁定期间返回RUNNING
 }
 
 export class BehaviorTemplates {
@@ -561,6 +562,7 @@ export class BehaviorTemplates {
             execute: (skill: SkillConfig) => (entity: Entity) => {
                 // 设置技能状态
                 BlackboardManager.set(entity, 'current_skill', skill.id);
+                BlackboardManager.set(entity, 'current_skill_once', !!skill.once);
 
                 // 更新冷却时间
                 const cooldowns = BlackboardManager.get(entity, 'skill_cooldowns', {});
@@ -581,11 +583,20 @@ export class BehaviorTemplates {
                 const skillConfig = skills.find(s => s.id === currentSkill);
                 if (!skillConfig) return NodeState.FAILURE;
 
+                const once = BlackboardManager.get(entity, 'current_skill_once', false) === true;
+                if (once) {
+                    // 一次性执行：锁定期内直接RUNNING，锁定结束后清理并返回FAILURE以退出锁门
+                    const inLock = BlackboardManager.get(entity, 'skill_locking', 0) > system.currentTick;
+                    if (inLock) return NodeState.RUNNING;
+                    BlackboardManager.delete(entity, 'current_skill');
+                    BlackboardManager.delete(entity, 'current_skill_once');
+                    return NodeState.FAILURE;
+                }
+
                 const result = skillConfig.action(entity);
 
                 // 技能完成时清除状态
                 if (result !== NodeState.RUNNING) {
-                    // 技能完成时仅清除当前技能，保留锁直至超时
                     BlackboardManager.delete(entity, 'current_skill');
                 }
 
@@ -600,6 +611,7 @@ export class BehaviorTemplates {
         moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
         findTarget?: (entity: Entity) => NodeState; // 寻找目标行为，可选
         idleBehavior?: (entity: Entity) => NodeState; // 空闲行为，可选
+        hurtAction?: (entity: Entity) => NodeState; // 受击动作，可选
     } = {}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
@@ -611,13 +623,21 @@ export class BehaviorTemplates {
             .selector("MonsterMainSelector")
             .sequence("DeathHandler")
             .condition("IsDead", actions.death.check)
-            .action("DeathAction", actions.death.execute(deathAction))
+            .action("DeathAction", (entity) => {
+                const handled = BlackboardManager.get(entity, '__death_handled', false);
+                if (!handled) {
+                    BlackboardManager.set(entity, '__death_handled', true);
+                    return actions.death.execute(deathAction)(entity);
+                }
+                return NodeState.SUCCESS;
+            })
             .end()
             .sequence("HasTargetBehavior")
             .condition("HasTarget", actions.target.check)
             .selector("SkillSystem")
             .action("LockedGate", (entity) => {
-                if (actions.skill.checkLock(entity)) {
+                const locked = actions.skill.checkLock(entity);
+                if (locked) {
                     const res = actions.skill.continueCurrent(skills)(entity);
                     return res === NodeState.FAILURE ? NodeState.RUNNING : res;
                 }
@@ -625,12 +645,20 @@ export class BehaviorTemplates {
             })
             .actions(skills.map(skill => ({
                 name: `Skill_${skill.id}`,
-                action: (entity: Entity) =>
-                    !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity) ? NodeState.FAILURE :
-                        !skill.filter(entity) ? NodeState.FAILURE :
-                            actions.skill.execute(skill)(entity)
+                action: (entity: Entity) => {
+                    const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
+                    const canFilter = skill.filter(entity);
+                    if (!canCD || !canFilter) return NodeState.FAILURE;
+                    return actions.skill.execute(skill)(entity);
+                }
             })))
             .end()
+            .action("HurtIfNotCasting", (entity) => {
+                const lastHurtTick = BlackboardManager.get(entity, '__hurt', 0);
+                if (!lastHurtTick) return NodeState.SUCCESS; // 无受击标记，继续后续行为
+                BlackboardManager.delete(entity, '__hurt');
+                return (config.hurtAction ? config.hurtAction(entity) : NodeState.SUCCESS);
+            })
             .action("MoveToTarget", moveToTarget)
             .end()
             .sequence("TryFindTarget")
@@ -807,6 +835,16 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
     },
     [EntityEventIds.Death]: (entity) => {
         DPUtils.store().mob_dead.set(entity, true);
+    },
+    [EntityEventIds.Hurt]: (entity) => {
+        // 仅在未施法/未锁定时记录受击，避免在技能结束后触发
+        const inLock = BlackboardManager.get(entity, 'skill_locking', 0) > system.currentTick;
+        const hasCurrent = !!BlackboardManager.get(entity, 'current_skill');
+        if (inLock || hasCurrent) {
+            BlackboardManager.delete(entity, '__hurt');
+            return;
+        }
+        BlackboardManager.set(entity, '__hurt', system.currentTick);
     },
     [EntityEventIds.TargetAcquired]: (entity) => {
         DPUtils.store().mob_has_target.set(entity, true);

@@ -1,6 +1,6 @@
 import { Entity, Player, system, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { EntityUtils } from "./entity_utils";
+import { EntityQuery } from "./entity_utils";
 import entity_ids from "../json/entity_ids.json"
 import { Vector3Utils } from "@minecraft/math";
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
@@ -43,7 +43,7 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
         entity_ids.lclick_dummy,
     ]
     dummyTypes.forEach((dummyType)=>{
-        const dummy = EntityUtils.entitiesByType(target, dummyType)
+        const dummy = EntityQuery.entitiesByType(target, dummyType)
             .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
             .first()
         if (curr) {
