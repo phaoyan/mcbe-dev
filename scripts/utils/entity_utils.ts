@@ -172,6 +172,7 @@ export class EntityOperation {
     setTargetedBy(entity: Entity): EntityOperation {
         return this._enqueue((target: Entity) => {
             target.addTag(TagList.TargetedBy(entity.typeId))
+            DPUtils.store().mob_targeted_by.set(target, (curr: string[])=>[...curr, entity.typeId], [])
         })
     }
 

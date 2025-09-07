@@ -16,6 +16,7 @@ export const dpList = {
     mob_skill_locking: "minecraft_dev:mob_skill_locking",
     mob_behavior_state: "minecraft_dev:mob_behavior_state",
     mob_has_target: "minecraft_dev:mob_has_target",
+    mob_targeted_by: "minecraft_dev:mob_targeted_by",
     mob_dead: "minecraft_dev:mob_dead",
     mob_blackboard: "minecraft_dev:mob_blackboard", // 行为树blackboard数据
 
