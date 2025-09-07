@@ -92,12 +92,12 @@ export class DamageUtils {
         return attribute
     }
 
-    static damage(damageId: string, defender: Entity, attacker?: Entity, tags: string[] = []){
+    static damage(damageRate: number, defender: Entity, attacker?: Entity, tags: string[] = []){
         const defenderAttribute = this.damageAttribute(defender)
         const attackerAttribute = attacker ? this.damageAttribute(attacker) : DEFAULT_ENTITY_ATTRIBUTE
 
         // 1. 技能倍率（damageId）暂时假设为1，后续可扩展为根据damageId查表
-        const skillRatio = DamageRateList[damageId] ?? 1
+        const skillRatio = damageRate
 
         // 2. 攻击力
         const atk = attackerAttribute.atk ?? DEFAULT_ENTITY_ATTRIBUTE.atk

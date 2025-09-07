@@ -84,9 +84,9 @@ export class EntityOperation {
         return (entity: Entity) => this.run(entity)
     }
 
-    damage(damageId: string, source?: Entity, tags: string[] = []): EntityOperation {
+    damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOperation {
         return this._enqueue((entity: Entity) => {
-            DamageUtils.damage(damageId, entity, source, tags)
+            DamageUtils.damage(damageRate, entity, source, tags)
         })
     }
 
@@ -199,6 +199,19 @@ export class EntityOperation {
             }
         })
     }
+
+    static getTargets(entity: Entity, maxDistance: number = 32) {
+        return entity.dimension.getEntities({
+            location: entity.location,
+            maxDistance: maxDistance,
+            tags: [TagList.TargetedBy(entity.typeId)]
+        })
+    }
+
+    static skillAvailable(entity: Entity, skillId: string) {
+        if (!entity) return 0
+        return DPUtils.store().mob_skill_cooldown.curr(entity)[skillId] ?? 0
+    }
 }
 
 export class EntityQuery {
@@ -206,6 +219,15 @@ export class EntityQuery {
     private _filters: ((entity: Entity)=>boolean)[] = []
     private _sort: (entity: Entity)=>number = () => 0
     private _limit: number = 99999
+    private static _methodsInitialized = false
+
+
+    constructor() {
+        if (!EntityQuery._methodsInitialized) {
+            EntityQuery.initializeGeometryMethods()
+            EntityQuery._methodsInitialized = true
+        }
+    }
 
     static enumerate(entities: Entity[] = []): EntityQuery {
         const query = new EntityQuery()
@@ -268,5 +290,29 @@ export class EntityQuery {
 
     first() {
         return this._query()[0]
+    }
+
+    // 动态创建GeometryUtils几何检测方法（静态执行一次）
+    private static initializeGeometryMethods(): void {
+        // 获取所有几何检测方法名
+        const geometryMethods = Object.getOwnPropertyNames(GeometryUtils)
+            .filter(name =>
+                name !== 'length' &&
+                name !== 'name' &&
+                name !== 'prototype' &&
+                typeof GeometryUtils[name as keyof typeof GeometryUtils] === 'function'
+            )
+
+        geometryMethods.forEach(methodName => {
+            // 为每个GeometryUtils几何检测方法在原型上创建对应的筛选方法
+            EntityQuery.prototype[methodName as keyof EntityQuery] = function (this: EntityQuery, ...args: any[]) {
+                // 使用GeometryUtils的对应方法筛选实体
+                this._filters.push(entity => {
+                    // 将实体位置作为第一个参数传入GeometryUtils方法
+                    return (GeometryUtils as any)[methodName](entity.location, ...args)
+                })
+                return this
+            } as any
+        })
     }
 }
