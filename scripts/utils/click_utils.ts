@@ -39,15 +39,13 @@ BehaviorUtils.register('follow_lclick_dummy', (entity: Entity) => {
 });
 DPUtils.store().lclick_enable.register((target, curr, prev) => {
     if (!(target instanceof Player)) return
-    const dummyTypes = [
-        entity_ids.lclick_dummy,
-    ]
+    const dummyTypes = [entity_ids.lclick_dummy]
     dummyTypes.forEach((dummyType)=>{
         const dummy = EntityQuery.entitiesByType(target, dummyType)
             .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
-            .first()
-        if (curr) {
-            if (dummy) return
+            .limit(1)
+            .get()[0]
+        if (curr && !dummy) {
             const lclick = target.dimension.spawnEntity(dummyType, target.location)
             DPUtils.store().lclick_host.set(lclick, target.id)
             BehaviorUtils.bind(lclick.id, 'follow_lclick_dummy')
