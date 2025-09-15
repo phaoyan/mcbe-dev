@@ -91,6 +91,7 @@ export class DPUtils {
             prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, dpList[k as keyof typeof dpList], placeHolder),
             both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, dpList[k as keyof typeof dpList], placeHolder),
             set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, dpList[k as keyof typeof dpList], value, placeHolder, delay),
+            cancel: (target: Entity | ItemStack | World, startTick?: number) => this.cancel(target, dpList[k as keyof typeof dpList], startTick),
             temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, dpList[k as keyof typeof dpList], value, ticks, placeHolder),
             activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, dpList[k as keyof typeof dpList], value, duration, placeHolder),
             deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, dpList[k as keyof typeof dpList], placeHolder),
@@ -119,6 +120,17 @@ export class DPUtils {
                 return newTimeline
             }, {})
         }
+    }
+
+    static cancel(target: Entity | ItemStack | World, key: string, startTick?: number) {
+        if (!(target instanceof Entity)) return
+        DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
+            const newTimeline = { ...curr }
+            Object.keys(newTimeline).filter(t=>parseInt(t)>=(startTick??system.currentTick)).forEach(t=>{
+                newTimeline[t] = newTimeline[t].filter((item: any)=>!(item.e===target.id && item.k===key))
+            })
+            return newTimeline
+        }, {})
     }
 
     static temp(target: Entity | ItemStack | World, key: string, value: any, ticks: number, placeHolder?: any) {

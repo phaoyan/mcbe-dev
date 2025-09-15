@@ -12,6 +12,7 @@ import "./utils/click_utils";
 import "./utils/comp_utils";
 import "./utils/damage_utils";
 import "./utils/dp_utils";
+import "./utils/effect_utils";
 import "./utils/entity_utils";
 import "./utils/inventory_utils";
 import "./utils/item_utils";

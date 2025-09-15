@@ -6,7 +6,6 @@ import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
-import { EntityEventIds } from "../lists/event_list";
 
 export type ComboData = {
     duration: number
@@ -89,8 +88,22 @@ export class EntityOperation {
 
     superarmor(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
-            entity.triggerEvent(EntityEventIds.SuperArmorOn)
-            TimeUtils.timeout(() => entity.triggerEvent(EntityEventIds.SuperArmorOff), ticks)
+            DPUtils.store().effect_superarmor.cancel(entity)
+            DPUtils.store().effect_superarmor.set(entity, true)
+            DPUtils.store().effect_superarmor.set(entity, false, false, ticks)
+        })
+    }
+
+    dizzy(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const dir = {...entity.getViewDirection()}
+            TimeUtils.timeseries(() => {
+                entity.setRotation({ x: 0, y: MathUtils.yaw(dir.x, dir.z) })
+            }, TimeUtils.ticks(1, 1, ticks))
+            DPUtils.store().entity_sched_id.set(entity, undefined)
+            DPUtils.store().effect_dizzy.cancel(entity)
+            DPUtils.store().effect_dizzy.set(entity, true)
+            DPUtils.store().effect_dizzy.set(entity, false, false, ticks)
         })
     }
 
@@ -315,8 +328,12 @@ export class EntityQuery {
     }
 
     sched(callback: (entity: Entity) => void, ticks: number[], params: any[] = []) {
+        if (!this._target) return
+        const schedId = system.currentTick
+        DPUtils.store().entity_sched_id.set(this._target, schedId)
         TimeUtils.timeseries(() => {
             if (!this._target) return
+            if (DPUtils.store().entity_sched_id.curr(this._target) !== schedId) return
             let entities = this._query(this._target)
             entities = entities.sort((a, b) => this._sort(a) - this._sort(b))
             entities = entities.slice(0, this._limit)

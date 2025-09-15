@@ -1,5 +1,5 @@
 import { BehaviorTemplates, BehaviorUtils, NodeState } from "../utils/behavior_utils";
-import { GameMode, Player, world } from "@minecraft/server";
+import { GameMode, Player, system, world } from "@minecraft/server";
 import { DPUtils } from "../utils/dp_utils";
 import animation_ids from "../json/animation_ids.json";
 import { MinecraftEntityTypes } from "@minecraft/vanilla-data";
@@ -16,14 +16,18 @@ BehaviorUtils.register("blinded_deceiver", () => BehaviorTemplates.monster({
             id: "stab",
             cooldown: 200,
             duration: 65,
+            once: true,
             filter: (entity) => (
                 !!DPUtils.store().mob_target.curr(entity) &&
                 EntityOperation.targetDist(entity) < 4
             ),
             action: (entity) => {
-                EntityOperation.create().superarmor(65).run(entity)
+                EntityOperation.create().superarmor(50).run(entity)
                 EntityOperation.create().slowness(65, 5).run(entity)
                 entity.playAnimation(animation_ids.exp_behavior.owl_form.stab)
+                const query = EntityQuery.entities(entity, { dist: 8 })
+                const operation = EntityOperation.create().damage(DamageRateList.blinded_deceiver_stab, entity).callable()
+                query.sched(operation, TimeUtils.ticks(20,1,100))
                 return NodeState.SUCCESS
             }
         },
@@ -31,16 +35,18 @@ BehaviorUtils.register("blinded_deceiver", () => BehaviorTemplates.monster({
             id: "slash",
             cooldown: 200,
             duration: 43,
+            once: true,
             filter: (entity) => (
                 !!DPUtils.store().mob_target.curr(entity) &&
                 EntityOperation.targetDist(entity) < 8
             ),
             action: (entity) => {
-                EntityOperation.create().superarmor(43).run(entity)
+                console.warn("Slash")
+                EntityOperation.create().superarmor(35).run(entity)
                 EntityOperation.create().slowness(43, 5).run(entity)
                 entity.playAnimation(animation_ids.exp_behavior.owl_form.slash)
                 const query = EntityQuery.entities(entity, { dist: 8, offset: [4, 0, 0] })
-                const operation = EntityOperation.create().damage(DamageRateList.blinded_deceiver_slash, entity).callable()
+                const operation = EntityOperation.create().damage(DamageRateList.blinded_deceiver_slash, entity).dizzy(20).callable()
                 query.sched(operation, [8, 26])
                 return NodeState.SUCCESS
             }
@@ -56,9 +62,9 @@ BehaviorUtils.register("blinded_deceiver", () => BehaviorTemplates.monster({
                 EntityOperation.targetDist(entity) < 16
             ),
             action: (entity) => {
+                console.warn("Bind")
                 const target = EntityOperation.target(entity)
                 if (!target) return NodeState.SUCCESS
-                EntityOperation.create().superarmor(45).run(entity)
                 entity.playAnimation(animation_ids.exp_behavior.owl_form.bind)
                 EntityOperation.create()
                     .slowness(43, 5)
@@ -78,6 +84,7 @@ BehaviorUtils.register("blinded_deceiver", () => BehaviorTemplates.monster({
     hurtAction: (entity) => {
         // 受击时：打断移动并播放受伤动画
         entity.playAnimation(animation_ids.exp_behavior.owl_form.hurt)
+        EntityOperation.create().dizzy(40).run(entity)
         entity.clearVelocity()
         return NodeState.SUCCESS
     },
@@ -107,4 +114,10 @@ BehaviorUtils.register("blinded_deceiver", () => BehaviorTemplates.monster({
 world.afterEvents.entitySpawn.subscribe(({ entity }) => {
     if (entity.typeId !== entity_ids.blinded_deceiver) return
     BehaviorUtils.bind(entity.id, "blinded_deceiver")
+})
+
+world.afterEvents.entityHitEntity.subscribe(({ damagingEntity, hitEntity }) => {
+    if (damagingEntity.typeId === MinecraftEntityTypes.Player) {
+        DPUtils.store().entity_sched_id.set(hitEntity, undefined)
+    }
 })

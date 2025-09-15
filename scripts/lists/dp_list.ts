@@ -24,4 +24,9 @@ export const dpList = {
     npc_initiator: "minecraft_dev:npc_initiator",
 
     entity_faction: "minecraft_dev:entity_faction", // 实体阵营
+    entity_sched_id: "minecraft_dev:entity_sched_id", // 实体调度id, 将其设置为undefined可以中断调度
+
+
+    effect_superarmor: "minecraft_dev:effect_superarmor",
+    effect_dizzy: "minecraft_dev:effect_dizzy",
 }

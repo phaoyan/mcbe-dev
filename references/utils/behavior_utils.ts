@@ -585,7 +585,7 @@ export class BehaviorTemplates {
                 const skillConfig = skills.find(s => s.id === currentSkill);
                 if (!skillConfig) return NodeState.FAILURE;
 
-                const once = BlackboardManager.get(entity, 'current_skill_once', false) === true;
+                const once = BlackboardManager.get(entity, 'current_skill_once', true) === true;
                 if (once) {
                     // 一次性执行：锁定期内直接RUNNING，锁定结束后清理并返回FAILURE以退出锁门
                     const inLock = BlackboardManager.get(entity, 'skill_locking', 0) > system.currentTick;
@@ -642,6 +642,10 @@ export class BehaviorTemplates {
                         if (locked) return NodeState.SUCCESS;
                         return hurtAction(entity);
                     })
+                    .end()
+                .sequence("DizzyHandler")
+                    .condition("IsDizzy", (entity) => DPUtils.store().effect_dizzy.curr(entity))
+                    .action("DizzyAction", () => NodeState.SUCCESS)
                     .end()
                 .sequence("HasTargetBehavior")
                     .condition("HasTarget", actions.target.check)
@@ -711,9 +715,7 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
         DPUtils.store().mob_hurt.set(entity, system.currentTick);
     },
     [EntityEventIds.TargetAcquired]: (entity) => {
-        const target = EntityQuery.entities(entity, {dist: 64, filter: (target)=>{
-            return DPUtils.store().mob_targeted_by.curr(target,[]).includes(entity.id)
-        }}).first()
+        const target = EntityQuery.entities(entity, {dist: 64, filter: (target)=>DPUtils.store().mob_targeted_by.curr(target,[]).includes(entity.id)}).first()
         if (!target) return
         DPUtils.store().mob_target.set(entity, target.id);
     },
