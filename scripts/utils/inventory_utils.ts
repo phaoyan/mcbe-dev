@@ -101,18 +101,27 @@ export class InventoryUtils {
         return true
     }
 
-    static itembinds(data: { dpId: string, itembinds: { [key: string]: ItemBind }, keyMapping?: (key: any, target?: Entity)=>string }) {
+    static itembinds(data: { dpId: string, itembinds: { [key: string]: ItemBind }, keyMapping?: (key: any, target: Entity) => string }) {
         const itembinds = data.itembinds
         world.afterEvents.worldLoad.subscribe(() => {
-            DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
+            DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string | string[], prev: string | string[]) => {
                 if (!(target instanceof Player)) return
-                if (curr === prev) return
-                if (data.keyMapping) {
-                    curr = data.keyMapping(curr, target)
-                    prev = data.keyMapping(prev, target)
+                const normalize = (value: any): string[] => {
+                    const arrayValue = Array.isArray(value) ? value : (value === undefined || value === null ? [] : [value])
+                    return data.keyMapping ? arrayValue.map((k: any) => data.keyMapping!(k, target)) : arrayValue
                 }
-                if (!!prev && Object.keys(itembinds).includes(prev)) {
-                    const prevItembind = itembinds[prev]
+
+                const currKeys = normalize(curr)
+                const prevKeys = normalize(prev)
+
+                if (currKeys.length === prevKeys.length && prevKeys.every(k => currKeys.includes(k))) return
+
+                const keysToRemove = prevKeys.filter(k => !currKeys.includes(k))
+                const keysToAdd = currKeys.filter(k => !prevKeys.includes(k))
+
+                for (const key of keysToRemove) {
+                    if (!(key in itembinds)) continue
+                    const prevItembind = itembinds[key]
                     prevItembind.inventory?.forEach(item => {
                         if (item instanceof ItemUtils) {
                             InventoryUtils.clear(target, item.get().typeId)
@@ -127,8 +136,10 @@ export class InventoryUtils {
                     prevItembind.mainhand?.get() && InventoryUtils.clear(target, prevItembind.mainhand?.get().typeId)
                     prevItembind.offhand?.get() && InventoryUtils.clear(target, prevItembind.offhand?.get().typeId)
                 }
-                if (Object.keys(itembinds).includes(curr)) {
-                    const currItembind = itembinds[curr]
+
+                for (const key of keysToAdd) {
+                    if (!(key in itembinds)) continue
+                    const currItembind = itembinds[key]
                     currItembind.inventory?.forEach(item => {
                         if (item instanceof ItemUtils) {
                             InventoryUtils.give(target, item.get())

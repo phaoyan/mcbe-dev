@@ -1,40 +1,18 @@
 import { Vector3Utils } from "@minecraft/math";
 import { Entity, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
-import { VecUtils, GeometryUtils, MathUtils } from "./math_utils";
+import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
+import { EntityEventIds } from "../lists/event_list";
 
 export type ComboData = {
     duration: number
     wait: number
     callback: (entity: Entity) => void
 }[]
-
-export const EntityUtilsOptions: { [key: string]: EntityQueryOptions } = {
-    Normal: {
-        maxDistance: 128,
-        excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
-        excludeFamilies: ["projectile", "dummy"],
-    },
-    Dummy: {
-        maxDistance: 128,
-        families: ["dummy"],
-    },
-    Both: {
-        maxDistance: 128,
-        excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
-        excludeFamilies: ["projectile"],
-    },
-    Closest: {
-        maxDistance: 128,
-        excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
-        excludeFamilies: ["projectile", "dummy"],
-        closest: 4
-    }
-}
 
 export class EntityOperation {
     private _steps: { tick: number; action: (entity: Entity) => void }[] = []
@@ -48,6 +26,11 @@ export class EntityOperation {
         const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action }
         this._steps.push(step)
         this._lastStep = step
+        return this
+    }
+
+    at(tick: number): EntityOperation {
+        this._cursor = tick
         return this
     }
 
@@ -81,7 +64,9 @@ export class EntityOperation {
     }
 
     callable() {
-        return (entity: Entity) => this.run(entity)
+        return (entity: Entity) => {
+            this.run(entity)
+        }
     }
 
     damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOperation {
@@ -99,6 +84,13 @@ export class EntityOperation {
     slowness(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOperation {
         return this._enqueue((entity: Entity) => {
             entity.addEffect(MinecraftEffectTypes.Slowness, ticks, { amplifier: amp, showParticles: showParticles })
+        })
+    }
+
+    superarmor(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            entity.triggerEvent(EntityEventIds.SuperArmorOn)
+            TimeUtils.timeout(() => entity.triggerEvent(EntityEventIds.SuperArmorOff), ticks)
         })
     }
 
@@ -121,6 +113,15 @@ export class EntityOperation {
             TimeUtils.timeseries(() => {
                 entity.applyKnockback({ x: unit.x * f + unit.z * r, z: unit.z * f - unit.x * r }, y)
             }, TimeUtils.ticks(1, 1, ticks))
+        })
+    }
+
+    knockbackToPlace(location: Entity | Vector3, y: number = 0, scaler: number = 1): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            let loc = location as Vector3
+            if (location instanceof Entity) loc = location.location
+            const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(loc, entity.location)), Vector3Utils.distance(entity.location, loc) * scaler)
+            entity.applyKnockback({ x: unit.x, z: unit.z }, y)
         })
     }
 
@@ -172,7 +173,7 @@ export class EntityOperation {
     setTargetedBy(entity: Entity): EntityOperation {
         return this._enqueue((target: Entity) => {
             target.addTag(TagList.TargetedBy(entity.typeId))
-            DPUtils.store().mob_targeted_by.set(target, (curr: string[])=>[...curr, entity.typeId], [])
+            DPUtils.store().mob_targeted_by.set(target, (curr: string[]) => (curr ?? []).includes(entity.id) ? curr : [...(curr ?? []), entity.id], [])
         })
     }
 
@@ -201,12 +202,14 @@ export class EntityOperation {
         })
     }
 
-    static getTargets(entity: Entity, maxDistance: number = 32) {
-        return entity.dimension.getEntities({
-            location: entity.location,
-            maxDistance: maxDistance,
-            tags: [TagList.TargetedBy(entity.typeId)]
-        })
+    static target(entity: Entity) {
+        const targetId = DPUtils.store().mob_target.curr(entity)
+        return targetId ? world.getEntity(targetId) : undefined
+    }
+
+    static targetDist(entity: Entity) {
+        const target = EntityOperation.target(entity)
+        return target ? Vector3Utils.distance(entity.location, target.location) : 99999
     }
 
     static skillAvailable(entity: Entity, skillId: string) {
@@ -216,19 +219,10 @@ export class EntityOperation {
 }
 
 export class EntityQuery {
-    private _query: ()=>Entity[] = () => []
-    private _filters: ((entity: Entity)=>boolean)[] = []
-    private _sort: (entity: Entity)=>number = () => 0
+    private _target: Entity | undefined
+    private _query: (target: Entity) => Entity[] = () => []
+    private _sort: (entity: Entity) => number = () => 0
     private _limit: number = 99999
-    private static _methodsInitialized = false
-
-
-    constructor() {
-        if (!EntityQuery._methodsInitialized) {
-            EntityQuery.initializeGeometryMethods()
-            EntityQuery._methodsInitialized = true
-        }
-    }
 
     static enumerate(entities: Entity[] = []): EntityQuery {
         const query = new EntityQuery()
@@ -238,31 +232,76 @@ export class EntityQuery {
 
     static entities(
         entity: Entity,
-        maxDistance: number = 128,
-        options: EntityQueryOptions = EntityUtilsOptions.Normal,
-        self: boolean = false
+        options: {
+            dist: number
+            offset?: number[] // FYR
+            types?: string[]
+            families?: string[]
+            excludeTypes?: string[]
+            excludeFamilies?: string[]
+            self?: boolean
+            friendlyFire?: boolean
+            filter?: (entity: Entity) => boolean
+        }
     ): EntityQuery {
-        const entities = entity.dimension.getEntities({ ...options, location: entity.location, maxDistance: maxDistance }).filter(e => self ? true : e.id !== entity.id)
-        return this.enumerate(entities)
-    }
-
-    static entitiesByType(entity: Entity, type: string, distance: number = 128): EntityQuery {
-        const entities = entity.dimension.getEntities({
-            location: entity.location,
-            maxDistance: distance,
-            type: type,
-        })
-        return this.enumerate(entities)
+        const {
+            dist = 64,
+            offset = [0, 0, 0],
+            types = [],
+            families = [],
+            excludeTypes = ["minecraft:item", "minecraft:xp_orb"],
+            excludeFamilies = ["projectile", "dummy"],
+            self = false,
+            friendlyFire = true,
+            filter = () => true,
+        } = options
+        const query = new EntityQuery()
+        query._target = entity
+        query._query = (target: Entity) => {
+            let entities: Entity[] = []
+            if (types.length === 0) {
+                if (families.length === 0) {
+                    entities = target.dimension.getEntities({
+                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                        maxDistance: dist,
+                        excludeTypes: excludeTypes,
+                        excludeFamilies: excludeFamilies,
+                    })
+                        .filter(e => self ? true : e.id !== target.id)
+                } else {
+                    entities = target.dimension.getEntities({
+                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                        maxDistance: dist,
+                        families: families,
+                    })
+                        .filter(e => self ? true : e.id !== target.id)
+                }
+            } else {
+                types.forEach(type => {
+                    target.dimension.getEntities({
+                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                        maxDistance: dist,
+                        type: type
+                    }).forEach(e => entities.push(e))
+                })
+            }
+            entities = entities.filter(e => self ? true : e.id !== target.id).filter(filter)
+            if (!friendlyFire) {
+                entities = entities.filter(e => {
+                    const faction1 = DPUtils.store().entity_faction.curr(e)
+                    const faction2 = DPUtils.store().entity_faction.curr(target)
+                    return !faction1 || !faction2 || faction1 !== faction2
+                })
+            }
+            return entities
+        }
+        return query
     }
 
     static entityById(id: string): EntityQuery {
-        const entities = world.getEntity(id) ? [world.getEntity(id) as Entity]: []
-        return this.enumerate(entities)
-    }
-
-    filter(predicate: (entity: Entity) => boolean): EntityQuery {
-        this._filters.push(predicate)
-        return this
+        const query = new EntityQuery()
+        query._query = (target: Entity) => world.getEntity(id) ? [world.getEntity(id) as Entity] : []
+        return query
     }
 
     limit(limit: number): EntityQuery {
@@ -270,50 +309,28 @@ export class EntityQuery {
         return this
     }
 
-    sort(sort: (entity: Entity)=>number): EntityQuery {
+    sort(sort: (entity: Entity) => number): EntityQuery {
         this._sort = sort
         return this
     }
 
-    sched(callback: (entity: Entity)=>void, ticks: number[]) {
-        ticks.forEach((tick)=>TimeUtils.timeout(()=>{
-            let entities = this._query()
-            this._filters.forEach(filter=>entities = entities.filter(filter))
-            entities = entities.sort((a, b)=>this._sort(a) - this._sort(b))
+    sched(callback: (entity: Entity) => void, ticks: number[], params: any[] = []) {
+        TimeUtils.timeseries(() => {
+            if (!this._target) return
+            let entities = this._query(this._target)
+            entities = entities.sort((a, b) => this._sort(a) - this._sort(b))
             entities = entities.slice(0, this._limit)
             entities.forEach(callback)
-        }, tick))
+        }, ticks, params)
     }
 
     get() {
-        return this._query()
+        return this._target ? this._query(this._target) : []
     }
 
     first() {
-        return this._query()[0]
+        return this.get()[0]
     }
 
-    // 动态创建GeometryUtils几何检测方法（静态执行一次）
-    private static initializeGeometryMethods(): void {
-        // 获取所有几何检测方法名
-        const geometryMethods = Object.getOwnPropertyNames(GeometryUtils)
-            .filter(name =>
-                name !== 'length' &&
-                name !== 'name' &&
-                name !== 'prototype' &&
-                typeof GeometryUtils[name as keyof typeof GeometryUtils] === 'function'
-            )
 
-        geometryMethods.forEach(methodName => {
-            // 为每个GeometryUtils几何检测方法在原型上创建对应的筛选方法
-            EntityQuery.prototype[methodName as keyof EntityQuery] = function (this: EntityQuery, ...args: any[]) {
-                // 使用GeometryUtils的对应方法筛选实体
-                this._filters.push(entity => {
-                    // 将实体位置作为第一个参数传入GeometryUtils方法
-                    return (GeometryUtils as any)[methodName](entity.location, ...args)
-                })
-                return this
-            } as any
-        })
-    }
 }

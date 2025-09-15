@@ -1,6 +1,18 @@
 import { Entity, ItemStack, system, world, World } from "@minecraft/server";
 import { dpList } from "../lists/dp_list";
 
+system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
+    if (id !== "dp:list") return
+    if (!sourceEntity) {
+        world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
+        return
+    }
+    console.warn(`DP List: ${sourceEntity.getDynamicPropertyIds().join(", ")}`)
+    sourceEntity.getDynamicPropertyIds().forEach(id => {
+        console.warn(`${id}: ${JSON.stringify(sourceEntity.getDynamicProperty(id))}`)
+    })
+})
+
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
     if (id !== "dp:set") return
     if (!sourceEntity) {

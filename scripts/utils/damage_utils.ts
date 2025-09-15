@@ -1,6 +1,6 @@
 import { Entity, EntityDamageCause, EquipmentSlot, ItemStack } from "@minecraft/server"
 import { DPUtils } from "./dp_utils"
-import { DamageRateList, DamageTags } from "../lists/damage_list"
+import { DamageTags } from "../lists/damage_list"
 import { InventoryUtils } from "./inventory_utils"
 
 // 伤害公式：技能倍率×攻击力×（1+暴击率×暴击伤害）×攻击方伤害加成×防御方伤害减免×（攻击方防御力/防御方防御力）×调节常数
@@ -70,7 +70,7 @@ export class DamageUtils {
     }
     
     static damageAttribute(entity: Entity){
-        let attribute = DPUtils.store().damage_attribute.curr(entity, {})
+        let attribute = DPUtils.store().damage_attribute.curr(entity, DEFAULT_ENTITY_ATTRIBUTE)
         const equippables = InventoryUtils.equippables(entity);
         [
             equippables?.getEquipment(EquipmentSlot.Head),
@@ -81,7 +81,7 @@ export class DamageUtils {
             equippables?.getEquipment(EquipmentSlot.Offhand),
         ].forEach(item => {
             if (!item) return
-            const itemAttribute = DPUtils.store().damage_attribute.curr(item, {})
+            const itemAttribute = DPUtils.store().damage_attribute.curr(item, DEFAULT_ITEM_ATTRIBUTE)
             attribute.atk += itemAttribute.atk ?? 0
             attribute.def += itemAttribute.def ?? 0
             attribute.critRate += itemAttribute.critRate ?? 0

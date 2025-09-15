@@ -2,7 +2,7 @@
     "format_version": "1.21.10",
     "minecraft:entity": {
         "description": {
-            "identifier": "xxx:xxx",
+            "identifier": "exp_behavior:blinded_deceiver",
             "is_spawnable": true,
             "is_summonable": true,
             "is_experimental": false
@@ -29,6 +29,9 @@
                 "minecraft:jump.static": {},
                 "minecraft:movement": {
                     "value": 0.2
+                },
+                "minecraft:knockback_resistance": {
+                    "value": 0
                 }
             },
             "comp:common": {
@@ -87,7 +90,7 @@
                                     {
                                         "test": "has_tag",
                                         "subject": "other",
-                                        "value": "minecraft_dev:targeted_by_xxx:xxx"
+                                        "value": "minecraft_dev:targeted_by_exp_behavior:blinded_deceiver"
                                     }
                                 ]
                             },
@@ -123,6 +126,16 @@
                     "attack_interval_min": 1,
                     "attack_interval_max": 1,
                     "attack_radius": 1
+                }
+            },
+            "comp:super_armor_on": {
+                "minecraft:knockback_resistance": {
+                    "value": 1
+                }
+            },
+            "comp:super_armor_off": {
+                "minecraft:knockback_resistance": {
+                    "value": 0
                 }
             }
         },
@@ -169,6 +182,30 @@
                 "remove": {
                     "component_groups": [
                         "comp:idle"
+                    ]
+                }
+            },
+            "event:super_armor_on": {
+                "remove": {
+                    "component_groups": [
+                        "comp:super_armor_off"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "comp:super_armor_on"
+                    ]
+                }
+            },
+            "event:super_armor_off": {
+                "remove": {
+                    "component_groups": [
+                        "comp:super_armor_on"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "comp:super_armor_off"
                     ]
                 }
             }

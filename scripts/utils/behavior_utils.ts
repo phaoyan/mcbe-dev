@@ -2,6 +2,8 @@ import { Entity, world, system, Vector3 } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
+import { EntityQuery } from "./entity_utils";
+import { TagList } from "../lists/tag_list";
 
 // 行为树框架
 export enum NodeState {
@@ -11,7 +13,7 @@ export enum NodeState {
 }
 
 // 行为树调试开关（按需打开）
-const BT_TRACE = true;
+const BT_TRACE = false;
 function btTrace(message: string): void {
     if (!BT_TRACE) return;
     try {
@@ -546,8 +548,8 @@ export class BehaviorTemplates {
 
         // 目标相关actions
         target: {
-            check: (entity: Entity) => DPUtils.store().mob_has_target.curr(entity) === true,
-            noTargetCheck: (entity: Entity) => DPUtils.store().mob_has_target.curr(entity) !== true
+            check: (entity: Entity) => !!DPUtils.store().mob_target.curr(entity),
+            noTargetCheck: (entity: Entity) => !DPUtils.store().mob_target.curr(entity)
         },
 
         // 技能相关actions
@@ -619,56 +621,59 @@ export class BehaviorTemplates {
         const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
         const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
         const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
+        const hurtAction = config.hurtAction ?? (()=>NodeState.SUCCESS);
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
-            .sequence("DeathHandler")
-            .condition("IsDead", actions.death.check)
-            .action("DeathAction", (entity) => {
-                const handled = BlackboardManager.get(entity, '__death_handled', false);
-                if (!handled) {
-                    BlackboardManager.set(entity, '__death_handled', true);
-                    return actions.death.execute(deathAction)(entity);
-                }
-                return NodeState.SUCCESS;
-            })
-            .end()
-            .sequence("HasTargetBehavior")
-            .condition("HasTarget", actions.target.check)
-            .selector("SkillSystem")
-            .action("LockedGate", (entity) => {
-                const locked = actions.skill.checkLock(entity);
-                if (locked) {
-                    const res = actions.skill.continueCurrent(skills)(entity);
-                    return res === NodeState.FAILURE ? NodeState.RUNNING : res;
-                }
-                return NodeState.FAILURE;
-            })
-            .actions(skills.map(skill => ({
-                name: `Skill_${skill.id}`,
-                action: (entity: Entity) => {
-                    const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
-                    const canFilter = skill.filter(entity);
-                    if (!canCD || !canFilter) return NodeState.FAILURE;
-                    return actions.skill.execute(skill)(entity);
-                }
-            })))
-            .end()
-            .action("HurtIfNotCasting", (entity) => {
-                const lastHurtTick = BlackboardManager.get(entity, '__hurt', 0);
-                if (!lastHurtTick) return NodeState.SUCCESS; // 无受击标记，继续后续行为
-                BlackboardManager.delete(entity, '__hurt');
-                return (config.hurtAction ? config.hurtAction(entity) : NodeState.SUCCESS);
-            })
-            .action("MoveToTarget", moveToTarget)
-            .end()
-            .sequence("TryFindTarget")
-            .condition("NoTarget", actions.target.noTargetCheck)
-            .action("FindTarget", findTarget)
-            .end()
-            .sequence("NoTargetBehavior")
-            .condition("NoTarget", actions.target.noTargetCheck)
-            .action("IdleBehavior", idleBehavior)
-            .end()
+                .sequence("DeathHandler")
+                    .condition("IsDead", actions.death.check)
+                    .action("DeathAction", (entity) => {
+                        const handled = BlackboardManager.get(entity, '__death_handled', false);
+                        if (!handled) {
+                            BlackboardManager.set(entity, '__death_handled', true);
+                            return actions.death.execute(deathAction)(entity);
+                        }
+                        return NodeState.SUCCESS;
+                    })
+                    .end()
+                .sequence("HurtHandler")
+                    .condition("HasHurt", (entity) => system.currentTick - DPUtils.store().mob_hurt.curr(entity, 0) <= 1)
+                    .action("HurtAction", (entity) => {
+                        const locked = actions.skill.checkLock(entity);
+                        if (locked) return NodeState.SUCCESS;
+                        return hurtAction(entity);
+                    })
+                    .end()
+                .sequence("HasTargetBehavior")
+                    .condition("HasTarget", actions.target.check)
+                    .selector("SkillSystem")
+                        .action("LockedGate", (entity) => {
+                            const locked = actions.skill.checkLock(entity);
+                            if (locked) {
+                                const res = actions.skill.continueCurrent(skills)(entity);
+                                return res === NodeState.FAILURE ? NodeState.RUNNING : res;
+                            }
+                            return NodeState.FAILURE;
+                        })
+                        .actions(skills.map(skill => ({
+                            name: `Skill_${skill.id}`,
+                            action: (entity: Entity) => {
+                                const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
+                                const canFilter = skill.filter(entity);
+                                if (!canCD || !canFilter) return NodeState.FAILURE;
+                                return actions.skill.execute(skill)(entity);
+                            }
+                        })))
+                        .end()
+                    .action("MoveToTarget", moveToTarget)
+                    .end()
+                .sequence("TryFindTarget")
+                    .condition("NoTarget", actions.target.noTargetCheck)
+                    .action("FindTarget", findTarget)
+                    .end()
+                .sequence("NoTargetBehavior")
+                    .condition("NoTarget", actions.target.noTargetCheck)
+                    .action("IdleBehavior", idleBehavior)
+                    .end()
             .end()
             .build();
     }
@@ -692,140 +697,6 @@ export class BehaviorTemplates {
             .end()
             .build();
     }
-
-    static pet(config: {
-        skills?: SkillConfig[]; // 宠物技能列表
-        deathAction?: (entity: Entity) => NodeState; // 死亡动作
-        followTarget?: (entity: Entity) => Entity | null; // 跟随目标获取函数
-        moveToTarget?: (entity: Entity, target: Entity) => NodeState; // 移动到目标行为
-        moveToOwner?: (entity: Entity, owner: Entity) => NodeState; // 移动到主人行为
-        findTarget?: (entity: Entity) => NodeState; // 寻找目标行为
-        maxFollowDistance?: number; // 最大跟随距离
-        combatRange?: number; // 战斗距离
-    } = {}): BehaviorTree {
-        const { actions } = this;
-        const skills = config.skills ?? [];
-        const deathAction = config.deathAction ?? ((entity) => {
-            // 默认死亡动画：播放死亡动画并等待
-            entity.triggerEvent('minecraft:death_animation');
-            return NodeState.SUCCESS;
-        });
-        const followTarget = config.followTarget ?? ((entity) => {
-            // 默认跟随最近的玩家
-            return entity.dimension.getPlayers({ closest: 1, location: entity.location })[0] || null;
-        });
-        const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
-        const moveToOwner = config.moveToOwner ?? (() => NodeState.FAILURE);
-        const maxFollowDistance = config.maxFollowDistance ?? 8;
-        const combatRange = config.combatRange ?? 3;
-        const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
-        return BehaviorTree.create()
-            .selector("PetMainSelector")
-            // 死亡处理
-            .sequence("DeathHandler")
-            .condition("IsDead", actions.death.check)
-            .action("DeathAction", actions.death.execute(deathAction))
-            .end()
-
-            // 有目标时的战斗行为
-            .sequence("CombatBehavior")
-            .condition("HasTarget", actions.target.check)
-            .selector("CombatSystem")
-            // 锁定时仅继续当前技能，失败也保持RUNNING以短路
-            .action("LockedGate", (entity) => {
-                if (actions.skill.checkLock(entity)) {
-                    const res = actions.skill.continueCurrent(skills)(entity);
-                    return res === NodeState.FAILURE ? NodeState.RUNNING : res;
-                }
-                return NodeState.FAILURE;
-            })
-
-            // 尝试使用可用技能
-            .sequence("UseSkills")
-            .condition("InCombatRange", (entity) => {
-                const targetPos = BlackboardManager.get(entity, 'target_position');
-                if (!targetPos) return false;
-                const dist2 = MathUtils.distanceSquared(entity.location, targetPos as Vector3);
-                return dist2 <= combatRange * combatRange;
-            })
-            .selector("AvailableSkills")
-            .actions(skills.map(skill => ({
-                name: `UseSkill_${skill.id}`,
-                action: (entity: Entity) => (
-                    !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity) ? NodeState.FAILURE :
-                        !skill.filter(entity) ? NodeState.FAILURE :
-                            actions.skill.execute(skill)(entity)
-                )
-            })))
-            .end()
-            .end()
-
-            // 移动到目标
-            .action("MoveToTarget", (entity) => {
-                const targetPos = BlackboardManager.get(entity, 'target_position');
-                if (!targetPos) return NodeState.FAILURE;
-
-                // 创建临时目标实体用于移动
-                const tempTarget = { location: targetPos } as Entity;
-                return moveToTarget(entity, tempTarget);
-            })
-
-            // 检查是否所有技能都在冷却中
-            .sequence("AllSkillsOnCooldown")
-            .condition("AllSkillsOnCooldown", (entity) => {
-                // 如果没有技能，返回true以回到跟随状态
-                if (skills.length === 0) return true;
-
-                return skills.every(skill =>
-                    !actions.skill.checkCooldown(skill.id, skill.cooldown)(entity)
-                );
-            })
-            .action("ReturnToFollow", (entity) => {
-                // 清除目标状态，回到跟随模式
-                DPUtils.store().mob_has_target.set(entity, false);
-                BlackboardManager.delete(entity, 'target_position');
-                return NodeState.SUCCESS;
-            })
-            .end()
-            .end()
-            .end()
-            .sequence("TryFindTarget")
-            .condition("NoTarget", actions.target.noTargetCheck)
-            .action("FindTarget", findTarget)
-            .end()
-            // 跟随主人行为
-            .sequence("FollowBehavior")
-            .condition("NoTarget", actions.target.noTargetCheck)
-            .selector("FollowOwner")
-            .sequence("NeedToFollow")
-            .condition("TooFarFromOwner", (entity) => {
-                const owner = followTarget(entity);
-                if (!owner) return false;
-
-                const dist2 = MathUtils.distanceSquared(entity.location, owner.location);
-                return dist2 > maxFollowDistance * maxFollowDistance;
-            })
-            .action("MoveToOwner", (entity) => {
-                const owner = followTarget(entity);
-                if (!owner) return NodeState.FAILURE;
-
-                return moveToOwner(entity, owner);
-            })
-            .end()
-
-            // 空闲状态 - 在主人附近等待
-            .action("IdleNearOwner", (entity) => {
-                const owner = followTarget(entity);
-                if (!owner) return NodeState.FAILURE;
-
-                // 简单的空闲行为：可以添加随机移动、坐下等动作
-                return NodeState.SUCCESS;
-            })
-            .end()
-            .end()
-            .end()
-            .build();
-    }
 }
 
 // 合并监听不同事件的处理，不使用switch
@@ -837,23 +708,19 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
         DPUtils.store().mob_dead.set(entity, true);
     },
     [EntityEventIds.Hurt]: (entity) => {
-        // 仅在未施法/未锁定时记录受击，避免在技能结束后触发
-        const inLock = BlackboardManager.get(entity, 'skill_locking', 0) > system.currentTick;
-        const hasCurrent = !!BlackboardManager.get(entity, 'current_skill');
-        if (inLock || hasCurrent) {
-            BlackboardManager.delete(entity, '__hurt');
-            return;
-        }
-        BlackboardManager.set(entity, '__hurt', system.currentTick);
+        DPUtils.store().mob_hurt.set(entity, system.currentTick);
     },
     [EntityEventIds.TargetAcquired]: (entity) => {
-        DPUtils.store().mob_has_target.set(entity, true);
+        const target = EntityQuery.entities(entity, {dist: 64, filter: (target)=>{
+            return DPUtils.store().mob_targeted_by.curr(target,[]).includes(entity.id)
+        }}).first()
+        if (!target) return
+        DPUtils.store().mob_target.set(entity, target.id);
     },
     [EntityEventIds.TargetEscape]: (entity) => {
-        DPUtils.store().mob_has_target.set(entity, false);
-        // 清理目标相关黑板，避免残留
-        BlackboardManager.delete(entity, 'target_position');
-        BlackboardManager.delete(entity, 'current_skill');
+        const targetId = DPUtils.store().mob_target.curr(entity)
+        if (!!targetId) world.getEntity(targetId)?.removeTag(TagList.TargetedBy(entity.typeId))
+        DPUtils.store().mob_target.set(entity, undefined);
     }
 };
 

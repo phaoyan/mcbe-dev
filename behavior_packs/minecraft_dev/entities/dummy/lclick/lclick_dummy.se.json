@@ -120,7 +120,7 @@
                         ]
                     },
                     {
-                        "height": 8,
+                        "height": 1,
                         "width": 8,
                         "pivot": [
                             0,
@@ -129,11 +129,11 @@
                         ]
                     },
                     {
-                        "height": 8,
+                        "height": 1,
                         "width": 8,
                         "pivot": [
                             0,
-                            -7,
+                            0,
                             0
                         ]
                     }

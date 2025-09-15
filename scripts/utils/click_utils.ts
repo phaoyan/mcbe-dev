@@ -41,8 +41,7 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
     if (!(target instanceof Player)) return
     const dummyTypes = [entity_ids.lclick_dummy]
     dummyTypes.forEach((dummyType)=>{
-        const dummy = EntityQuery.entitiesByType(target, dummyType)
-            .filter(e => DPUtils.store().lclick_host.curr(e) === target.id)
+        const dummy = EntityQuery.entities(target, {dist: 32, types: [dummyType], filter: e => DPUtils.store().lclick_host.curr(e) === target.id})
             .limit(1)
             .get()[0]
         if (curr && !dummy) {
