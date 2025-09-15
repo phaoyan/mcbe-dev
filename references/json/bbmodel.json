@@ -1,0 +1,124 @@
+{
+    "blinded_deceiver": {
+        "geometry": "exp_behavior.blinded_deceiver",
+        "textures": [
+            "blinded_deceiver_0"
+        ],
+        "animations": {
+            "idle": "animation.exp_behavior.owl_form.idle",
+            "walk": "animation.exp_behavior.owl_form.walk",
+            "run": "animation.exp_behavior.owl_form.run",
+            "hurt": "animation.exp_behavior.owl_form.hurt",
+            "bind": "animation.exp_behavior.owl_form.bind",
+            "bind_loc": "animation.exp_behavior.owl_form.bind_loc",
+            "pull": "animation.exp_behavior.owl_form.pull",
+            "dodge": "animation.exp_behavior.owl_form.dodge",
+            "stab": "animation.exp_behavior.owl_form.stab",
+            "area_bind": "animation.exp_behavior.owl_form.area_bind",
+            "slash": "animation.exp_behavior.owl_form.slash",
+            "binded_strike": "animation.exp_behavior.owl_form.binded_strike",
+            "death": "animation.exp_behavior.owl_form.death"
+        },
+        "animation_length": {
+            "idle": 2,
+            "walk": 1.16667,
+            "run": 0.83333,
+            "hurt": 0.5,
+            "bind": 2.20833,
+            "bind_loc": 2.20833,
+            "pull": 2.08333,
+            "dodge": 0.66667,
+            "stab": 3.25,
+            "area_bind": 2.25,
+            "slash": 2.16667,
+            "binded_strike": 2.75,
+            "death": 1.58333
+        },
+        "particle_effects": {
+            "blinded_deceiver_pull_4": "exp_behavior:blinded_deceiver_pull_4",
+            "blinded_deceiver_pull_1": "exp_behavior:blinded_deceiver_pull_1",
+            "blinded_deceiver_pull_2": "exp_behavior:blinded_deceiver_pull_2",
+            "blinded_deceiver_pull_3": "exp_behavior:blinded_deceiver_pull_3",
+            "blinded_deceiver_stab_1": "exp_behavior:blinded_deceiver_stab_1",
+            "blinded_deceiver_stab_2": "exp_behavior:blinded_deceiver_stab_2",
+            "blinded_deceiver_stab_6": "exp_behavior:blinded_deceiver_stab_6",
+            "blinded_deceiver_stab_3": "exp_behavior:blinded_deceiver_stab_3",
+            "blinded_deceiver_stab_4": "exp_behavior:blinded_deceiver_stab_4",
+            "blinded_deceiver_stab_5": "exp_behavior:blinded_deceiver_stab_5",
+            "blinded_deceiver_area_bind_1": "exp_behavior:blinded_deceiver_area_bind_1",
+            "blinded_deceiver_area_bind_2": "exp_behavior:blinded_deceiver_area_bind_2",
+            "blinded_deceiver_area_bind_3": "exp_behavior:blinded_deceiver_area_bind_3",
+            "blinded_deceiver_area_bind_4": "exp_behavior:blinded_deceiver_area_bind_4",
+            "blinded_deceiver_area_bind_5": "exp_behavior:blinded_deceiver_area_bind_5",
+            "blinded_deceiver_slash_2": "exp_behavior:blinded_deceiver_slash_2",
+            "blinded_deceiver_slash_1": "exp_behavior:blinded_deceiver_slash_1"
+        },
+        "sound_effects": {}
+    },
+    "lclick_dummy": {
+        "geometry": "exp_behavior.lclick_dummy",
+        "textures": [
+            "lclick_dummy_0"
+        ],
+        "animations": {},
+        "animation_length": {},
+        "particle_effects": {},
+        "sound_effects": {}
+    },
+    "player": {
+        "geometry": "exp_behavior.player",
+        "textures": [
+            "player_0"
+        ],
+        "animations": {
+            "combo": "animation.exp_behavior.minecraft_dev.player.combo",
+            "combo1": "animation.exp_behavior.minecraft_dev.player.combo1",
+            "combo2": "animation.exp_behavior.minecraft_dev.player.combo2",
+            "combo3": "animation.exp_behavior.minecraft_dev.player.combo3",
+            "wait1": "animation.exp_behavior.minecraft_dev.player.wait1",
+            "wait2": "animation.exp_behavior.minecraft_dev.player.wait2",
+            "idle": "animation.exp_behavior.minecraft_dev.player.idle"
+        },
+        "animation_length": {
+            "combo": 1.625,
+            "combo1": 0.5,
+            "combo2": 0.5,
+            "combo3": 1,
+            "wait1": 0.5,
+            "wait2": 0.5,
+            "idle": 0.5
+        },
+        "particle_effects": {},
+        "sound_effects": {}
+    },
+    "player_fpp": {
+        "geometry": "exp_behavior.player_fpp",
+        "textures": [
+            "player_fpp_0"
+        ],
+        "animations": {
+            "combo": "animation.exp_behavior.minecraft_dev.player_fpp.combo",
+            "combo1": "animation.exp_behavior.minecraft_dev.player_fpp.combo1",
+            "combo2": "animation.exp_behavior.minecraft_dev.player_fpp.combo2",
+            "combo3": "animation.exp_behavior.minecraft_dev.player_fpp.combo3",
+            "wait1": "animation.exp_behavior.minecraft_dev.player_fpp.wait1",
+            "wait2": "animation.exp_behavior.minecraft_dev.player_fpp.wait2",
+            "wait3": "animation.exp_behavior.minecraft_dev.player_fpp.wait3",
+            "idle": "animation.exp_behavior.minecraft_dev.player_fpp.idle",
+            "running": "animation.exp_behavior.minecraft_dev.player_fpp.running"
+        },
+        "animation_length": {
+            "combo": 1.625,
+            "combo1": 0.5,
+            "combo2": 0.5,
+            "combo3": 1,
+            "wait1": 0.5,
+            "wait2": 0.5,
+            "wait3": 1,
+            "idle": 0.5,
+            "running": 0.5
+        },
+        "particle_effects": {},
+        "sound_effects": {}
+    }
+}
