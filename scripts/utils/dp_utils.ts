@@ -1,8 +1,9 @@
 import { Entity, ItemStack, system, world, World } from "@minecraft/server";
 import { dpList } from "../lists/dp_list";
+import { ScriptEventIds } from "../lists/event_list";
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
-    if (id !== "dp:list") return
+    if (id !== ScriptEventIds.DPList) return
     if (!sourceEntity) {
         world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
         return
@@ -14,7 +15,7 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
 })
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
-    if (id !== "dp:set") return
+    if (id !== ScriptEventIds.DPSet) return
     if (!sourceEntity) {
         world.getDimension("minecraft:overworld").runCommand("say DP Set Error: No Source Entity")
         return
@@ -29,7 +30,7 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) 
 })
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
-    if (id !== "dp:reset") return
+    if (id !== ScriptEventIds.DPRest) return
     if (!sourceEntity) {
         world.getDimension("minecraft:overworld").runCommand("say DP Reset Error: No Source Entity")
         return

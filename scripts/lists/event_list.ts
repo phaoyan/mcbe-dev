@@ -1,4 +1,4 @@
-export const EntityEventIds: { [key: string]: string } = {
+export const EntityEventIds = {
     Death: "event:death",
     Hurt: "event:hurt",
     Timer: "event:timer",
@@ -13,6 +13,9 @@ export const EntityEventIds: { [key: string]: string } = {
     SuperArmorOff: "event:super_armor_off"
 }
 
-export const ScriptEventIds: { [key: string]: string } = {
-
+export const ScriptEventIds = {
+    DPList: "dp:list",
+    DPSet: "dp:set",
+    DPRest: "dp:reset",
+    DebugSummon: "debug:summon",
 }

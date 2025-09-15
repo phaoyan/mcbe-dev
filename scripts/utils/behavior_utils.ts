@@ -525,7 +525,7 @@ const behaviorMapGC = () => {
 }
 
 // 定时清理与迁移：
-system.runInterval(() => behaviorMapGC(), 200);
+system.runInterval(() => behaviorMapGC(), 1200);
 
 // 简化的技能配置
 export interface SkillConfig {
