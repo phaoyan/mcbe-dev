@@ -105,6 +105,286 @@ export function checkParticleReferences(): void {
 }
 
 /**
+ * 检查并修复bbpack中粒子文件的命名空间
+ */
+export function checkParticleIds(): void {
+    console.log("开始检查并修复bbpack中的粒子ID命名空间...");
+    console.log("=".repeat(60));
+
+    if (!fs.existsSync(BBPACK_DIR)) {
+        console.log("❌ bbpack文件夹不存在！");
+        return;
+    }
+
+    let totalDirs = 0;
+    let totalParticleFiles = 0;
+    let totalFixed = 0;
+
+    const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => path.join(BBPACK_DIR, dirent.name));
+
+    for (const subdir of subdirs) {
+        totalDirs++;
+        const subdirName = path.basename(subdir);
+        console.log(`\n处理目录: ${subdirName}`);
+
+        const particleFiles = rglob('.*\\.particle\\.json$', subdir);
+
+        if (particleFiles.length === 0) {
+            console.log("  ℹ️  未找到particle.json文件");
+            continue;
+        }
+
+        for (const particleFile of particleFiles) {
+            totalParticleFiles++;
+            try {
+                const data = readJson(particleFile);
+                const description = data?.particle_effect?.description;
+                const identifier: string | undefined = description?.identifier;
+
+                if (!identifier || typeof identifier !== 'string') {
+                    console.log(`  ⚠️  跳过无identifier的文件: ${path.basename(particleFile)}`);
+                    continue;
+                }
+
+                const hasNamespace = identifier.includes(':');
+                const [currentNamespace, idWithoutNs] = hasNamespace
+                    ? ((): [string, string] => {
+                        const idx = identifier.indexOf(':');
+                        return [identifier.substring(0, idx), identifier.substring(idx + 1)];
+                    })()
+                    : ['', identifier];
+
+                if (!idWithoutNs) {
+                    console.log(`  ⚠️  非法的identifier，跳过: ${identifier}`);
+                    continue;
+                }
+
+                if (currentNamespace !== NAME_SPACE) {
+                    const newIdentifier = `${NAME_SPACE}:${idWithoutNs}`;
+                    data.particle_effect.description.identifier = newIdentifier;
+                    writeJson(particleFile, data);
+                    totalFixed++;
+                    console.log(`  ✅ 修复: ${path.basename(particleFile)}  ${identifier} -> ${newIdentifier}`);
+                } else {
+                    console.log(`  ✅ 已正确: ${path.basename(particleFile)}  ${identifier}`);
+                }
+            } catch (error) {
+                console.log(`  ❌ 处理文件 ${path.basename(particleFile)} 时出错: ${error}`);
+            }
+        }
+    }
+
+    console.log("\n" + "=".repeat(60));
+    console.log("检查完成！");
+    console.log(`总共检查了 ${totalDirs} 个目录`);
+    console.log(`共处理 ${totalParticleFiles} 个particle文件`);
+    if (totalFixed > 0) {
+        console.log(`✅ 已修复 ${totalFixed} 个粒子ID命名空间`);
+    } else {
+        console.log("✅ 所有粒子ID命名空间均已正确");
+    }
+}
+
+/**
+ * 修正使用 flipbook 的粒子文件的 uv 与纹理尺寸
+ * 规则：读取 basic_render_parameters.texture 对应 PNG 的真实宽高，
+ * 将 uv.texture_width/texture_height 设为真实值；
+ * 同时按新旧宽高比率分别缩放 uv.flipbook.base_UV / size_UV / step_UV。
+ */
+export function fixFlipbookUVs(): void {
+    if (!fs.existsSync(BBPACK_DIR)) {
+        console.log('❌ bbpack 文件夹不存在！');
+        return;
+    }
+
+    console.log('开始修正（bbpack）中使用 flipbook 的粒子 UV...');
+    console.log('='.repeat(60));
+
+    const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => path.join(BBPACK_DIR, d.name));
+
+    let processed = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    for (const subdir of subdirs) {
+        const particleFiles = rglob('.*\\.particle\\.json$', subdir);
+        if (particleFiles.length === 0) continue;
+
+        console.log(`\n处理目录: ${path.basename(subdir)}  （${particleFiles.length} 个 particle）`);
+
+        for (const particleFile of particleFiles) {
+            processed++;
+            try {
+                const data: any = readJson(particleFile);
+                const pe = data?.particle_effect;
+                const desc = pe?.description;
+                const comps = pe?.components;
+                const billboard = comps?.["minecraft:particle_appearance_billboard"];
+                const uv = billboard?.uv;
+                const flipbook = uv?.flipbook;
+
+                if (!billboard || !uv || !flipbook) {
+                    skipped++;
+                    continue; // 非 flipbook 的粒子，跳过
+                }
+
+                const textureRef = desc?.basic_render_parameters?.texture;
+                if (typeof textureRef !== 'string' || textureRef.length === 0) {
+                    console.log(`  ⚠️ 跳过（无有效纹理引用）: ${path.basename(particleFile)}`);
+                    skipped++;
+                    continue;
+                }
+
+                const texturePath = resolveTexturePath(textureRef);
+                if (!texturePath) {
+                    console.log(`  ⚠️ 跳过（找不到纹理文件）: ${path.basename(particleFile)} -> ${textureRef}`);
+                    skipped++;
+                    continue;
+                }
+
+                const size = readPngDimensions(texturePath);
+                if (!size) {
+                    console.log(`  ⚠️ 跳过（无法读取纹理尺寸）: ${path.basename(particleFile)} -> ${texturePath}`);
+                    skipped++;
+                    continue;
+                }
+
+                const realW = size.width;
+                const realH = size.height;
+
+                const oldW = Number(uv.texture_width);
+                const oldH = Number(uv.texture_height);
+
+                const hasOldW = Number.isFinite(oldW) && oldW > 0;
+                const hasOldH = Number.isFinite(oldH) && oldH > 0;
+
+                const sx = hasOldW ? realW / oldW : 1;
+                const sy = hasOldH ? realH / oldH : 1;
+
+                let changed = false;
+
+                // 写入真实纹理尺寸
+                if (uv.texture_width !== realW) {
+                    uv.texture_width = realW;
+                    changed = true;
+                }
+                if (uv.texture_height !== realH) {
+                    uv.texture_height = realH;
+                    changed = true;
+                }
+
+                // 按比例缩放 flipbook 的三个向量字段
+                const scaleVec2 = (v: any) => {
+                    if (!Array.isArray(v) || v.length < 2) return false;
+                    const nx = Number(v[0]);
+                    const ny = Number(v[1]);
+                    if (!Number.isFinite(nx) || !Number.isFinite(ny)) return false;
+                    const rx = nx * sx;
+                    const ry = ny * sy;
+                    if (rx !== nx || ry !== ny) {
+                        v[0] = rx;
+                        v[1] = ry;
+                        return true;
+                    }
+                    return false;
+                };
+
+                const changedBase = scaleVec2(flipbook.base_UV);
+                const changedSize = scaleVec2(flipbook.size_UV);
+                const changedStep = scaleVec2(flipbook.step_UV);
+                if (changedBase || changedSize || changedStep) changed = true;
+
+                if (changed) {
+                    writeJson(particleFile, data);
+                    updated++;
+                    console.log(`  ✅ 修正: ${path.basename(particleFile)} -> (${oldW}x${oldH}) => (${realW}x${realH})`);
+                } else {
+                    skipped++;
+                }
+            } catch (err) {
+                console.log(`  ❌ 处理失败 ${path.basename(particleFile)}: ${err}`);
+            }
+        }
+    }
+
+    console.log('\n' + '='.repeat(60));
+    console.log(`处理完成（bbpack）。共扫描 ${processed} 个文件，修正 ${updated} 个，跳过 ${skipped} 个。`);
+}
+
+/** 解析纹理引用为实际 PNG 路径 */
+function resolveTexturePath(textureRef: string): string | null {
+    let name = textureRef.trim();
+    const colon = name.indexOf(':');
+    if (colon >= 0) name = name.substring(colon + 1);
+
+    const ensurePng = (p: string) => (p.endsWith('.png') ? p : `${p}.png`);
+
+    const candidates: string[] = [];
+    // 已经带有 textures/ 前缀
+    if (name.startsWith('textures/')) {
+        candidates.push(path.join(RESOURCE_PACK_DIR, ensurePng(name)));
+    }
+    // 直接拼 textures/<name>
+    candidates.push(path.join(RESOURCE_PACK_DIR, 'textures', ensurePng(name)));
+    // 偏向粒子材质目录
+    candidates.push(path.join(RESOURCE_PACK_DIR, 'textures', 'particle', ensurePng(name)));
+
+    // 如果 name 本身是诸如 'particle/foo' 或 'entity/bar'
+    candidates.push(path.join(RESOURCE_PACK_DIR, 'textures', ensurePng(path.join(name))));
+
+    for (const p of dedupe(candidates)) {
+        if (fs.existsSync(p)) return p;
+    }
+    return null;
+}
+
+function dedupe(list: string[]): string[] {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of list) {
+        if (!seen.has(item)) {
+            seen.add(item);
+            out.push(item);
+        }
+    }
+    return out;
+}
+
+/**
+ * 读取 PNG 尺寸（无需额外依赖）
+ * 依据 PNG 规范：宽高位于偏移 16/20 的 4 字节大端整数
+ */
+function readPngDimensions(filePath: string): { width: number; height: number } | null {
+    try {
+        const fd = fs.openSync(filePath, 'r');
+        try {
+            const buf = Buffer.alloc(24);
+            const bytes = fs.readSync(fd, buf, 0, 24, 0);
+            if (bytes < 24) return null;
+            // 可选：校验 PNG 签名
+            if (
+                buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47 ||
+                buf[4] !== 0x0d || buf[5] !== 0x0a || buf[6] !== 0x1a || buf[7] !== 0x0a
+            ) {
+                return null;
+            }
+            const width = buf.readUInt32BE(16);
+            const height = buf.readUInt32BE(20);
+            if (width <= 0 || height <= 0) return null;
+            return { width, height };
+        } finally {
+            fs.closeSync(fd);
+        }
+    } catch {
+        return null;
+    }
+}
+
+/**
  * 从particle文件列表中提取粒子ID
  */
 function getParticleIds(particleFiles: string[]): Set<string> {
@@ -343,7 +623,7 @@ function renameBbmodelFiles(): void {
 /**
  * 检查动画名称规范
  */
-export function checkAnimationNames(): void {
+export function checkAnimationIds(): void {
     if (!fs.existsSync(BBPACK_DIR)) {
         console.log("❌ bbpack文件夹不存在！");
         return;
@@ -369,6 +649,7 @@ export function checkAnimationNames(): void {
             try {
                 const data = readJson(bbmodelFile);
                 let fileModified = false;
+                const bbmodelBaseName = path.basename(bbmodelFile, '.bbmodel');
 
                 if (data.animations && Array.isArray(data.animations)) {
                     for (let i = 0; i < data.animations.length; i++) {
@@ -376,16 +657,17 @@ export function checkAnimationNames(): void {
                         if (animation && typeof animation === 'object' && animation.name) {
                             const name = animation.name;
 
-                            if (!isValidAnimationName(name)) {
+                            if (!isValidAnimationName(name, bbmodelBaseName)) {
                                 console.log(`\n❌ 发现不符合规范的动画名称：`);
                                 console.log(`📁 文件: ${path.relative(BBPACK_DIR, bbmodelFile)}`);
                                 console.log(`🎬 当前名称: ${name}`);
                                 console.log("\n规范要求：");
-                                console.log(`1. 必须以 '${ANIMATION_PREFIX}' 开头`);
-                                console.log("2. 仅能包含小写字母、下划线、数字和小数点");
+                                console.log(`1. 必须以 'animation.${NAME_SPACE}.${bbmodelBaseName}.' 开头`);
+                                console.log("2. 结构为 animation.命名空间.bbmodel名称.动画名称（至少包含上述四段）");
+                                console.log("3. 仅能包含小写字母、下划线、数字和小数点");
 
                                 // 在TypeScript版本中，我们可以生成一个建议的名称而不是要求用户输入
-                                const suggestedName = generateValidAnimationName(name);
+                                const suggestedName = generateValidAnimationName(name, bbmodelBaseName);
                                 data.animations[i].name = suggestedName;
                                 fileModified = true;
                                 totalFixed++;
@@ -419,7 +701,7 @@ export function checkAnimationNames(): void {
 /**
  * 检查动画名称是否符合规范
  */
-function isValidAnimationName(name: string): boolean {
+function isValidAnimationName(name: string, bbmodelName: string): boolean {
     // 检查是否以动画前缀开头
     if (!name.startsWith(ANIMATION_PREFIX)) {
         return false;
@@ -431,9 +713,24 @@ function isValidAnimationName(name: string): boolean {
         return false;
     }
 
-    // 检查在前缀后是否有实际的动画名称
+    // 前缀后应为: bbmodel名称.动画名称（动画名称可包含点，但不得出现空段）
     const suffix = name.substring(ANIMATION_PREFIX.length);
-    if (!suffix || suffix.endsWith('.')) {
+    if (!suffix) {
+        return false;
+    }
+
+    const segments = suffix.split('.');
+    if (segments.length < 2) {
+        return false;
+    }
+
+    // 第一段必须与bbmodel名称一致
+    if (segments[0] !== bbmodelName) {
+        return false;
+    }
+
+    // 不允许空段（避免以点结尾或出现 ..）
+    if (segments.some(s => s.length === 0)) {
         return false;
     }
 
@@ -443,28 +740,37 @@ function isValidAnimationName(name: string): boolean {
 /**
  * 生成符合规范的动画名称
  */
-function generateValidAnimationName(name: string): string {
+function generateValidAnimationName(name: string, bbmodelName: string): string {
     // 如果已经符合规范，直接返回
-    if (isValidAnimationName(name)) {
+    if (isValidAnimationName(name, bbmodelName)) {
         return name;
     }
 
     // 移除不符合规范的字符，转为小写
     let cleanName = name.toLowerCase().replace(/[^a-z0-9_.]/g, '_');
 
-    // 确保以正确的前缀开头
-    if (!cleanName.startsWith(ANIMATION_PREFIX)) {
-        if (cleanName.startsWith('animation.')) {
-            cleanName = cleanName.replace('animation.', ANIMATION_PREFIX);
-        } else {
-            cleanName = `${ANIMATION_PREFIX}${cleanName}`;
-        }
+    // 提取尽可能合理的动画名称部分
+    let animationPart = '';
+
+    if (cleanName.startsWith(ANIMATION_PREFIX)) {
+        const suffix = cleanName.substring(ANIMATION_PREFIX.length);
+        const idx = suffix.indexOf('.');
+        animationPart = idx >= 0 ? suffix.substring(idx + 1) : suffix;
+    } else if (cleanName.startsWith('animation.')) {
+        const afterAnim = cleanName.substring('animation.'.length);
+        const idx = afterAnim.indexOf('.');
+        animationPart = idx >= 0 ? afterAnim.substring(idx + 1) : afterAnim;
+    } else {
+        animationPart = cleanName;
     }
 
-    // 确保不以点结尾
-    cleanName = cleanName.replace(/\.+$/, '');
+    // 清理前后多余的点，避免空段
+    animationPart = animationPart.replace(/^\.+/, '').replace(/\.+$/, '');
+    if (!animationPart) {
+        animationPart = 'default';
+    }
 
-    return cleanName;
+    return `${ANIMATION_PREFIX}${bbmodelName}.${animationPart}`;
 }
 
 /**
@@ -476,15 +782,23 @@ export function processBbpackFiles(): void {
 
     console.log("\n📝 第一步：检查动画名称规范");
     console.log("-".repeat(40));
-    checkAnimationNames();
+    checkAnimationIds();
 
     console.log("\n🔍 第二步：检查粒子引用关系");
     console.log("-".repeat(40));
     checkParticleReferences();
 
+    console.log("\n🔍 第三步：检查粒子ID");
+    console.log("-".repeat(40));
+    checkParticleIds();
+
     console.log("\n📋 第三步：复制bbpack文件");
     console.log("-".repeat(40));
     copyBbpackFiles();
+
+    console.log("\n📋 第四步：修复flipbook UV");
+    console.log("-".repeat(40));
+    fixFlipbookUVs()
 
     console.log("\n" + "=".repeat(80));
     console.log("🎉 bbpack文件处理完成！");

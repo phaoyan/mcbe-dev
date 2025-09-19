@@ -263,6 +263,16 @@ export class VecUtils {
         return VecUtils
     }
 
+    static moveYToBlock(downOffset: number = 5, upOffset: number = 5){
+        for (let i = - upOffset; i < downOffset; i++) {
+            const block = this.DIMENSION.getBlock(Vector3Utils.add(this.LOCATION, {y: -i}))
+            if (block?.isAir) continue
+            this.LOCATION = Vector3Utils.add(this.LOCATION, {y: -i+1})
+            break
+        }
+        return VecUtils
+    }
+
     static moveToEntity(maxDist: number) {
         const targetEntities = this.ENTITY.getEntitiesFromViewDirection()
         if (targetEntities.length === 0) {

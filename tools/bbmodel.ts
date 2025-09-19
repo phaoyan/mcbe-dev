@@ -78,7 +78,7 @@ function setupBbmodelJson(): void {
                 if (kf.channel === "particle") {
                     const dataPoints = kf.data_points || [];
                     for (const dp of dataPoints) {
-                        const name = dp.effect;
+                        const name = dp.effect.trim();
                         if (name) {
                             particles[name] = `${NAME_SPACE}:${name}`;
                         }
@@ -95,7 +95,7 @@ function setupBbmodelJson(): void {
                 if (kf.channel === "sound") {
                     const dataPoints = kf.data_points || [];
                     for (const dp of dataPoints) {
-                        const name = dp.effect;
+                        const name = dp.effect.trim();
                         if (name) {
                             sounds[name] = `${NAME_SPACE}:${name}`;
                         }
@@ -311,7 +311,16 @@ function exportAnimation(bbmodelFile: string): void {
                             firstPoint.z || 0
                         ];
 
-                        points = points.map(dp => isFloat(dp) ? parseFloat(dp) : dp);
+                        points = points.map((dp: any) => {
+                            if (typeof dp === "string") {
+                                const trimmed = dp.trim();
+                                if (trimmed.length === 0) {
+                                    return 0;
+                                }
+                                return isFloat(trimmed) ? parseFloat(trimmed) : dp;
+                            }
+                            return isFloat(dp) ? parseFloat(dp) : dp;
+                        });
 
                         let fillin: any;
                         if (interpolation === "linear") {
