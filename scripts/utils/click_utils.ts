@@ -14,7 +14,7 @@ world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
 
 // 左键检测
 // 预注册：左键Dummy跟随行为
-BehaviorUtils.register('follow_lclick_dummy', (entity: Entity) => {
+BehaviorUtils.register(entity_ids.lclick_dummy, (entity: Entity) => {
     return BehaviorTemplates.follow(
         (e: Entity) => {
             const player = world.getEntity(DPUtils.store().lclick_host.curr(e));
@@ -47,7 +47,7 @@ DPUtils.store().lclick_enable.register((target, curr, prev) => {
         if (curr && !dummy) {
             const lclick = target.dimension.spawnEntity(dummyType, target.location)
             DPUtils.store().lclick_host.set(lclick, target.id)
-            BehaviorUtils.bind(lclick.id, 'follow_lclick_dummy')
+            BehaviorUtils.bind(lclick.id, entity_ids.lclick_dummy)
         }
     })
 
