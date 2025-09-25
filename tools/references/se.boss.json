@@ -2,7 +2,7 @@
     "format_version": "1.21.10",
     "minecraft:entity": {
         "description": {
-            "identifier": "exp_behavior:blinded_deceiver",
+            "identifier": "nsgl:boss_crimson_eyed",
             "is_spawnable": true,
             "is_summonable": true,
             "is_experimental": false
@@ -11,11 +11,9 @@
             "comp:base": {
                 "minecraft:physics": {},
                 "minecraft:type_family": {
-                    "family": ["monster"]
-                },
-                "minecraft:collision_box": {
-                    "height": 6,
-                    "width": 4
+                    "family": [
+                        "monster"
+                    ]
                 },
                 "minecraft:health": {
                     "value": 100
@@ -81,7 +79,7 @@
                 },
                 "minecraft:behavior.nearest_attackable_target": {
                     "priority": 2,
-                    "within_radius": 25,
+                    "within_radius": 64,
                     "reselect_targets": true,
                     "entity_types": [
                         {
@@ -90,15 +88,15 @@
                                     {
                                         "test": "has_tag",
                                         "subject": "other",
-                                        "value": "minecraft_dev:targeted_by_exp_behavior:blinded_deceiver"
+                                        "value": "minecraft_dev:targeted_by_nsgl:boss_crimson_eyed"
                                     }
                                 ]
                             },
-                            "max_dist": 35
+                            "max_dist": 64
                         }
                     ],
                     "must_see": true,
-                    "must_see_forget_duration": 17.0
+                    "must_see_forget_duration": 17
                 }
             },
             "comp:idle": {
@@ -137,6 +135,25 @@
                 "minecraft:knockback_resistance": {
                     "value": 0
                 }
+            },
+            "comp:collision_on": {
+                "minecraft:collision_box": {
+                    "height": 6,
+                    "width": 4
+                }
+            },
+            "comp:collision_off": {
+                "minecraft:collision_box": {
+                    "height": 0,
+                    "width": 0
+                }
+            },
+            "comp:boss": {
+                "minecraft:boss": {
+                    "hud_range": 55,
+                    "name": "boss_crimson_eyed",
+                    "should_darken_sky": false
+                }
             }
         },
         "events": {
@@ -144,11 +161,12 @@
                 "add": {
                     "component_groups": [
                         "comp:base",
-                        "comp:common"
+                        "comp:common",
+                        "comp:collision_on",
+                        "comp:boss"
                     ]
                 }
             },
-
             "event:timer": {},
             "event:target_acquired": {},
             "event:target_escape": {},
@@ -167,7 +185,7 @@
                         "comp:idle"
                     ]
                 },
-                "remove": { 
+                "remove": {
                     "component_groups": [
                         "comp:fight"
                     ]
@@ -206,6 +224,30 @@
                 "add": {
                     "component_groups": [
                         "comp:super_armor_off"
+                    ]
+                }
+            },
+            "event:untargetable_on": {
+                "remove": {
+                    "component_groups": [
+                        "comp:collision_on"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "comp:collision_off"
+                    ]
+                }
+            },
+            "event:untargetable_off": {
+                "remove": {
+                    "component_groups": [
+                        "comp:collision_off"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "comp:collision_on"
                     ]
                 }
             }

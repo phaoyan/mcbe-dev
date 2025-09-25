@@ -101,12 +101,6 @@ async function main(): Promise<void> {
                 break;
             }
 
-            case 'bbpack-names': {
-                const { checkAnimationNames } = await import('./bbpack');
-                checkAnimationNames();
-                break;
-            }
-
             case 'import': {
                 const { main: importMain } = await import('./import');
                 importMain();

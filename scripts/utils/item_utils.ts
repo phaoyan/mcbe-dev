@@ -1,28 +1,26 @@
 import { ItemLockMode, ItemStack } from "@minecraft/server"
 import { DPUtils } from "./dp_utils"
 
+export interface ItemConfig {
+    id: string,
+    amount: number,
+    lore: string[],
+    name: string,
+    lockMode: ItemLockMode,
+    keepOnDeath: boolean,
+    dp: { [key: string]: any }
+}
+
 export class ItemUtils {
 
-    private configs: {
-        id: string,
-        amount: number,
-        lore: string[],
-        name: string,
-        lockMode: ItemLockMode,
-        keepOnDeath: boolean,
-        dp: { [key: string]: any }
+    private config: ItemConfig
+
+    private constructor(configs: ItemConfig) {
+        this.config = configs
     }
 
-    private constructor(configs: {
-        id: string,
-        amount: number,
-        lore: string[],
-        name: string,
-        lockMode: ItemLockMode,
-        keepOnDeath: boolean,
-        dp: { [key: string]: any }
-    }) {
-        this.configs = configs
+    static fromConfig(config: ItemConfig) {
+        return new ItemUtils(config)
     }
 
     static fromId(itemId: string, amount: number = 1) {
@@ -50,43 +48,43 @@ export class ItemUtils {
     }
 
     keep() {
-        this.configs.keepOnDeath = true
+        this.config.keepOnDeath = true
         return this
     }
 
     lockInv() {
-        this.configs.lockMode = ItemLockMode.inventory
+        this.config.lockMode = ItemLockMode.inventory
         return this
     }
 
     lockSlot() {
-        this.configs.lockMode = ItemLockMode.slot
+        this.config.lockMode = ItemLockMode.slot
         return this
     }
 
     lock(slot: boolean = false) {
-        this.configs.lockMode = slot ? ItemLockMode.slot : ItemLockMode.inventory
-        this.configs.keepOnDeath = true
+        this.config.lockMode = slot ? ItemLockMode.slot : ItemLockMode.inventory
+        this.config.keepOnDeath = true
         return this
     }
 
     withDP(k: string, v: any) {
-        this.configs.dp[k] = v
+        this.config.dp[k] = v
         return this
     }
 
     withLore(lore: string[]) {
-        this.configs.lore = lore
+        this.config.lore = lore
         return this
     }
 
     withName(name: string) {
-        this.configs.name = name
+        this.config.name = name
         return this
     }
 
     get() {
-        const config = { ...this.configs }
+        const config = { ...this.config }
         const item = new ItemStack(config.id, config.amount)
         item.setLore(config.lore)
         item.nameTag = config.name
@@ -94,5 +92,9 @@ export class ItemUtils {
         item.keepOnDeath = config.keepOnDeath
         Object.keys(config.dp).forEach(k => DPUtils.set(item, k, config.dp[k]))
         return item
+    }
+
+    conf(){
+        return this.config
     }
 }

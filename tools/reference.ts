@@ -3,7 +3,6 @@ import {
     BEHAVIOR_PACK_DIR,
     RESOURCE_PACK_DIR,
     SCRIPTS_DIR,
-    JSON_INDENT,
     rglob,
     readJson,
     writeJson,
@@ -14,16 +13,22 @@ import {
  * 生成物品ID引用
  */
 export function itemIdRefs(): void {
-    const itemIds: Record<string, string> = {};
+    const itemIds: any = {};
 
-    const itemFiles = rglob('.*\\.item\\.json$', BEHAVIOR_PACK_DIR);
+    const itemsDir = path.join(BEHAVIOR_PACK_DIR, "items");
+    const itemFiles = rglob('.*\\.item\\.json$', itemsDir);
     for (const itemFile of itemFiles) {
         try {
             const itemData = readJson(itemFile);
             const itemId = itemData["minecraft:item"].description.identifier;
-            const shortId = itemId.split(':').pop() || '';
-            if (shortId) {
-                itemIds[shortId] = itemId;
+
+            // 基于 items 目录下的相对路径构建嵌套键，例如:
+            // items/weapons/sword.item.json -> weapons.sword
+            const rel = path.relative(itemsDir, itemFile).replace(/\\/g, '/');
+            const nameWithoutSuffix = rel.replace(/\.item\.json$/, '');
+            const keys = nameWithoutSuffix.split('/').filter(Boolean);
+            if (keys.length > 0) {
+                setNestedValue(itemIds, keys, itemId);
             }
         } catch (error) {
             console.error(`读取物品文件失败 ${itemFile}: ${error}`);
@@ -39,16 +44,22 @@ export function itemIdRefs(): void {
  * 生成实体ID引用
  */
 export function entityIdRefs(): void {
-    const entityIds: Record<string, string> = {};
+    const entityIds: any = {};
 
-    const entityFiles = rglob('.*\\.se\\.json$', BEHAVIOR_PACK_DIR);
+    const entitiesDir = path.join(BEHAVIOR_PACK_DIR, "entities");
+    const entityFiles = rglob('.*\\.se\\.json$', entitiesDir);
     for (const entityFile of entityFiles) {
         try {
             const entityData = readJson(entityFile);
             const entityId = entityData["minecraft:entity"].description.identifier;
-            const shortId = entityId.split(':').pop() || '';
-            if (shortId) {
-                entityIds[shortId] = entityId;
+
+            // 基于 entities 目录下的相对路径构建嵌套键，例如:
+            // entities/mobs/zombie.se.json -> mobs.zombie
+            const rel = path.relative(entitiesDir, entityFile).replace(/\\/g, '/');
+            const nameWithoutSuffix = rel.replace(/\.se\.json$/, '');
+            const keys = nameWithoutSuffix.split('/').filter(Boolean);
+            if (keys.length > 0) {
+                setNestedValue(entityIds, keys, entityId);
             }
         } catch (error) {
             console.error(`读取实体文件失败 ${entityFile}: ${error}`);

@@ -1,4 +1,4 @@
-import { system } from "@minecraft/server";
+import { Player, system, world } from "@minecraft/server";
 
 export const TIMEOUT_TRYCATCH = true
 
@@ -35,5 +35,13 @@ export class TimeUtils {
             params = ticks.map((_, i) => i < params.length ? params[i] : undefined)
         ticks.forEach((tick, index) => TimeUtils.timeout(()=>{callback(params[index], index)}, tick))
         return TimeUtils
+    }
+
+    static timer(callback: (player: Player) => void, interval: number) {
+        system.runInterval(()=>{
+            world.getAllPlayers().forEach(player=>{
+                callback(player)
+            })
+        }, interval)
     }
 }

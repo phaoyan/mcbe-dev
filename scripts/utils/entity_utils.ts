@@ -6,12 +6,58 @@ import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
+import { CompUtils } from "./comp_utils";
 
 export type ComboData = {
     duration: number
     wait: number
     callback: (entity: Entity) => void
 }[]
+
+export class EntityState {
+    static target(entity: Entity) {
+        const targetId = DPUtils.store().mob_target.curr(entity)
+        return targetId ? world.getEntity(targetId) : undefined
+    }
+
+    static targetDist(entity: Entity) {
+        const target = EntityState.target(entity)
+        return target ? Vector3Utils.distance(entity.location, target.location) : 99999
+    }
+
+    static targetDistRange(entity: Entity, minDist: number, maxDist: number) {
+        const target = EntityState.target(entity)
+        if (!target) return false
+        const dist = EntityState.targetDist(entity)
+        return dist >= minDist && dist <= maxDist
+    }
+
+    static targetCosineRange(entity: Entity, minCosine: number, maxCosine: number) {
+        const target = EntityState.target(entity)
+        if (!target) return false
+        const cosine = EntityState.targetCosine(entity)
+        return cosine >= minCosine && cosine <= maxCosine
+    }
+
+    static targetCosine(entity: Entity) {
+        const target = EntityState.target(entity)
+        if (!target) return 0
+        const base = VecUtils.unit(VecUtils.hori(entity.getViewDirection()))
+        const diff = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(target.location, entity.location)))
+        const cosine = Vector3Utils.dot(base, diff)
+        return cosine
+    }
+
+    static skillAvailable(entity: Entity, skillId: string) {
+        if (!entity) return 0
+        return DPUtils.store().mob_skill_cooldown.curr(entity)[skillId] ?? 0
+    }
+
+    static healthPercent(entity: Entity) {
+        const health = CompUtils.health(entity)
+        return health.currentValue / health.effectiveMax
+    }
+}
 
 export class EntityOperation {
     private _steps: { tick: number; action: (entity: Entity) => void }[] = []
@@ -68,6 +114,15 @@ export class EntityOperation {
         }
     }
 
+    playAnimation(animation: string, ticks: number = 0): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            TimeUtils.timeout(()=>{
+                if (DPUtils.store().mob_dead.curr(entity, false)) return
+                entity.playAnimation(animation)
+            }, ticks)
+        })
+    }
+
     damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOperation {
         return this._enqueue((entity: Entity) => {
             DamageUtils.damage(damageRate, entity, source, tags)
@@ -96,7 +151,7 @@ export class EntityOperation {
 
     dizzy(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
-            const dir = {...entity.getViewDirection()}
+            const dir = { ...entity.getViewDirection() }
             TimeUtils.timeseries(() => {
                 entity.setRotation({ x: 0, y: MathUtils.yaw(dir.x, dir.z) })
             }, TimeUtils.ticks(1, 1, ticks))
@@ -104,6 +159,36 @@ export class EntityOperation {
             DPUtils.store().effect_dizzy.cancel(entity)
             DPUtils.store().effect_dizzy.set(entity, true)
             DPUtils.store().effect_dizzy.set(entity, false, false, ticks)
+        })
+    }
+
+    untargetable(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_untargetable.cancel(entity)
+            DPUtils.store().effect_untargetable.set(entity, true)
+            DPUtils.store().effect_untargetable.set(entity, false, false, ticks)
+        })
+    }
+
+    // 在技能释放前配置一些通用的效果，包括减速、定向、霸体
+    preskill(ticks: {
+        slowness: number
+        rotation: number
+        superarmor: number
+    }, options?: {
+        slownessLvl?: number
+        rotationMode?: "fixed" | "facingTarget"
+    }) {
+        const { slownessLvl = 5, rotationMode = "fixed" } = options ?? {}
+        return this._enqueue((entity: Entity) => {
+            const ops = EntityOperation.create()
+                .slowness(ticks.slowness, slownessLvl, false)
+                .superarmor(ticks.superarmor)
+            const direction = entity.getViewDirection()
+            rotationMode === "fixed" && ops.rotateToDirection(() => direction, ticks.rotation)
+            const target = EntityState.target(entity)
+            !!target && rotationMode === "facingTarget" && ops.rotateFacing(target, ticks.rotation)
+            ops.run(entity)
         })
     }
 
@@ -214,21 +299,20 @@ export class EntityOperation {
             }
         })
     }
+}
 
-    static target(entity: Entity) {
-        const targetId = DPUtils.store().mob_target.curr(entity)
-        return targetId ? world.getEntity(targetId) : undefined
-    }
-
-    static targetDist(entity: Entity) {
-        const target = EntityOperation.target(entity)
-        return target ? Vector3Utils.distance(entity.location, target.location) : 99999
-    }
-
-    static skillAvailable(entity: Entity, skillId: string) {
-        if (!entity) return 0
-        return DPUtils.store().mob_skill_cooldown.curr(entity)[skillId] ?? 0
-    }
+export interface EntityQueryParams {
+    dist: number
+    location?: Vector3
+    offset?: number[] // FYR
+    types?: string[]
+    families?: string[]
+    excludeTypes?: string[]
+    excludeFamilies?: string[]
+    self?: boolean
+    friendlyFire?: boolean
+    limit?: number
+    filter?: (entity: Entity) => boolean
 }
 
 export class EntityQuery {
@@ -245,68 +329,73 @@ export class EntityQuery {
 
     static entities(
         entity: Entity,
-        options: {
-            dist: number
-            offset?: number[] // FYR
-            types?: string[]
-            families?: string[]
-            excludeTypes?: string[]
-            excludeFamilies?: string[]
-            self?: boolean
-            friendlyFire?: boolean
-            filter?: (entity: Entity) => boolean
-        }
+        options: EntityQueryParams | EntityQueryParams[]
     ): EntityQuery {
-        const {
-            dist = 64,
-            offset = [0, 0, 0],
-            types = [],
-            families = [],
-            excludeTypes = ["minecraft:item", "minecraft:xp_orb"],
-            excludeFamilies = ["projectile", "dummy"],
-            self = false,
-            friendlyFire = true,
-            filter = () => true,
-        } = options
+        if (!Array.isArray(options)) {
+            options = [options]
+        }
+
         const query = new EntityQuery()
         query._target = entity
         query._query = (target: Entity) => {
-            let entities: Entity[] = []
-            if (types.length === 0) {
-                if (families.length === 0) {
-                    entities = target.dimension.getEntities({
-                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
-                        maxDistance: dist,
-                        excludeTypes: excludeTypes,
-                        excludeFamilies: excludeFamilies,
-                    })
-                        .filter(e => self ? true : e.id !== target.id)
+            const res: Entity[] = []
+            options.forEach((option) => {
+                const {
+                    dist = 64,
+                    location = undefined,
+                    offset = [0, 0, 0],
+                    types = [],
+                    families = [],
+                    excludeTypes = ["minecraft:item", "minecraft:xp_orb"],
+                    excludeFamilies = ["projectile", "dummy"],
+                    self = false,
+                    friendlyFire = true,
+                    filter = () => true,
+                    limit = 99999,
+                } = option
+
+                let entities: Entity[] = []
+                if (types.length === 0) {
+                    if (families.length === 0) {
+                        entities = target.dimension.getEntities({
+                            location: location ? location : VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                            maxDistance: dist,
+                            excludeTypes: excludeTypes,
+                            excludeFamilies: excludeFamilies,
+                        })
+                            .filter(e => self ? true : e.id !== target.id)
+                    } else {
+                        entities = target.dimension.getEntities({
+                            location: location ? location : VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                            maxDistance: dist,
+                            families: families,
+                        })
+                            .filter(e => self ? true : e.id !== target.id)
+                    }
                 } else {
-                    entities = target.dimension.getEntities({
-                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
-                        maxDistance: dist,
-                        families: families,
+                    types.forEach(type => {
+                        target.dimension.getEntities({
+                            location: location ? location : VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
+                            maxDistance: dist,
+                            type: type
+                        }).forEach(e => entities.push(e))
                     })
-                        .filter(e => self ? true : e.id !== target.id)
                 }
-            } else {
-                types.forEach(type => {
-                    target.dimension.getEntities({
-                        location: VecUtils.start(target).moveF(offset[0]).moveY(offset[1]).moveR(offset[2]).end(),
-                        maxDistance: dist,
-                        type: type
-                    }).forEach(e => entities.push(e))
-                })
-            }
-            entities = entities.filter(e => self ? true : e.id !== target.id).filter(filter)
-            if (!friendlyFire) {
-                entities = entities.filter(e => {
-                    const faction1 = DPUtils.store().entity_faction.curr(e)
-                    const faction2 = DPUtils.store().entity_faction.curr(target)
-                    return !faction1 || !faction2 || faction1 !== faction2
-                })
-            }
-            return entities
+                entities = entities.filter(filter)
+                    .filter(e => self ? true : e.id !== target.id)
+                    .filter(e => !DPUtils.store().effect_untargetable.curr(e, false))
+                    .slice(0, limit)
+                if (!friendlyFire) {
+                    entities = entities.filter(e => {
+                        const faction1 = DPUtils.store().entity_faction.curr(e)
+                        const faction2 = DPUtils.store().entity_faction.curr(target)
+                        return !faction1 || !faction2 || faction1 !== faction2
+                    })
+                }
+
+                res.push(...entities)
+            })
+            return res
         }
         return query
     }
@@ -327,17 +416,17 @@ export class EntityQuery {
         return this
     }
 
-    sched(callback: (entity: Entity) => void, ticks: number[], params: any[] = []) {
+    sched(callback: (entity: Entity, param: any, index: number, base?: Entity) => void, ticks: number[], params: any[] = []) {
         if (!this._target) return
         const schedId = system.currentTick
         DPUtils.store().entity_sched_id.set(this._target, schedId)
-        TimeUtils.timeseries(() => {
+        TimeUtils.timeseries((param, index) => {
             if (!this._target) return
             if (DPUtils.store().entity_sched_id.curr(this._target) !== schedId) return
             let entities = this._query(this._target)
             entities = entities.sort((a, b) => this._sort(a) - this._sort(b))
             entities = entities.slice(0, this._limit)
-            entities.forEach(callback)
+            entities.forEach(e => callback(e, param, index, this._target))
         }, ticks, params)
     }
 

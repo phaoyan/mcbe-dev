@@ -30,3 +30,12 @@ DPUtils.store().effect_dizzy.register((target, curr, prev)=>{
         }
     }
 })
+
+DPUtils.store().effect_untargetable.register((target, curr, prev)=>{
+    if (!(target instanceof Entity)) return
+    if (curr) {
+        target.triggerEvent(EntityEventIds.UntargetableOn)
+    } else {
+        target.triggerEvent(EntityEventIds.UntargetableOff)
+    }
+})

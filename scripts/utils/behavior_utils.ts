@@ -1,4 +1,4 @@
-import { Entity, world, system, Vector3 } from "@minecraft/server";
+import { Entity, world, system } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
@@ -17,7 +17,7 @@ const BT_TRACE = false;
 function btTrace(message: string): void {
     if (!BT_TRACE) return;
     try {
-        console.warn(`[BT] ${message}`);
+        console.warn(`[BT][${system.currentTick}] ${message}`);
     } catch { /* ignore */ }
 }
 
@@ -587,9 +587,9 @@ export class BehaviorTemplates {
 
                 const once = BlackboardManager.get(entity, 'current_skill_once', true) === true;
                 if (once) {
-                    // 一次性执行：锁定期内直接RUNNING，锁定结束后清理并返回FAILURE以退出锁门
+                    // 一次性执行：锁定期内直接SUCCESS，锁定结束后清理并返回FAILURE以退出锁门
                     const inLock = BlackboardManager.get(entity, 'skill_locking', 0) > system.currentTick;
-                    if (inLock) return NodeState.RUNNING;
+                    if (inLock) return NodeState.SUCCESS;
                     BlackboardManager.delete(entity, 'current_skill');
                     BlackboardManager.delete(entity, 'current_skill_once');
                     return NodeState.FAILURE;
@@ -614,6 +614,8 @@ export class BehaviorTemplates {
         findTarget?: (entity: Entity) => NodeState; // 寻找目标行为，可选
         idleBehavior?: (entity: Entity) => NodeState; // 空闲行为，可选
         hurtAction?: (entity: Entity) => NodeState; // 受击动作，可选
+        hurtCounterMax?: number; // 受击计数器最大值，可选
+        hurtCounterResetTick?: number; // 受击计数器重置时间，可选
     } = {}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
@@ -622,6 +624,8 @@ export class BehaviorTemplates {
         const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
         const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
         const hurtAction = config.hurtAction ?? (()=>NodeState.SUCCESS);
+        const hurtCounterMax = config.hurtCounterMax ?? 99999;
+        const hurtCounterResetTick = config.hurtCounterResetTick ?? 100;
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
                 .sequence("DeathHandler")
@@ -636,10 +640,18 @@ export class BehaviorTemplates {
                     })
                     .end()
                 .sequence("HurtHandler")
-                    .condition("HasHurt", (entity) => system.currentTick - DPUtils.store().mob_hurt.curr(entity, 0) <= 1)
+                    .condition("HasHurt", (entity) => system.currentTick - DPUtils.store().mob_hurt.curr(entity, 0)===0)
+                    .condition("NoSuperarmor", (entity) => !DPUtils.store().effect_superarmor.curr(entity, false))
                     .action("HurtAction", (entity) => {
-                        const locked = actions.skill.checkLock(entity);
-                        if (locked) return NodeState.SUCCESS;
+                        if (DPUtils.store().mob_hurt_counter.curr(entity, 0) > hurtCounterMax) {
+                            return NodeState.FAILURE
+                        }
+                        if (DPUtils.store().mob_hurt_counter.curr(entity, 0) === hurtCounterMax) {
+                            DPUtils.store().mob_hurt_counter.cancel(entity)
+                            DPUtils.store().mob_hurt_counter.set(entity, 0, 0, hurtCounterResetTick)
+                            return NodeState.FAILURE
+                        }
+                        DPUtils.store().mob_hurt_counter.set(entity, (curr: any) => curr + 1, 0)
                         return hurtAction(entity);
                     })
                     .end()
@@ -701,6 +713,7 @@ export class BehaviorTemplates {
             .end()
             .build();
     }
+
 }
 
 // 合并监听不同事件的处理，不使用switch

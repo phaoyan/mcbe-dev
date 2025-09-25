@@ -1,6 +1,6 @@
 import { Block, BlockComponentTypes, BlockInventoryComponent, Entity, EntityComponentTypes, EntityEquippableComponent, EntityInventoryComponent, EquipmentSlot, ItemStack, Player, system, world, World } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { ItemUtils } from "./item_utils";
+import { ItemConfig, ItemUtils } from "./item_utils";
 
 
 export interface GiveOptions {
@@ -14,13 +14,13 @@ export interface EquipOptions {
 }
 
 export interface ItemBind {
-    inventory?: (ItemUtils | { item: ItemUtils, slot: number })[]
-    head?: ItemUtils
-    chest?: ItemUtils
-    legs?: ItemUtils
-    feet?: ItemUtils
-    mainhand?: ItemUtils
-    offhand?: ItemUtils
+    inventory?: ItemConfig[]
+    head?: ItemConfig
+    chest?: ItemConfig
+    legs?: ItemConfig
+    feet?: ItemConfig
+    mainhand?: ItemConfig
+    offhand?: ItemConfig
 }
 
 export class InventoryUtils {
@@ -67,8 +67,12 @@ export class InventoryUtils {
         this.equippables(target).setEquipment(slot, item)
     }
 
-    static clear(target: Entity, typeId: string) {
-        target.runCommand(`clear @s ${typeId}`)
+    static clear(target: Entity, typeId: string, slot?: number) {
+        if (slot === undefined) {
+            target.runCommand(`clear @s ${typeId}`)
+        } else {
+            this.entity(target)?.setItem(slot)
+        }
     }
 
     // 将指定槽位的物品放到其他空的栏目里
@@ -101,59 +105,41 @@ export class InventoryUtils {
         return true
     }
 
-    static itembinds(data: { dpId: string, itembinds: { [key: string]: ItemBind }, keyMapping?: (key: any, target: Entity) => string }) {
-        const itembinds = data.itembinds
+    static keymapping(target: Player, dpId: string, itembinds: { [key: string]: ItemBind }) {
+        return itembinds[DPUtils.curr(target, dpId)]
+    }
+
+    static itembinds(data: { 
+        itembindId: string,
+        triggers: string | string[], 
+        mapping: (target: Player) => ItemBind 
+    }) {
+        const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
         world.afterEvents.worldLoad.subscribe(() => {
-            DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string | string[], prev: string | string[]) => {
-                if (!(target instanceof Player)) return
-                const normalize = (value: any): string[] => {
-                    const arrayValue = Array.isArray(value) ? value : (value === undefined || value === null ? [] : [value])
-                    return data.keyMapping ? arrayValue.map((k: any) => data.keyMapping!(k, target)) : arrayValue
-                }
+            triggers.forEach(trigger=>{
+                DPUtils.register(trigger, (target: Entity | ItemStack | World) => {
+                    if (!(target instanceof Player)) return
+                    const prevItembind: ItemBind = DPUtils.store().player_prev_itembind.curr(target, {})[data.itembindId]
+                    const currItembind: ItemBind = data.mapping(target)
 
-                const currKeys = normalize(curr)
-                const prevKeys = normalize(prev)
+                    prevItembind?.inventory?.forEach(item => item && InventoryUtils.clear(target, item.id))
+                    prevItembind?.head?.id && InventoryUtils.clear(target, prevItembind.head.id)
+                    prevItembind?.chest?.id && InventoryUtils.clear(target, prevItembind.chest.id)
+                    prevItembind?.legs?.id && InventoryUtils.clear(target, prevItembind.legs.id)
+                    prevItembind?.feet?.id && InventoryUtils.clear(target, prevItembind.feet.id)
+                    prevItembind?.mainhand?.id && InventoryUtils.clear(target, prevItembind.mainhand.id)
+                    prevItembind?.offhand?.id && InventoryUtils.clear(target, prevItembind.offhand.id)
 
-                if (currKeys.length === prevKeys.length && prevKeys.every(k => currKeys.includes(k))) return
+                    currItembind.inventory?.forEach(item => item && InventoryUtils.give(target, ItemUtils.fromConfig(item).get()))
+                    currItembind.head?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.head).get(), EquipmentSlot.Head, { onlyOnce: true, override: true })
+                    currItembind.chest?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.chest).get(), EquipmentSlot.Chest, { onlyOnce: true, override: true })
+                    currItembind.legs?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.legs).get(), EquipmentSlot.Legs, { onlyOnce: true, override: true })
+                    currItembind.feet?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.feet).get(), EquipmentSlot.Feet, { onlyOnce: true, override: true })
+                    currItembind.mainhand?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.mainhand).get(), EquipmentSlot.Mainhand, { onlyOnce: true, override: true })
+                    currItembind.offhand?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.offhand).get(), EquipmentSlot.Offhand, { onlyOnce: true, override: true })
 
-                const keysToRemove = prevKeys.filter(k => !currKeys.includes(k))
-                const keysToAdd = currKeys.filter(k => !prevKeys.includes(k))
-
-                for (const key of keysToRemove) {
-                    if (!(key in itembinds)) continue
-                    const prevItembind = itembinds[key]
-                    prevItembind.inventory?.forEach(item => {
-                        if (item instanceof ItemUtils) {
-                            InventoryUtils.clear(target, item.get().typeId)
-                        } else {
-                            InventoryUtils.clear(target, item.item.get().typeId)
-                        }
-                    })
-                    prevItembind.head?.get() && InventoryUtils.clear(target, prevItembind.head?.get().typeId)
-                    prevItembind.chest?.get() && InventoryUtils.clear(target, prevItembind.chest?.get().typeId)
-                    prevItembind.legs?.get() && InventoryUtils.clear(target, prevItembind.legs?.get().typeId)
-                    prevItembind.feet?.get() && InventoryUtils.clear(target, prevItembind.feet?.get().typeId)
-                    prevItembind.mainhand?.get() && InventoryUtils.clear(target, prevItembind.mainhand?.get().typeId)
-                    prevItembind.offhand?.get() && InventoryUtils.clear(target, prevItembind.offhand?.get().typeId)
-                }
-
-                for (const key of keysToAdd) {
-                    if (!(key in itembinds)) continue
-                    const currItembind = itembinds[key]
-                    currItembind.inventory?.forEach(item => {
-                        if (item instanceof ItemUtils) {
-                            InventoryUtils.give(target, item.get())
-                        } else {
-                            InventoryUtils.give(target, item.item.get(), { slot: item.slot })
-                        }
-                    })
-                    currItembind.head?.get() && InventoryUtils.equip(target, currItembind.head?.get(), EquipmentSlot.Head, { onlyOnce: true, override: true })
-                    currItembind.chest?.get() && InventoryUtils.equip(target, currItembind.chest?.get(), EquipmentSlot.Chest, { onlyOnce: true, override: true })
-                    currItembind.legs?.get() && InventoryUtils.equip(target, currItembind.legs?.get(), EquipmentSlot.Legs, { onlyOnce: true, override: true })
-                    currItembind.feet?.get() && InventoryUtils.equip(target, currItembind.feet?.get(), EquipmentSlot.Feet, { onlyOnce: true, override: true })
-                    currItembind.mainhand?.get() && InventoryUtils.equip(target, currItembind.mainhand?.get(), EquipmentSlot.Mainhand, { onlyOnce: true, override: true })
-                    currItembind.offhand?.get() && InventoryUtils.equip(target, currItembind.offhand?.get(), EquipmentSlot.Offhand, { onlyOnce: true, override: true })
-                }
+                    DPUtils.store().player_prev_itembind.set(target, (curr: any)=>({...curr, [data.itembindId]: currItembind}), {})
+                })
             })
         })
         return InventoryUtils

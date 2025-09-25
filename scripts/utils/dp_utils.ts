@@ -1,6 +1,7 @@
-import { Entity, ItemStack, system, world, World } from "@minecraft/server";
+import { Entity, EquipmentSlot, ItemStack, system, world, World } from "@minecraft/server";
 import { dpList } from "../lists/dp_list";
 import { ScriptEventIds } from "../lists/event_list";
+import { InventoryUtils } from "./inventory_utils";
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
     if (id !== ScriptEventIds.DPList) return
@@ -11,6 +12,14 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
     console.warn(`DP List: ${sourceEntity.getDynamicPropertyIds().join(", ")}`)
     sourceEntity.getDynamicPropertyIds().forEach(id => {
         console.warn(`${id}: ${JSON.stringify(sourceEntity.getDynamicProperty(id))}`)
+    })
+})
+
+system.afterEvents.scriptEventReceive.subscribe(({ id }) => {
+    if (id !== ScriptEventIds.DPListWorld) return
+    console.warn(`DP List World (Current Tick: ): ${world.getDynamicPropertyIds().join(", ")}`)
+    world.getDynamicPropertyIds().forEach(id => {
+        console.warn(`${id}: ${JSON.stringify(world.getDynamicProperty(id))}`)
     })
 })
 
@@ -39,21 +48,39 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) 
     sourceEntity.runCommand("say DP Reset Success")
 })
 
+// Player DP Sync
+system.runInterval(()=>{
+    world.getAllPlayers().forEach(player=>{
+        DPUtils.store().player_is_jumping.set(player, player.isJumping)
+        DPUtils.store().player_is_running.set(player, player.isSprinting)
+        DPUtils.store().player_is_sneaking.set(player, player.isSneaking)
+        DPUtils.store().player_is_swimming.set(player, player.isSwimming)
+
+        const equippables = InventoryUtils.equippables(player)
+        DPUtils.store().player_offhand.set(player, equippables.getEquipment(EquipmentSlot.Offhand)?.typeId)
+        DPUtils.store().player_mainhand.set(player, equippables.getEquipment(EquipmentSlot.Mainhand)?.typeId)
+        DPUtils.store().player_head.set(player, equippables.getEquipment(EquipmentSlot.Head)?.typeId)
+        DPUtils.store().player_chest.set(player, equippables.getEquipment(EquipmentSlot.Chest)?.typeId)
+        DPUtils.store().player_legs.set(player, equippables.getEquipment(EquipmentSlot.Legs)?.typeId)
+        DPUtils.store().player_feet.set(player, equippables.getEquipment(EquipmentSlot.Feet)?.typeId)
+
+        DPUtils.store().player_selected_slot_idx.set(player, player.selectedSlotIndex)
+    })
+})
+
 // DP Timeline
 system.runInterval(() => {
     const timeline = DPUtils.store().world_dp_timeline.curr(world, {})
     if (!!timeline[system.currentTick]) {
         for (const todo of timeline[system.currentTick]) {
             const entity = world.getEntity(todo.e)
-            if (!entity) return
+            if (!entity) continue
             DPUtils.set(entity, todo.k, todo.v)
         }
-        DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
-            const newTimeline = { ...curr }
-            delete newTimeline[system.currentTick]
-            return newTimeline
-        })
     }
+    DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
+        return Object.fromEntries(Object.entries(curr).filter(([k]) => parseInt(k) > system.currentTick))
+    })
 })
 
 // DP Activate
@@ -62,14 +89,12 @@ system.runInterval(() => {
     Object.values(activate).forEach((todo: any) => {
         for (const item of todo) {
             const entity = world.getEntity(item.e)
-            if (!entity) return
+            if (!entity) continue
             DPUtils.set(entity, item.k, item.v)
         }
     })
     DPUtils.store().world_dp_activate.set(world, (curr: any) => {
-        const newTimeline = { ...curr }
-        delete newTimeline[system.currentTick]
-        return newTimeline
+        return Object.fromEntries(Object.entries(curr).filter(([k]) => parseInt(k) > system.currentTick))
     })
 })
 

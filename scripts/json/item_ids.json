@@ -1,3 +1,5 @@
 {
-    "debug_menu": "minecraft_dev:debug_menu"
+    "debug": {
+        "debug_menu": "minecraft_dev:debug_menu"
+    }
 }

@@ -9,13 +9,15 @@ export const EntityEventIds = {
     Despawn: "event:despawn",
     Idle: "event:idle",
     Fight: "event:fight",
-    SuperArmorOn: "event:super_armor_on",
-    SuperArmorOff: "event:super_armor_off"
+    SuperArmorOn: "event:superarmor_on",
+    SuperArmorOff: "event:superarmor_off",
+    UntargetableOn: "event:untargetable_on",
+    UntargetableOff: "event:untargetable_off"
 }
 
 export const ScriptEventIds = {
-    DPList: "dp:list",
-    DPSet: "dp:set",
-    DPRest: "dp:reset",
-    DebugSummon: "debug:summon",
+    DPList: "event:dp_list",
+    DPListWorld: "event:dp_list_world",
+    DPSet: "event:dp_set",
+    DPRest: "event:dp_rest"
 }

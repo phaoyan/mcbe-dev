@@ -201,13 +201,13 @@ export class VecUtils {
     static LOCATION: Vector3
     static DIRECTION: Vector3
 
-    static start(target: Entity | Vector3, direction?: Vector3, dimension?: MinecraftDimensionTypes) {
+    static start(target: Entity | Vector3, direction?: Vector3, dimension?: MinecraftDimensionTypes, velocityMode?: boolean) {
         if ('location' in target && 'getViewDirection' in target) {
             // 传入的是 Entity
             this.ENTITY = target
             this.DIMENSION = target.dimension
             this.LOCATION = { ...target.location }
-            this.DIRECTION = { ...target.getViewDirection() }
+            this.DIRECTION = velocityMode ? { ...VecUtils.unit(target.getVelocity()) } : { ...target.getViewDirection() }
         } else {
             // 传入的是 Vector3
             this.DIMENSION = dimension ? world.getDimension(dimension) : world.getDimension(MinecraftDimensionTypes.Overworld)
