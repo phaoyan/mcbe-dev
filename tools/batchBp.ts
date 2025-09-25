@@ -5,7 +5,6 @@ import {
     writeJson,
     ensureDir
 } from './utils';
-import { bosses, effects, miniBosses, mobs, npcs } from './typeIds';
 
 // 导出数据函数
 const exportData = (data: any, name: string): void => {
