@@ -12,7 +12,9 @@ export const EntityEventIds = {
     SuperArmorOn: "event:superarmor_on",
     SuperArmorOff: "event:superarmor_off",
     UntargetableOn: "event:untargetable_on",
-    UntargetableOff: "event:untargetable_off"
+    UntargetableOff: "event:untargetable_off",
+    BlindOn: "event:blind_on",
+    BlindOff: "event:blind_off",
 }
 
 export const ScriptEventIds = {

@@ -684,6 +684,7 @@ export class BehaviorTemplates {
                     .end()
                 .sequence("TryFindTarget")
                     .condition("NoTarget", actions.target.noTargetCheck)
+                    .condition("NoBlind", (entity) => !DPUtils.store().effect_blind.curr(entity))
                     .action("FindTarget", findTarget)
                     .end()
                 .sequence("NoTargetBehavior")

@@ -2,6 +2,8 @@ import { Entity, Player } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
+import { EntityState } from "./entity_utils";
+import { TagList } from "../lists/tag_list";
 
 DPUtils.store().effect_superarmor.register((target, curr, prev)=>{
     if (!(target instanceof Entity)) return
@@ -38,4 +40,23 @@ DPUtils.store().effect_untargetable.register((target, curr, prev)=>{
     } else {
         target.triggerEvent(EntityEventIds.UntargetableOff)
     }
+})
+
+DPUtils.store().effect_blind.register((entity, curr, prev)=>{
+    if (!(entity instanceof Entity)) return
+    try {
+        if (curr) {
+            console.warn("blind on", entity.typeId)
+            DPUtils.store().mob_target.set(entity, undefined)
+            const target = EntityState.target(entity)
+            if (!target) return
+            target.removeTag(TagList.TargetedBy(target.typeId))
+            DPUtils.store().mob_targeted_by.set(target, (curr: string[]) => (curr ?? []).filter(id => id !== target.id), [])
+            entity.triggerEvent(EntityEventIds.BlindOn)
+        } else {
+            console.warn("blind off", entity.typeId)
+            entity.triggerEvent(EntityEventIds.BlindOff)
+            entity.triggerEvent(EntityEventIds.TargetAcquired)
+        }
+    } catch (e) {}
 })

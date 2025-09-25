@@ -178,6 +178,18 @@ export class EntityOperation {
         })
     }
 
+    blind(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (entity instanceof Player) {
+                entity.addEffect(MinecraftEffectTypes.Blindness, ticks, { amplifier: 255, showParticles: false })
+            } else {
+                DPUtils.store().effect_blind.cancel(entity)
+                DPUtils.store().effect_blind.set(entity, true)
+                DPUtils.store().effect_blind.set(entity, false, false, ticks)
+            }
+        })
+    }
+
     // 在技能释放前配置一些通用的效果，包括减速、定向、霸体
     preskill(ticks: {
         slowness: number
@@ -357,7 +369,7 @@ export class EntityQuery {
                     excludeTypes = ["minecraft:item", "minecraft:xp_orb"],
                     excludeFamilies = ["projectile", "dummy"],
                     self = false,
-                    friendlyFire = true,
+                    friendlyFire = false,
                     filter = () => true,
                     limit = 99999,
                 } = option

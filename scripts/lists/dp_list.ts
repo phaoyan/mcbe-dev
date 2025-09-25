@@ -42,5 +42,6 @@ export const dpList = {
 
     effect_superarmor: "minecraft_dev:effect_superarmor",
     effect_dizzy: "minecraft_dev:effect_dizzy",
-    effect_untargetable: "minecraft_dev:effect_untargetable"
+    effect_untargetable: "minecraft_dev:effect_untargetable",
+    effect_blind: "minecraft_dev:effect_blind"
 }
