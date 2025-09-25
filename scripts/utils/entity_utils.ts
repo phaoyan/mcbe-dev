@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, EntityQueryOptions, system, Vector3, world } from "@minecraft/server";
+import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, Vector3, world } from "@minecraft/server";
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
@@ -159,6 +159,14 @@ export class EntityOperation {
             DPUtils.store().effect_dizzy.cancel(entity)
             DPUtils.store().effect_dizzy.set(entity, true)
             DPUtils.store().effect_dizzy.set(entity, false, false, ticks)
+        })
+    }
+
+    cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (entity instanceof Player) {
+                entity.runCommand(`camerashake add @s ${ticks/20} ${intensity} ${mode}`)
+            }
         })
     }
 
