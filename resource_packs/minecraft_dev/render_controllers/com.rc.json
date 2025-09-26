@@ -33,6 +33,20 @@
             "textures": [
                 "texture.fpp"
             ]
+        },
+        "controller.render.entity_alphablend": {
+            "geometry": "geometry.default",
+            "materials": [
+                {
+                    "*": "material.alphablend"
+                },
+                {
+                    "alphatest*": "material.alphatest"
+                }
+            ],
+            "textures": [
+                "texture.default"
+            ]
         }
     }
 }

@@ -4,6 +4,7 @@ import {
     writeJson,
     ensureDir
 } from './utils';
+import { rpEffect } from './batchrp/rp_effect';
 
 // 导出数据函数
 const exportData = (data: any, name: string): void => {
@@ -24,6 +25,7 @@ const exportData = (data: any, name: string): void => {
  * 主函数
  */
 export async function main(): Promise<void> {
+    exportData(rpEffect("breathing_skill_dragon_head"),"effect/breathing_skill_dragon_head")
 }
 
 // 如果直接运行此文件

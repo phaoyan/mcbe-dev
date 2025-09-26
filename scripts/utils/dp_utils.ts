@@ -80,7 +80,7 @@ system.runInterval(() => {
     }
     DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
         return Object.fromEntries(Object.entries(curr).filter(([k]) => parseInt(k) > system.currentTick))
-    })
+    }, {})
 })
 
 // DP Activate
@@ -95,7 +95,7 @@ system.runInterval(() => {
     })
     DPUtils.store().world_dp_activate.set(world, (curr: any) => {
         return Object.fromEntries(Object.entries(curr).filter(([k]) => parseInt(k) > system.currentTick))
-    })
+    }, {})
 })
 
 export class DPUtils {

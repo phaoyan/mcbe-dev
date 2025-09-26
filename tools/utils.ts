@@ -19,7 +19,7 @@ export function getProjectName(): string {
 export const PROJECT_NAME = getProjectName();
 export const TOOLS_DIR = __dirname;
 export const PROJECT_ROOT = path.join(__dirname, '..');
-export const BBPACK_DIR = "D:/coding/projects/minecraft-dev/SynologyDrive/项目编号/Ghouls（东京喰种）/bbpacks";
+export const BBPACK_DIR = "D:/coding/projects/minecraft-dev/project/mcbe-dev/tools/bbpacks";
 export const BBMODEL_JSON_PATH = path.join(BBPACK_DIR, 'bbmodel.json');
 export const ENV_PATH = path.join(PROJECT_ROOT, '.env');
 export const RESOURCE_PACK_DIR = path.join(PROJECT_ROOT, 'resource_packs', PROJECT_NAME);

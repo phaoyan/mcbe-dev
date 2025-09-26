@@ -1,4 +1,18 @@
 {
+    "breathing_skill_dragon_head": {
+        "geometry": "minecraft_dev.breathing_skill_dragon_head",
+        "textures": [
+            "breathing_skill_dragon_head_0"
+        ],
+        "animations": {
+            "new": "animation.minecraft_dev.breathing_skill_dragon_head.new"
+        },
+        "animation_length": {
+            "new": 5
+        },
+        "particle_effects": {},
+        "sound_effects": {}
+    },
     "lclick_dummy": {
         "geometry": "minecraft_dev.lclick_dummy",
         "textures": [
@@ -45,14 +59,22 @@
             "combo1": "animation.minecraft_dev.player_fpp.combo1",
             "combo2": "animation.minecraft_dev.player_fpp.combo2",
             "combo3": "animation.minecraft_dev.player_fpp.combo3",
-            "idle": "animation.minecraft_dev.player_fpp.idle"
+            "wait1": "animation.minecraft_dev.player_fpp.wait1",
+            "wait2": "animation.minecraft_dev.player_fpp.wait2",
+            "wait3": "animation.minecraft_dev.player_fpp.wait3",
+            "idle": "animation.minecraft_dev.player_fpp.idle",
+            "running": "animation.minecraft_dev.player_fpp.running"
         },
         "animation_length": {
             "combo": 1.625,
-            "combo1": 0.41667,
-            "combo2": 0.41667,
-            "combo3": 0.79167,
-            "idle": 0.5
+            "combo1": 0.5,
+            "combo2": 0.5,
+            "combo3": 1,
+            "wait1": 0.5,
+            "wait2": 0.5,
+            "wait3": 1,
+            "idle": 0.5,
+            "running": 0.5
         },
         "particle_effects": {},
         "sound_effects": {}
