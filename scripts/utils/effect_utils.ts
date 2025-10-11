@@ -60,3 +60,21 @@ DPUtils.store().effect_blind.register((entity, curr, prev)=>{
         }
     } catch (e) {}
 })
+
+DPUtils.store().effect_remove.register((entity, curr, prev)=>{
+    if (!(entity instanceof Entity)) return
+    if (curr) {
+        try {
+            entity.remove()
+        } catch (e) {}
+    }
+})
+
+DPUtils.store().effect_die.register((entity, curr, prev)=>{
+    if (!(entity instanceof Entity)) return
+    if (curr) {
+        try {
+            entity.triggerEvent(EntityEventIds.Death)
+        } catch (e) {}
+    }
+})

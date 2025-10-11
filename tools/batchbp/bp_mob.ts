@@ -196,6 +196,16 @@ export const bpMob = (params: MobParams) => {
                         "name": `${NAME_SPACE}:${typeId}`,
                         "should_darken_sky": false
                     }
+                },
+                "comp:invisiable_on": {
+                    "minecraft:scale": {
+                        "value": 0
+                    }
+                },
+                "comp:invisiable_off": {
+                    "minecraft:scale": {
+                        "value": 1
+                    }
                 }
             },
             "events": {
@@ -311,6 +321,30 @@ export const bpMob = (params: MobParams) => {
                         "component_groups": [
                             "comp:targeting",
                             "comp:fight"
+                        ]
+                    }
+                },
+                "event:invisiable_on": {
+                    "remove": {
+                        "component_groups": [
+                            "comp:invisiable_off"
+                        ]
+                    },
+                    "add": {
+                        "component_groups": [
+                            "comp:invisiable_on"
+                        ]
+                    }
+                },
+                "event:invisiable_off": {
+                    "remove": {
+                        "component_groups": [
+                            "comp:invisiable_on"
+                        ]
+                    },
+                    "add": {
+                        "component_groups": [
+                            "comp:invisiable_off"
                         ]
                     }
                 }

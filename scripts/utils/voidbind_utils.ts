@@ -3,6 +3,7 @@ import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { VecUtils } from "./math_utils";
 import { Vector3Utils } from "@minecraft/math";
+import { EntityOperation } from "./entity_utils";
 
 export interface VoidbindOptions {
     duration?: number
@@ -39,7 +40,7 @@ export class VoidbindUtils {
         voidbind.addEffect(MinecraftEffectTypes.Invisibility, duration, { showParticles: false })
         !invisible && TimeUtils.timeout(() => voidbind.addEffect(MinecraftEffectTypes.Invisibility, 1, { amplifier: 2 }), delay)
         animation && TimeUtils.timeout(() => voidbind.playAnimation(animation), delay)
-        TimeUtils.timeout(() => { try { voidbind.remove() } catch (e) { } }, duration)
+        EntityOperation.create().remove(duration).run(voidbind)
         if (follow) {
             TimeUtils.timeseries(() => {
                 const loc = Vector3Utils.add(

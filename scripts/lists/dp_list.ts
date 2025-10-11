@@ -1,11 +1,15 @@
 export const dpList = {
     lclick_dummy_idx: "minecraft_dev:lclick_dummy_idx",
     lclick_host: "minecraft_dev:lclick_host",
-    lclick_enable: "minecraft_dev:lclick_enable",
+    
+    player_rclick_start: "minecraft_dev:player_rclick_start",
+    player_input_pattern: "minecraft_dev:player_input_pattern",
+    player_operation_map: "minecraft_dev:player_operation_map",
 
     player_animation_reverse: "minecraft_dev:player_animation_reverse",
     player_animation_combo: "minecraft_dev:player_animation_combo",
     player_prev_itembind: "minecraft_dev:player_prev_itembind",
+    player_is_onground: "minecraft_dev:player_is_onground",
     player_is_jumping: "minecraft_dev:player_is_jumping",
     player_is_running: "minecraft_dev:player_is_running",
     player_is_sneaking: "minecraft_dev:player_is_sneaking",
@@ -23,6 +27,8 @@ export const dpList = {
     world_behavior_map: "minecraft_dev:world_behavior_map",
 
 
+    mob_spawning: "minecraft_dev:mob_spawning",
+    mob_first_spawn: "minecraft_dev:mob_first_spawn",
     mob_skill_cooldown: "minecraft_dev:mob_skill_cooldown",
     mob_skill_locking: "minecraft_dev:mob_skill_locking",
     mob_behavior_state: "minecraft_dev:mob_behavior_state",
@@ -43,5 +49,7 @@ export const dpList = {
     effect_superarmor: "minecraft_dev:effect_superarmor",
     effect_dizzy: "minecraft_dev:effect_dizzy",
     effect_untargetable: "minecraft_dev:effect_untargetable",
-    effect_blind: "minecraft_dev:effect_blind"
+    effect_blind: "minecraft_dev:effect_blind",
+    effect_remove: "minecraft_dev:effect_remove",
+    effect_die: "minecraft_dev:effect_die"
 }

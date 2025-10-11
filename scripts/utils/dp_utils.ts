@@ -55,7 +55,8 @@ system.runInterval(()=>{
         DPUtils.store().player_is_running.set(player, player.isSprinting)
         DPUtils.store().player_is_sneaking.set(player, player.isSneaking)
         DPUtils.store().player_is_swimming.set(player, player.isSwimming)
-
+        DPUtils.store().player_is_onground.set(player, player.isOnGround)
+        
         const equippables = InventoryUtils.equippables(player)
         DPUtils.store().player_offhand.set(player, equippables.getEquipment(EquipmentSlot.Offhand)?.typeId)
         DPUtils.store().player_mainhand.set(player, equippables.getEquipment(EquipmentSlot.Mainhand)?.typeId)

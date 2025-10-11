@@ -6,13 +6,24 @@ import * as path from 'path';
  */
 export function getProjectName(): string {
     const envPath = path.join(__dirname, '..', '.env');
-    const envContent = fs.readFileSync(envPath, 'utf-8');
-    const projectName = envContent
-        .split('\n')[0]
-        .split('=')[1]
-        .replace(/"/g, '')
-        .trim();
-    return projectName;
+    const defaultProjectName = 'minecraft_dev';
+
+    try {
+        if (!fs.existsSync(envPath)) {
+            return defaultProjectName;
+        }
+
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const firstLine = envContent.split('\n')[0] ?? '';
+        const parts = firstLine.split('=');
+        if (parts.length < 2) {
+            return defaultProjectName;
+        }
+        const value = parts.slice(1).join('=').replace(/"/g, '').trim();
+        return value || defaultProjectName;
+    } catch {
+        return defaultProjectName;
+    }
 }
 
 // 路径常量定义

@@ -38,10 +38,13 @@
             "geometry": "geometry.default",
             "materials": [
                 {
-                    "*": "material.alphablend"
+                    "*": "material.alphatest"
                 },
                 {
                     "alphatest*": "material.alphatest"
+                },
+                {
+                    "alphablend*": "material.alphablend"
                 }
             ],
             "textures": [

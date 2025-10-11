@@ -7,7 +7,7 @@ import "./lists/event_list";
 import "./lists/tag_list";
 import "./utils/anim_utils";
 import "./utils/behavior_utils";
-import "./utils/click_utils";
+import "./utils/player_utils";
 import "./utils/comp_utils";
 import "./utils/damage_utils";
 import "./utils/dp_utils";

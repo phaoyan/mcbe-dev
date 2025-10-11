@@ -4,6 +4,8 @@ import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { EntityQuery } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
+import entityIds from "../json/entity_ids.json";
+import { CompUtils } from "./comp_utils";
 
 // 行为树框架
 export enum NodeState {
@@ -464,6 +466,11 @@ export class BehaviorUtils {
     // 注册行为树逻辑：使用行为树ID注册工厂
     static register(treeId: string, factory: (entity: Entity) => BehaviorTree) {
         this.FACTORIES[treeId] = factory;
+        Object.keys(entityIds).includes(treeId) &&
+        world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+            if (entity.typeId !== treeId) return
+            BehaviorUtils.bind(entity.id, treeId)
+        })
     }
 
     // 绑定实体到某个工厂键，并持久化到World动态属性
@@ -609,6 +616,7 @@ export class BehaviorTemplates {
 
     static monster(config: {
         skills?: SkillConfig[]; // 技能列表，可选
+        spawnAction?: (entity: Entity) => number; // 出生动作，可选
         deathAction?: (entity: Entity) => NodeState; // 死亡动作，可选
         moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
         findTarget?: (entity: Entity) => NodeState; // 寻找目标行为，可选
@@ -619,6 +627,7 @@ export class BehaviorTemplates {
     } = {}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
+        const spawnAction = config.spawnAction ?? (() => 1);
         const deathAction = config.deathAction ?? (() => NodeState.FAILURE);
         const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
         const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
@@ -628,6 +637,20 @@ export class BehaviorTemplates {
         const hurtCounterResetTick = config.hurtCounterResetTick ?? 100;
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
+                .sequence("SpawnHandler")
+                    .condition("IsFirstSpawn", (entity) => DPUtils.store().mob_first_spawn.curr(entity, true))
+                    .action("SpawnAction", (entity)=>{
+                        const spawning = DPUtils.store().mob_spawning.curr(entity)
+                        if (spawning===true) return NodeState.RUNNING
+                        if (spawning===false) return NodeState.SUCCESS
+                        const delay = spawnAction(entity);
+                        entity.triggerEvent(EntityEventIds.InvisiableOff)
+                        DPUtils.store().mob_spawning.set(entity, true)
+                        DPUtils.store().mob_spawning.set(entity, false, delay + 1)
+                        DPUtils.store().mob_first_spawn.set(entity, false, false, delay)
+                        return NodeState.RUNNING
+                    })
+                    .end()
                 .sequence("DeathHandler")
                     .condition("IsDead", actions.death.check)
                     .action("DeathAction", (entity) => {

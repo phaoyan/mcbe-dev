@@ -117,7 +117,8 @@ export class InventoryUtils {
         const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
         world.afterEvents.worldLoad.subscribe(() => {
             triggers.forEach(trigger=>{
-                DPUtils.register(trigger, (target: Entity | ItemStack | World) => {
+                DPUtils.register(trigger, (target: Entity | ItemStack | World, curr, prev) => {
+                    if (prev === curr) return
                     if (!(target instanceof Player)) return
                     const prevItembind: ItemBind = DPUtils.store().player_prev_itembind.curr(target, {})[data.itembindId]
                     const currItembind: ItemBind = data.mapping(target)

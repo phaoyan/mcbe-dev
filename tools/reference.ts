@@ -35,9 +35,15 @@ export function itemIdRefs(): void {
         }
     }
 
-    const outputPath = path.join(SCRIPTS_DIR, "json", "item_ids.json");
-    ensureDir(path.dirname(outputPath));
-    writeJson(outputPath, itemIds);
+    // 写入树形结构
+    const treePath = path.join(SCRIPTS_DIR, "json", "item_tree.json");
+    ensureDir(path.dirname(treePath));
+    writeJson(treePath, itemIds);
+
+    // 写入扁平结构
+    const flatItemIds = flattenMapping(itemIds);
+    const flatPath = path.join(SCRIPTS_DIR, "json", "item_ids.json");
+    writeJson(flatPath, flatItemIds);
 }
 
 /**
@@ -66,9 +72,15 @@ export function entityIdRefs(): void {
         }
     }
 
-    const outputPath = path.join(SCRIPTS_DIR, "json", "entity_ids.json");
-    ensureDir(path.dirname(outputPath));
-    writeJson(outputPath, entityIds);
+    // 写入树形结构
+    const treePath = path.join(SCRIPTS_DIR, "json", "entity_tree.json");
+    ensureDir(path.dirname(treePath));
+    writeJson(treePath, entityIds);
+
+    // 写入扁平结构
+    const flatEntityIds = flattenMapping(entityIds);
+    const flatPath = path.join(SCRIPTS_DIR, "json", "entity_ids.json");
+    writeJson(flatPath, flatEntityIds);
 }
 
 /**
@@ -135,13 +147,54 @@ export function animationIdRefs(): void {
         }
     }
 
-    const outputPath = path.join(SCRIPTS_DIR, "json", "animation_ids.json");
-    ensureDir(path.dirname(outputPath));
-    writeJson(outputPath, animationIds);
+    // 写入树形结构
+    const treePath = path.join(SCRIPTS_DIR, "json", "animation_tree.json");
+    ensureDir(path.dirname(treePath));
+    writeJson(treePath, animationIds);
+
+    // 写入扁平结构
+    const flatAnimationIds = flattenMapping(animationIds);
+    const flatPath = path.join(SCRIPTS_DIR, "json", "animation_ids.json");
+    writeJson(flatPath, flatAnimationIds);
 
     // 同时输出动画长度信息
     const lengthOutputPath = path.join(SCRIPTS_DIR, "json", "animation_length.json");
     writeJson(lengthOutputPath, animationLengths);
+}
+
+/**
+ * 扁平化嵌套映射对象，将多层键以 "." 连接成一层键
+ * - 若遇到对象内含有 "_value"，则为当前层级也生成一条键值映射
+ */
+function flattenMapping(tree: any, parentKeys: string[] = []): Record<string, string> {
+    const flat: Record<string, string> = {};
+    if (tree == null) return flat;
+
+    const isString = typeof tree === 'string';
+    if (isString) {
+        const v = tree as string;
+        flat[v] = v;
+        return flat;
+    }
+
+    if (typeof tree === 'object') {
+        // 若包含 _value，生成当前层级的映射
+        if (typeof tree._value === 'string') {
+            const v = tree._value as string;
+            flat[v] = v;
+        }
+
+        for (const key of Object.keys(tree)) {
+            if (key === '_value') continue;
+            const value = tree[key];
+            const nextKeys = parentKeys.concat(key);
+            const childFlat = flattenMapping(value, nextKeys);
+            for (const k of Object.keys(childFlat)) {
+                flat[k] = childFlat[k];
+            }
+        }
+    }
+    return flat;
 }
 
 /**

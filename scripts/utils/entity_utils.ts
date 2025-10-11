@@ -116,7 +116,7 @@ export class EntityOperation {
 
     playAnimation(animation: string, ticks: number = 0): EntityOperation {
         return this._enqueue((entity: Entity) => {
-            TimeUtils.timeout(()=>{
+            TimeUtils.timeout(() => {
                 if (DPUtils.store().mob_dead.curr(entity, false)) return
                 entity.playAnimation(animation)
             }, ticks)
@@ -165,7 +165,7 @@ export class EntityOperation {
     cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
-                entity.runCommand(`camerashake add @s ${ticks/20} ${intensity} ${mode}`)
+                entity.runCommand(`camerashake add @s ${ticks / 20} ${intensity} ${mode}`)
             }
         })
     }
@@ -187,6 +187,19 @@ export class EntityOperation {
                 DPUtils.store().effect_blind.set(entity, true)
                 DPUtils.store().effect_blind.set(entity, false, false, ticks)
             }
+        })
+    }
+
+
+    remove(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_remove.set(entity, true, false, ticks)
+        })
+    }
+
+    die(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_die.set(entity, true, false, ticks)
         })
     }
 

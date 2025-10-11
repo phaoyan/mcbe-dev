@@ -1,107 +1,76 @@
 {
-    "minecraft_dev": {
-        "common": {
-            "none": "animation.minecraft_dev.common.none"
-        },
-        "player": {
-            "attack": {
-                "positions": {
-                    "reverse": "animation.minecraft_dev.player.attack.positions.reverse",
-                    "_value": "animation.minecraft_dev.player.attack.positions"
-                },
-                "rotations": {
-                    "reverse": "animation.minecraft_dev.player.attack.rotations.reverse",
-                    "_value": "animation.minecraft_dev.player.attack.rotations"
-                }
-            },
-            "holding": {
-                "reverse": "animation.minecraft_dev.player.holding.reverse",
-                "_value": "animation.minecraft_dev.player.holding",
-                "zombie": "animation.minecraft_dev.player.holding.zombie"
-            },
-            "look_at_target": {
-                "reverse": "animation.minecraft_dev.player.look_at_target.reverse",
-                "ui": {
-                    "reverse": "animation.minecraft_dev.player.look_at_target.ui.reverse",
-                    "_value": "animation.minecraft_dev.player.look_at_target.ui"
-                },
-                "inverted": "animation.minecraft_dev.player.look_at_target.inverted"
-            },
-            "move": {
-                "arms": {
-                    "reverse": "animation.minecraft_dev.player.move.arms.reverse",
-                    "single": {
-                        "reverse": "animation.minecraft_dev.player.move.arms.single.reverse",
-                        "_value": "animation.minecraft_dev.player.move.arms.single"
-                    },
-                    "stationary": {
-                        "reverse": "animation.minecraft_dev.player.move.arms.stationary.reverse",
-                        "_value": "animation.minecraft_dev.player.move.arms.stationary"
-                    },
-                    "_value": "animation.minecraft_dev.player.move.arms",
-                    "statue_of_liberty": "animation.minecraft_dev.player.move.arms.statue_of_liberty",
-                    "zombie": "animation.minecraft_dev.player.move.arms.zombie"
-                },
-                "legs": {
-                    "reverse": "animation.minecraft_dev.player.move.legs.reverse",
-                    "inverted": {
-                        "reverse": "animation.minecraft_dev.player.move.legs.inverted.reverse",
-                        "_value": "animation.minecraft_dev.player.move.legs.inverted"
-                    },
-                    "single": {
-                        "reverse": "animation.minecraft_dev.player.move.legs.single.reverse",
-                        "_value": "animation.minecraft_dev.player.move.legs.single"
-                    },
-                    "stationary": {
-                        "reverse": "animation.minecraft_dev.player.move.legs.stationary.reverse",
-                        "_value": "animation.minecraft_dev.player.move.legs.stationary"
-                    },
-                    "_value": "animation.minecraft_dev.player.move.legs"
-                }
-            },
-            "sneaking": {
-                "reverse": "animation.minecraft_dev.player.sneaking.reverse",
-                "inverted": {
-                    "reverse": "animation.minecraft_dev.player.sneaking.inverted.reverse",
-                    "_value": "animation.minecraft_dev.player.sneaking.inverted"
-                },
-                "_value": "animation.minecraft_dev.player.sneaking"
-            },
-            "base_pose": {
-                "upside_down": "animation.minecraft_dev.player.base_pose.upside_down"
-            },
-            "bob": {
-                "_value": "animation.minecraft_dev.player.bob",
-                "stationary": "animation.minecraft_dev.player.bob.stationary"
-            },
-            "bow_equipped": "animation.minecraft_dev.player.bow_equipped",
-            "cape": "animation.minecraft_dev.player.cape",
-            "crossbow_equipped": "animation.minecraft_dev.player.crossbow_equipped",
-            "crossbow_hold": "animation.minecraft_dev.player.crossbow_hold",
-            "glide": "animation.minecraft_dev.player.glide",
-            "holding_heavy_core": "animation.minecraft_dev.player.holding_heavy_core",
-            "riding": {
-                "arms": {
-                    "_value": "animation.minecraft_dev.player.riding.arms",
-                    "zombie": "animation.minecraft_dev.player.riding.arms.zombie"
-                },
-                "legs": "animation.minecraft_dev.player.riding.legs"
-            },
-            "shield_block_main_hand": "animation.minecraft_dev.player.shield_block_main_hand",
-            "shield_block_off_hand": "animation.minecraft_dev.player.shield_block_off_hand",
-            "sleeping": "animation.minecraft_dev.player.sleeping",
-            "swim": {
-                "_value": "animation.minecraft_dev.player.swim",
-                "legs": {
-                    "_value": "animation.minecraft_dev.player.swim.legs",
-                    "single": "animation.minecraft_dev.player.swim.legs.single",
-                    "stationary": "animation.minecraft_dev.player.swim.legs.stationary"
-                }
-            },
-            "crawl": {
-                "_value": "animation.minecraft_dev.player.crawl",
-                "legs": "animation.minecraft_dev.player.crawl.legs"
-            }
-        }
-    }
+    "animation.minecraft_dev.common.none": "animation.minecraft_dev.common.none",
+    "animation.minecraft_dev.common.set0": "animation.minecraft_dev.common.set0",
+    "animation.minecraft_dev.common.set1": "animation.minecraft_dev.common.set1",
+    "animation.minecraft_dev.common.set2": "animation.minecraft_dev.common.set2",
+    "animation.minecraft_dev.common.set3": "animation.minecraft_dev.common.set3",
+    "animation.minecraft_dev.common.set4": "animation.minecraft_dev.common.set4",
+    "animation.minecraft_dev.common.set5": "animation.minecraft_dev.common.set5",
+    "animation.minecraft_dev.common.set6": "animation.minecraft_dev.common.set6",
+    "animation.minecraft_dev.common.set7": "animation.minecraft_dev.common.set7",
+    "animation.minecraft_dev.common.set8": "animation.minecraft_dev.common.set8",
+    "animation.minecraft_dev.common.set9": "animation.minecraft_dev.common.set9",
+    "animation.minecraft_dev.common.set10": "animation.minecraft_dev.common.set10",
+    "animation.minecraft_dev.common.set11": "animation.minecraft_dev.common.set11",
+    "animation.minecraft_dev.common.set12": "animation.minecraft_dev.common.set12",
+    "animation.minecraft_dev.common.set13": "animation.minecraft_dev.common.set13",
+    "animation.minecraft_dev.common.set14": "animation.minecraft_dev.common.set14",
+    "animation.minecraft_dev.common.set15": "animation.minecraft_dev.common.set15",
+    "animation.minecraft_dev.common.set16": "animation.minecraft_dev.common.set16",
+    "animation.minecraft_dev.common.set17": "animation.minecraft_dev.common.set17",
+    "animation.minecraft_dev.common.set18": "animation.minecraft_dev.common.set18",
+    "animation.minecraft_dev.common.set19": "animation.minecraft_dev.common.set19",
+    "animation.minecraft_dev.common.set20": "animation.minecraft_dev.common.set20",
+    "animation.minecraft_dev.player.attack.positions": "animation.minecraft_dev.player.attack.positions",
+    "animation.minecraft_dev.player.attack.positions.reverse": "animation.minecraft_dev.player.attack.positions.reverse",
+    "animation.minecraft_dev.player.attack.rotations": "animation.minecraft_dev.player.attack.rotations",
+    "animation.minecraft_dev.player.attack.rotations.reverse": "animation.minecraft_dev.player.attack.rotations.reverse",
+    "animation.minecraft_dev.player.holding": "animation.minecraft_dev.player.holding",
+    "animation.minecraft_dev.player.holding.reverse": "animation.minecraft_dev.player.holding.reverse",
+    "animation.minecraft_dev.player.holding.zombie": "animation.minecraft_dev.player.holding.zombie",
+    "animation.minecraft_dev.player.look_at_target.reverse": "animation.minecraft_dev.player.look_at_target.reverse",
+    "animation.minecraft_dev.player.look_at_target.ui": "animation.minecraft_dev.player.look_at_target.ui",
+    "animation.minecraft_dev.player.look_at_target.ui.reverse": "animation.minecraft_dev.player.look_at_target.ui.reverse",
+    "animation.minecraft_dev.player.look_at_target.inverted": "animation.minecraft_dev.player.look_at_target.inverted",
+    "animation.minecraft_dev.player.move.arms": "animation.minecraft_dev.player.move.arms",
+    "animation.minecraft_dev.player.move.arms.reverse": "animation.minecraft_dev.player.move.arms.reverse",
+    "animation.minecraft_dev.player.move.arms.single": "animation.minecraft_dev.player.move.arms.single",
+    "animation.minecraft_dev.player.move.arms.single.reverse": "animation.minecraft_dev.player.move.arms.single.reverse",
+    "animation.minecraft_dev.player.move.arms.stationary": "animation.minecraft_dev.player.move.arms.stationary",
+    "animation.minecraft_dev.player.move.arms.stationary.reverse": "animation.minecraft_dev.player.move.arms.stationary.reverse",
+    "animation.minecraft_dev.player.move.arms.statue_of_liberty": "animation.minecraft_dev.player.move.arms.statue_of_liberty",
+    "animation.minecraft_dev.player.move.arms.zombie": "animation.minecraft_dev.player.move.arms.zombie",
+    "animation.minecraft_dev.player.move.legs": "animation.minecraft_dev.player.move.legs",
+    "animation.minecraft_dev.player.move.legs.reverse": "animation.minecraft_dev.player.move.legs.reverse",
+    "animation.minecraft_dev.player.move.legs.inverted": "animation.minecraft_dev.player.move.legs.inverted",
+    "animation.minecraft_dev.player.move.legs.inverted.reverse": "animation.minecraft_dev.player.move.legs.inverted.reverse",
+    "animation.minecraft_dev.player.move.legs.single": "animation.minecraft_dev.player.move.legs.single",
+    "animation.minecraft_dev.player.move.legs.single.reverse": "animation.minecraft_dev.player.move.legs.single.reverse",
+    "animation.minecraft_dev.player.move.legs.stationary": "animation.minecraft_dev.player.move.legs.stationary",
+    "animation.minecraft_dev.player.move.legs.stationary.reverse": "animation.minecraft_dev.player.move.legs.stationary.reverse",
+    "animation.minecraft_dev.player.sneaking": "animation.minecraft_dev.player.sneaking",
+    "animation.minecraft_dev.player.sneaking.reverse": "animation.minecraft_dev.player.sneaking.reverse",
+    "animation.minecraft_dev.player.sneaking.inverted": "animation.minecraft_dev.player.sneaking.inverted",
+    "animation.minecraft_dev.player.sneaking.inverted.reverse": "animation.minecraft_dev.player.sneaking.inverted.reverse",
+    "animation.minecraft_dev.player.base_pose.upside_down": "animation.minecraft_dev.player.base_pose.upside_down",
+    "animation.minecraft_dev.player.bob": "animation.minecraft_dev.player.bob",
+    "animation.minecraft_dev.player.bob.stationary": "animation.minecraft_dev.player.bob.stationary",
+    "animation.minecraft_dev.player.bow_equipped": "animation.minecraft_dev.player.bow_equipped",
+    "animation.minecraft_dev.player.cape": "animation.minecraft_dev.player.cape",
+    "animation.minecraft_dev.player.crossbow_equipped": "animation.minecraft_dev.player.crossbow_equipped",
+    "animation.minecraft_dev.player.crossbow_hold": "animation.minecraft_dev.player.crossbow_hold",
+    "animation.minecraft_dev.player.glide": "animation.minecraft_dev.player.glide",
+    "animation.minecraft_dev.player.holding_heavy_core": "animation.minecraft_dev.player.holding_heavy_core",
+    "animation.minecraft_dev.player.riding.arms": "animation.minecraft_dev.player.riding.arms",
+    "animation.minecraft_dev.player.riding.arms.zombie": "animation.minecraft_dev.player.riding.arms.zombie",
+    "animation.minecraft_dev.player.riding.legs": "animation.minecraft_dev.player.riding.legs",
+    "animation.minecraft_dev.player.shield_block_main_hand": "animation.minecraft_dev.player.shield_block_main_hand",
+    "animation.minecraft_dev.player.shield_block_off_hand": "animation.minecraft_dev.player.shield_block_off_hand",
+    "animation.minecraft_dev.player.sleeping": "animation.minecraft_dev.player.sleeping",
+    "animation.minecraft_dev.player.swim": "animation.minecraft_dev.player.swim",
+    "animation.minecraft_dev.player.swim.legs": "animation.minecraft_dev.player.swim.legs",
+    "animation.minecraft_dev.player.swim.legs.single": "animation.minecraft_dev.player.swim.legs.single",
+    "animation.minecraft_dev.player.swim.legs.stationary": "animation.minecraft_dev.player.swim.legs.stationary",
+    "animation.minecraft_dev.player.crawl": "animation.minecraft_dev.player.crawl",
+    "animation.minecraft_dev.player.crawl.legs": "animation.minecraft_dev.player.crawl.legs"
 }

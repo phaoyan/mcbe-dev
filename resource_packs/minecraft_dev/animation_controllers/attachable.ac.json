@@ -1,53 +1,262 @@
 {
     "format_version": "1.10.0",
     "animation_controllers": {
-        "controller.animation.combo": {
+        "controller.animation.player.script_driven": {
             "states": {
                 "default": {
-                    "on_entry": ["v.combo_count = 0;"],
-                    "animations": ["idle_fpp"],
-                    "transitions": [{"combo": "v.trigger ? t.player_attacking : t.is_using_item"}],
-                    "blend_transition": 0.0
-                },
-                "combo": {
-                    "animations": [
-                        {"combo1_fpp": "v.combo_count == 0"},
-                        {"combo2_fpp": "v.combo_count == 1"},
-                        {"combo3_fpp": "v.combo_count == 2"},
-                        {"combo4_fpp": "v.combo_count == 3"},
-                        {"combo5_fpp": "v.combo_count == 4"},
-                        {"combo6_fpp": "v.combo_count == 5"},
-                        {"combo7_fpp": "v.combo_count == 6"},
-                        {"combo8_fpp": "v.combo_count == 7"},
-                        {"combo9_fpp": "v.combo_count == 8"},
-                        {"combo10_fpp": "v.combo_count == 9"},
-                        {"combo1_tpp": "v.combo_count == 0"},
-                        {"combo2_tpp": "v.combo_count == 1"},
-                        {"combo3_tpp": "v.combo_count == 2"},
-                        {"combo4_tpp": "v.combo_count == 3"},
-                        {"combo5_tpp": "v.combo_count == 4"},
-                        {"combo6_tpp": "v.combo_count == 5"},
-                        {"combo7_tpp": "v.combo_count == 6"},
-                        {"combo8_tpp": "v.combo_count == 7"},
-                        {"combo9_tpp": "v.combo_count == 8"},
-                        {"combo10_tpp": "v.combo_count == 9"}
-                    ],
+                    "animations": ["idle"],
                     "transitions": [
-                        {
-                            "wait": "q.any_animation_finished"
-                        }
+                        {"slot1": "t.slot == 1"},
+                        {"slot2": "t.slot == 2"},
+                        {"slot3": "t.slot == 3"},
+                        {"slot4": "t.slot == 4"},
+                        {"slot5": "t.slot == 5"},
+                        {"slot6": "t.slot == 6"},
+                        {"slot7": "t.slot == 7"},
+                        {"slot8": "t.slot == 8"},
+                        {"slot9": "t.slot == 9"},
+                        {"slot10": "t.slot == 10"},
+                        {"slot11": "t.slot == 11"},
+                        {"slot12": "t.slot == 12"},
+                        {"slot13": "t.slot == 13"},
+                        {"slot14": "t.slot == 14"},
+                        {"slot15": "t.slot == 15"},
+                        {"slot16": "t.slot == 16"},
+                        {"slot17": "t.slot == 17"},
+                        {"slot18": "t.slot == 18"},
+                        {"slot19": "t.slot == 19"},
+                        {"slot20": "t.slot == 20"}
                     ],
                     "blend_transition": 0.0
                 },
-                "wait": {
-                    "on_entry": [
-                        "v.combo_count = v.combo_count + 1;"
-                    ],
+                "slot1": {
+                    "animations": ["slot1"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot2": {
+                    "animations": ["slot2"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot3": {
+                    "animations": ["slot3"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot4": {
+                    "animations": ["slot4"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot5": {
+                    "animations": ["slot5"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot6": {
+                    "animations": ["slot6"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot7": {
+                    "animations": ["slot7"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot8": {
+                    "animations": ["slot8"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot9": {
+                    "animations": ["slot9"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot10": {
+                    "animations": ["slot10"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot11": {
+                    "animations": ["slot11"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot12": {
+                    "animations": ["slot12"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot13": {
+                    "animations": ["slot13"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot14": {
+                    "animations": ["slot14"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot15": {
+                    "animations": ["slot15"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot16": {
+                    "animations": ["slot16"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot17": {
+                    "animations": ["slot17"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot18": {
+                    "animations": ["slot18"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot19": {
+                    "animations": ["slot19"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot20": {
+                    "animations": ["slot20"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                }
+            }
+        },
+        "controller.animation.player.script_driven_fpp": {
+            "states": {
+                "default": {
                     "animations": ["idle_fpp"],
                     "transitions": [
-                        {"default": "q.any_animation_finished || v.combo_count == v.combo_max"},
-                        {"combo": "v.trigger ? t.player_attacking : t.is_using_item"}
+                        {"slot1": "t.slot == 1"},
+                        {"slot2": "t.slot == 2"},
+                        {"slot3": "t.slot == 3"},
+                        {"slot4": "t.slot == 4"},
+                        {"slot5": "t.slot == 5"},
+                        {"slot6": "t.slot == 6"},
+                        {"slot7": "t.slot == 7"},
+                        {"slot8": "t.slot == 8"},
+                        {"slot9": "t.slot == 9"},
+                        {"slot10": "t.slot == 10"},
+                        {"slot11": "t.slot == 11"},
+                        {"slot12": "t.slot == 12"},
+                        {"slot13": "t.slot == 13"},
+                        {"slot14": "t.slot == 14"},
+                        {"slot15": "t.slot == 15"},
+                        {"slot16": "t.slot == 16"},
+                        {"slot17": "t.slot == 17"},
+                        {"slot18": "t.slot == 18"},
+                        {"slot19": "t.slot == 19"},
+                        {"slot20": "t.slot == 20"}
                     ],
+                    "blend_transition": 0.0
+                },
+                "slot1": {
+                    "animations": ["slot1_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot2": {
+                    "animations": ["slot2_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot3": {
+                    "animations": ["slot3_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot4": {
+                    "animations": ["slot4_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot5": {
+                    "animations": ["slot5_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot6": {
+                    "animations": ["slot6_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot7": {
+                    "animations": ["slot7_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot8": {
+                    "animations": ["slot8_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot9": {
+                    "animations": ["slot9_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot10": {
+                    "animations": ["slot10_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot11": {
+                    "animations": ["slot11_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot12": {
+                    "animations": ["slot12_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot13": {
+                    "animations": ["slot13_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot14": {
+                    "animations": ["slot14_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot15": {
+                    "animations": ["slot15_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot16": {
+                    "animations": ["slot16_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot17": {
+                    "animations": ["slot17_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot18": {
+                    "animations": ["slot18_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot19": {
+                    "animations": ["slot19_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
+                    "blend_transition": 0.0
+                },
+                "slot20": {
+                    "animations": ["slot20_fpp"],
+                    "transitions": [{"default": "q.any_animation_finished"}],
                     "blend_transition": 0.0
                 }
             }

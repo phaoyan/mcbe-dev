@@ -4,6 +4,279 @@
         "animation.minecraft_dev.common.none": {
             "override_previous_animation": true,
             "loop": true
-        }
+        },
+        "animation.minecraft_dev.common.set0": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=0;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set1": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=1;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set2": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=2;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set3": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=3;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set4": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=4;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set5": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=5;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set6": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=6;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set7": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=7;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set8": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=8;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set9": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=9;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set10": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=10;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set11": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=11;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set12": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=12;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set13": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=13;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set14": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=14;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set15": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=15;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set16": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=16;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set17": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=17;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set18": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=18;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set19": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=19;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        },
+        "animation.minecraft_dev.common.set20": {
+            "override_previous_animation": false,
+            "animation_length": 0.1,
+            "bones": {
+                "root": {
+                    "rotation": [
+                        "v.slot=20;return 0;",
+                        0,
+                        0
+                    ]
+                }
+            }
+        } 
     }
 }
