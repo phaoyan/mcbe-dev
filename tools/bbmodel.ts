@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
 import {
     BBPACK_DIR,
     RESOURCE_PACK_DIR,
@@ -185,6 +184,330 @@ function exportTexture(bbmodelFile: string): void {
 }
 
 /**
+ * 获取所有骨骼组（带层级关系和子元素）
+ */
+function getAllGroups(data: any): any[] {
+    const groupsArray = data.groups || [];
+    const groupsMap = new Map<string, any>();
+
+    // 创建UUID到组对象的映射
+    for (const group of groupsArray) {
+        if (group.uuid) {
+            groupsMap.set(group.uuid, { ...group, elementChildren: [] });
+        }
+    }
+
+    const result: any[] = [];
+
+    function iterate(array: any[], parent: string | undefined) {
+        for (const item of array) {
+            if (typeof item === 'object' && item.uuid) {
+                // outliner中直接包含的骨骼组对象
+                let group = groupsMap.get(item.uuid);
+                if (!group) {
+                    group = { ...item, elementChildren: [] };
+                    groupsMap.set(item.uuid, group);
+                }
+                group.parent = parent;
+
+                // 将这个组添加到结果中（如果还没有添加）
+                if (!result.find(g => g.uuid === group.uuid)) {
+                    result.push(group);
+                }
+
+                // 处理children：分离骨骼组和元素
+                if (item.children && Array.isArray(item.children)) {
+                    for (const child of item.children) {
+                        if (typeof child === 'string') {
+                            // 字符串是元素UUID，添加到elementChildren
+                            group.elementChildren.push(child);
+                        } else if (typeof child === 'object' && child.uuid) {
+                            // 对象是子骨骼组，递归处理
+                            iterate([child], group.name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    iterate(data.outliner || [], undefined);
+    return result;
+}
+
+/**
+ * 计算可见边界
+ */
+function calculateVisibleBox(data: any): [number, number, number] {
+    let visibleBox = {
+        max: { x: 0, y: 0, z: 0 },
+        min: { x: 0, y: 0, z: 0 }
+    };
+
+    const elements = data.elements || [];
+    for (const element of elements) {
+        if (!element.to || !element.from) continue;
+
+        visibleBox.max.x = Math.max(visibleBox.max.x, element.from[0], element.to[0]);
+        visibleBox.min.x = Math.min(visibleBox.min.x, element.from[0], element.to[0]);
+        visibleBox.max.y = Math.max(visibleBox.max.y, element.from[1], element.to[1]);
+        visibleBox.min.y = Math.min(visibleBox.min.y, element.from[1], element.to[1]);
+        visibleBox.max.z = Math.max(visibleBox.max.z, element.from[2], element.to[2]);
+        visibleBox.min.z = Math.min(visibleBox.min.z, element.from[2], element.to[2]);
+    }
+
+    visibleBox.max.x += 8;
+    visibleBox.min.x += 8;
+    visibleBox.max.y += 8;
+    visibleBox.min.y += 8;
+    visibleBox.max.z += 8;
+    visibleBox.min.z += 8;
+
+    // 计算宽度
+    let radius = Math.max(
+        visibleBox.max.x,
+        visibleBox.max.z,
+        -visibleBox.min.x,
+        -visibleBox.min.z
+    );
+    if (!isFinite(radius)) radius = 0;
+    let width = Math.ceil((radius * 2) / 16);
+    width = Math.max(width, data.visible_box?.[0] || 0);
+
+    // 计算高度
+    let yMin = Math.floor(visibleBox.min.y / 16);
+    let yMax = Math.ceil(visibleBox.max.y / 16);
+    if (!isFinite(yMin)) yMin = 0;
+    if (!isFinite(yMax)) yMax = 0;
+    const visBox = data.visible_box || [0, 0, 0];
+    yMin = Math.min(yMin, visBox[2] - visBox[1] / 2);
+    yMax = Math.max(yMax, visBox[2] + visBox[1] / 2);
+
+    return [width, yMax - yMin, (yMax + yMin) / 2];
+}
+
+/**
+ * 编译立方体
+ */
+function compileCube(data: any, element: any, boneMirror: boolean): any {
+    const cube: any = {
+        origin: [
+            -(element.from[0] + (element.to[0] - element.from[0])),
+            element.from[1],
+            element.from[2]
+        ],
+        size: [
+            element.to[0] - element.from[0],
+            element.to[1] - element.from[1],
+            element.to[2] - element.from[2]
+        ]
+    };
+
+    if (element.inflate) {
+        cube.inflate = element.inflate;
+    }
+
+    // 处理旋转
+    if (element.rotation && (element.rotation[0] !== 0 || element.rotation[1] !== 0 || element.rotation[2] !== 0)) {
+        cube.pivot = [-element.origin[0], element.origin[1], element.origin[2]];
+        cube.rotation = [
+            -element.rotation[0],
+            -element.rotation[1],
+            element.rotation[2]
+        ];
+    }
+
+    // 处理UV
+    if (data.meta?.box_uv) {
+        // box_uv 模式下，若没有 uv_offset，默认为 [0,0]
+        cube.uv = element.uv_offset || [0, 0];
+        if (element.mirror_uv !== boneMirror) {
+            cube.mirror = element.mirror_uv;
+        }
+    } else {
+        const uvMap: any = {};
+        for (const faceKey in element.faces || {}) {
+            const face = element.faces[faceKey];
+            if (face.texture !== null) {
+                uvMap[faceKey] = {
+                    uv: [face.uv[0], face.uv[1]],
+                    uv_size: [face.uv[2] - face.uv[0], face.uv[3] - face.uv[1]]
+                };
+                if (face.rotation) {
+                    uvMap[faceKey].uv_rotation = face.rotation;
+                }
+                if (face.material_name) {
+                    uvMap[faceKey].material_instance = face.material_name;
+                }
+                if (faceKey === "up" || faceKey === "down") {
+                    uvMap[faceKey].uv[0] += uvMap[faceKey].uv_size[0];
+                    uvMap[faceKey].uv[1] += uvMap[faceKey].uv_size[1];
+                    uvMap[faceKey].uv_size[0] *= -1;
+                    uvMap[faceKey].uv_size[1] *= -1;
+                }
+            }
+        }
+        cube.uv = uvMap;
+    }
+
+    return cube;
+}
+
+/**
+ * 编译骨骼组
+ */
+function compileGroup(data: any, group: any, elementsMap: Map<string, any>): any {
+    // 键顺序：name -> parent -> pivot （与历史生成器一致）
+    const bone: any = { name: group.name };
+
+    if (group.parent) {
+        bone.parent = group.parent;
+    }
+
+    bone.pivot = [-group.origin[0], group.origin[1], group.origin[2]];
+
+    if (group.rotation && (group.rotation[0] !== 0 || group.rotation[1] !== 0 || group.rotation[2] !== 0)) {
+        bone.rotation = [-group.rotation[0], -group.rotation[1], group.rotation[2]];
+    }
+
+    if (group.bedrock_binding) {
+        bone.binding = group.bedrock_binding;
+    }
+
+    if (group.reset) {
+        bone.reset = true;
+    }
+
+    if (group.mirror_uv && data.meta?.box_uv) {
+        bone.mirror = true;
+    }
+
+    if (group.material) {
+        bone.material = group.material;
+    }
+
+    const cubes: any[] = [];
+    const locators: any = {};
+
+    // 使用 elementChildren 来获取该骨骼组的直接子元素
+    for (const childUuid of group.elementChildren || []) {
+        const element = elementsMap.get(childUuid);
+        if (!element) continue;
+
+        if (element.type === 'locator') {
+            const key = element.name;
+            if (element.rotation && (element.rotation[0] !== 0 || element.rotation[1] !== 0 || element.rotation[2] !== 0)) {
+                locators[key] = {
+                    // X 轴取反以匹配坐标系
+                    offset: [-element.position[0], element.position[1], element.position[2]],
+                    rotation: [element.rotation[0], element.rotation[1], element.rotation[2]]
+                };
+            } else {
+                locators[key] = [-element.position[0], element.position[1], element.position[2]];
+            }
+        } else if (element.visibility !== false) {
+            // 是一个立方体
+            cubes.push(compileCube(data, element, bone.mirror || false));
+        }
+    }
+
+    if (cubes.length > 0) {
+        bone.cubes = cubes;
+    }
+
+    if (Object.keys(locators).length > 0) {
+        bone.locators = locators;
+    }
+
+    return bone;
+}
+
+/**
+ * 编译JSON为紧凑格式（模仿bbmodel-converter.js的格式）
+ */
+function compileJSON(object: any): string {
+    function newLine(tabs: number): string {
+        let s = "\n";
+        for (let i = 0; i < tabs; i++) {
+            s += "\t";
+        }
+        return s;
+    }
+
+    function escape(str: string): string {
+        return str
+            .replace(/\\/g, "\\\\")
+            .replace(/"/g, '\\"')
+            .replace(/\n|\r\n/g, "\\n")
+            .replace(/\t/g, "\\t");
+    }
+
+    function handleVar(o: any, tabs: number): string {
+        let out = "";
+        if (typeof o === "string") {
+            out += '"' + escape(o) + '"';
+        } else if (typeof o === "boolean") {
+            out += o ? "true" : "false";
+        } else if (o === null || o === Infinity || o === -Infinity) {
+            out += "null";
+        } else if (typeof o === "number") {
+            o = (Math.round(o * 100000) / 100000).toString();
+            out += o;
+        } else if (typeof o === "object" && Array.isArray(o)) {
+            // 数组
+            let hasContent = false;
+            out += "[";
+            for (let i = 0; i < o.length; i++) {
+                const compiled = handleVar(o[i], tabs + 1);
+                if (compiled) {
+                    const breaks = typeof o[i] === "object";
+                    if (hasContent) {
+                        out += "," + (breaks ? "" : " ");
+                    }
+                    if (breaks) {
+                        out += newLine(tabs);
+                    }
+                    out += compiled;
+                    hasContent = true;
+                }
+            }
+            if (typeof o[o.length - 1] === "object") {
+                out += newLine(tabs - 1);
+            }
+            out += "]";
+        } else if (typeof o === "object") {
+            // 对象
+            const breaks = (o.constructor as any).name !== "oneLiner";
+            let hasContent = false;
+            out += "{";
+            for (const key in o) {
+                if (o.hasOwnProperty(key)) {
+                    const compiled = handleVar(o[key], tabs + 1);
+                    if (compiled) {
+                        if (hasContent) {
+                            out += "," + (breaks ? "" : " ");
+                        }
+                        if (breaks) {
+                            out += newLine(tabs);
+                        }
+                        out += '"' + escape(key) + '": ';
+                        out += compiled;
+                        hasContent = true;
+                    }
+                }
+            }
+            if (breaks && hasContent) {
+                out += newLine(tabs - 1);
+            }
+            out += "}";
+        }
+        return out;
+    }
+
+    return handleVar(object, 1);
+}
+
+/**
  * 导出几何体
  */
 function exportGeometry(bbmodelFile: string, ignores: string[]): void {
@@ -198,44 +521,60 @@ function exportGeometry(bbmodelFile: string, ignores: string[]): void {
     ensureDir(path.dirname(targetModelPath));
 
     const bbmodel = readJson(bbmodelFile);
-    const elements = bbmodel.elements || [];
 
     // 过滤掉忽略的元素
-    bbmodel.elements = elements.filter((element: any) =>
+    const elements = (bbmodel.elements || []).filter((element: any) =>
         !ignores.includes(element.name || "")
     );
 
-    // 创建临时的bbmodel文件用于转换
-    const tempBbmodelPath = path.join(
-        RESOURCE_PACK_DIR,
-        "models",
-        "entity",
-        path.basename(bbmodelFile)
-    );
-    writeJson(tempBbmodelPath, bbmodel);
-
-    // 运行bbmodel转换器
-    const converterPath = path.join(RESOURCE_PACK_DIR, "bbmodel-converter.js");
-    if (fs.existsSync(converterPath)) {
-        try {
-            execSync(`node "${converterPath}"`, {
-                cwd: RESOURCE_PACK_DIR,
-                stdio: 'inherit'
-            });
-            console.log(`几何体导出成功: ${basename}.geo.json`);
-
-            // 清理临时bbmodel文件
-            if (fs.existsSync(tempBbmodelPath)) {
-                fs.unlinkSync(tempBbmodelPath);
-            }
-        } catch (error) {
-            console.error(`运行bbmodel转换器失败: ${error}`);
+    // 创建元素UUID映射
+    const elementsMap = new Map<string, any>();
+    for (const element of elements) {
+        if (element.uuid) {
+            elementsMap.set(element.uuid, element);
         }
-    } else {
-        console.warn(`bbmodel转换器不存在: ${converterPath}`);
-        // 如果转换器不存在，直接复制bbmodel文件为几何体文件
-        writeJson(targetModelPath, bbmodel);
     }
+
+    // 更新bbmodel的elements
+    bbmodel.elements = elements;
+
+    // 获取所有骨骼组
+    const groups = getAllGroups(bbmodel);
+    const bones: any[] = [];
+
+    for (const group of groups) {
+        const bone = compileGroup(bbmodel, group, elementsMap);
+        bones.push(bone);
+    }
+
+    // 计算可见边界
+    const visibleBox = calculateVisibleBox(bbmodel);
+
+    // 构建输出结构
+    const geometry: any = {
+        description: {
+            identifier: `geometry.${bbmodel.model_identifier || basename}`,
+            texture_width: bbmodel.resolution?.width || 64,
+            texture_height: bbmodel.resolution?.height || 64
+        }
+    };
+
+    if (bones.length > 0) {
+        geometry.description.visible_bounds_width = visibleBox[0] || 0;
+        geometry.description.visible_bounds_height = visibleBox[1] || 0;
+        geometry.description.visible_bounds_offset = [0, visibleBox[2] || 0, 0];
+        geometry.bones = bones;
+    }
+
+    const output = {
+        format_version: "1.12.0",
+        "minecraft:geometry": [geometry]
+    };
+
+    // 使用自定义格式化，保持与 bbmodel-converter.js 一致的格式
+    ensureDir(path.dirname(targetModelPath));
+    fs.writeFileSync(targetModelPath, compileJSON(output), 'utf-8');
+    console.log(`几何体导出成功: ${basename}.geo.json (${bones.length} 个骨骼)`);
 }
 
 /**
@@ -262,6 +601,90 @@ function exportAnimation(bbmodelFile: string): void {
     }
 
     const outputAnimations: Record<string, any> = {};
+
+    // 将 data_point 的分量转换为数值或保持原表达式
+    function toNumberOrKeep(v: any): any {
+        if (typeof v === "string") {
+            const trimmed = v.trim();
+            if (trimmed.length === 0) return 0;
+            return isFloat(trimmed) ? parseFloat(trimmed) : v;
+        }
+        return isFloat(v) ? parseFloat(v) : v;
+    }
+
+    function vectorFromPoint(p: any): [any, any, any] {
+        return [toNumberOrKeep(p?.x ?? 0), toNumberOrKeep(p?.y ?? 0), toNumberOrKeep(p?.z ?? 0)];
+    }
+
+    function mapVectorByChannel(channel: string, vec: [any, any, any]): [any, any, any] {
+        if (channel === "rotation") {
+            return [
+                toNumberOrKeep(vec[0]) * -1,
+                toNumberOrKeep(vec[1]) * -1,
+                toNumberOrKeep(vec[2])
+            ];
+        }
+        if (channel === "position") {
+            return [
+                toNumberOrKeep(vec[0]) * -1,
+                toNumberOrKeep(vec[1]),
+                toNumberOrKeep(vec[2])
+            ];
+        }
+        // scale 或其他通道保持不变
+        return [toNumberOrKeep(vec[0]), toNumberOrKeep(vec[1]), toNumberOrKeep(vec[2])];
+    }
+
+    function simplifyBoneChannels(boneData: Record<string, any>): void {
+        // 仅当通道只有 t=0 且为线性数组时，简化为直接数组
+        for (const channelKey of Object.keys(boneData)) {
+            const channelVal = boneData[channelKey];
+            if (channelVal && typeof channelVal === "object" && !Array.isArray(channelVal)) {
+                const timeKeys = Object.keys(channelVal);
+                if (timeKeys.length === 1 && (timeKeys[0] === "0" || timeKeys[0] === "0.0")) {
+                    const single = channelVal[timeKeys[0]];
+                    if (Array.isArray(single)) {
+                        boneData[channelKey] = single;
+                    }
+                }
+            }
+        }
+    }
+
+    function sortTimeKeyedMap<T extends Record<string, any>>(map: T): T {
+        if (!map || typeof map !== "object" || Array.isArray(map)) return map;
+        const keys = Object.keys(map);
+        // 若已经被简化为数组，则直接返回
+        if (keys.length === 0) return map;
+        const sorted = {} as T;
+        keys
+            .sort((a, b) => parseFloat(a) - parseFloat(b))
+            .forEach((k) => {
+                (sorted as any)[k] = (map as any)[k];
+            });
+        return sorted;
+    }
+
+    function sortBoneData(boneData: Record<string, any>): void {
+        for (const channelKey of Object.keys(boneData)) {
+            const channelVal = boneData[channelKey];
+            if (channelVal && typeof channelVal === "object" && !Array.isArray(channelVal)) {
+                boneData[channelKey] = sortTimeKeyedMap(channelVal);
+            }
+        }
+    }
+
+    // 统一时间键格式，避免整数键触发对象属性的数组索引排序规则
+    function formatTimeKey(t: number): string {
+        const rounded = Math.round(t * 100000) / 100000;
+        if (Number.isInteger(rounded)) {
+            return rounded.toFixed(1); // 例如 0 -> "0.0"
+        }
+        let out = rounded.toFixed(5); // 保留 5 位，随后去尾零
+        out = out.replace(/0+$/, "");
+        if (out.endsWith(".")) out += "0"; // 确保有小数位
+        return out;
+    }
 
     for (const animation of animations) {
         if (!animation.animators) {
@@ -304,31 +727,20 @@ function exportAnimation(bbmodelFile: string): void {
                     const interpolation = keyframe.interpolation || "linear";
 
                     if (dataPoints.length > 0) {
-                        const firstPoint = dataPoints[0];
-                        let points = [
-                            firstPoint.x || 0,
-                            firstPoint.y || 0,
-                            firstPoint.z || 0
-                        ];
-
-                        points = points.map((dp: any) => {
-                            if (typeof dp === "string") {
-                                const trimmed = dp.trim();
-                                if (trimmed.length === 0) {
-                                    return 0;
-                                }
-                                return isFloat(trimmed) ? parseFloat(trimmed) : dp;
-                            }
-                            return isFloat(dp) ? parseFloat(dp) : dp;
-                        });
+                        const vectors = dataPoints.map((dp: any) => vectorFromPoint(dp));
+                        const mapped = vectors.map((v: [any, any, any]) => mapVectorByChannel(channel, v));
 
                         let fillin: any;
                         if (interpolation === "linear") {
-                            fillin = points;
+                            // 线性：直接使用映射后的第一个向量
+                            fillin = mapped[0];
                         } else if (interpolation === "catmullrom") {
+                            // Catmull-Rom：使用 pre/post 两个切线，若缺失 post 则回退为 pre
+                            const pre = mapped[0] ?? [0, 0, 0];
+                            const post = mapped[1] ?? pre;
                             fillin = {
-                                pre: points,
-                                post: points,
+                                pre,
+                                post,
                                 lerp_mode: "catmullrom"
                             };
                         }
@@ -337,12 +749,14 @@ function exportAnimation(bbmodelFile: string): void {
                             if (!boneData[channel]) {
                                 boneData[channel] = {};
                             }
-                            boneData[channel][time.toString()] = fillin;
+                            boneData[channel][formatTimeKey(time)] = fillin;
                         }
                     }
                 }
 
                 if (Object.keys(boneData).length > 0) {
+                    simplifyBoneChannels(boneData);
+                    sortBoneData(boneData);
                     bones[animatorName] = boneData;
                 }
             } else if (animatorType === "effect") {
@@ -359,7 +773,7 @@ function exportAnimation(bbmodelFile: string): void {
                             .filter((dp: any) => dp.effect);
 
                         if (dataPoints.length > 0) {
-                            particleEffects[time.toString()] = dataPoints;
+                            particleEffects[formatTimeKey(time)] = dataPoints;
                         }
                     } else if (channel === "sound") {
                         const dataPoints = (keyframe.data_points || [])
@@ -369,7 +783,7 @@ function exportAnimation(bbmodelFile: string): void {
                             .filter((dp: any) => dp.effect);
 
                         if (dataPoints.length > 0) {
-                            soundEffects[time.toString()] = dataPoints;
+                            soundEffects[formatTimeKey(time)] = dataPoints;
                         }
                     }
                 }
@@ -386,10 +800,10 @@ function exportAnimation(bbmodelFile: string): void {
             outputAnimations[name].bones = bones;
         }
         if (Object.keys(particleEffects).length > 0) {
-            outputAnimations[name].particle_effects = particleEffects;
+            outputAnimations[name].particle_effects = sortTimeKeyedMap(particleEffects);
         }
         if (Object.keys(soundEffects).length > 0) {
-            outputAnimations[name].sound_effects = soundEffects;
+            outputAnimations[name].sound_effects = sortTimeKeyedMap(soundEffects);
         }
 
         console.log(`导出动画: ${name} (长度: ${animationLength}s)`);
