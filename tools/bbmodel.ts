@@ -606,8 +606,9 @@ function exportAnimation(bbmodelFile: string): void {
     function toNumberOrKeep(v: any): any {
         if (typeof v === "string") {
             const trimmed = v.trim();
-            if (trimmed.length === 0) return 0;
-            return isFloat(trimmed) ? parseFloat(trimmed) : v;
+            if (trimmed.length === 0) return 0; // 空串视为 0
+            // 非空字符串直接保留，以兼容 molang 表达式
+            return v;
         }
         return isFloat(v) ? parseFloat(v) : v;
     }
@@ -617,16 +618,27 @@ function exportAnimation(bbmodelFile: string): void {
     }
 
     function mapVectorByChannel(channel: string, vec: [any, any, any]): [any, any, any] {
+        // 对需要取反的分量，若为字符串则生成字符串表达式 -(...)，若为数值则直接取反
+        const negateComponent = (val: any): any => {
+            if (typeof val === "string") {
+                const trimmed = val.trim();
+                if (trimmed.length === 0) return 0;
+                return `-(${trimmed})`;
+            }
+            if (typeof val === "number") return -val;
+            return isFloat(val) ? -parseFloat(val) : val;
+        };
+
         if (channel === "rotation") {
             return [
-                toNumberOrKeep(vec[0]) * -1,
-                toNumberOrKeep(vec[1]) * -1,
+                negateComponent(vec[0]),
+                negateComponent(vec[1]),
                 toNumberOrKeep(vec[2])
             ];
         }
         if (channel === "position") {
             return [
-                toNumberOrKeep(vec[0]) * -1,
+                negateComponent(vec[0]),
                 toNumberOrKeep(vec[1]),
                 toNumberOrKeep(vec[2])
             ];
