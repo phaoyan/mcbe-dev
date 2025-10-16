@@ -114,15 +114,15 @@ export class DPUtils {
     static store() {
         return this.mapValues(this.STORE, (v, k) => ({
             id: v,
-            curr: (target: Entity | ItemStack | World, placeHolder?: any) => this.curr(target, dpList[k as keyof typeof dpList], placeHolder),
-            prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, dpList[k as keyof typeof dpList], placeHolder),
-            both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, dpList[k as keyof typeof dpList], placeHolder),
-            set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, dpList[k as keyof typeof dpList], value, placeHolder, delay),
-            cancel: (target: Entity | ItemStack | World, startTick?: number) => this.cancel(target, dpList[k as keyof typeof dpList], startTick),
-            temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, dpList[k as keyof typeof dpList], value, ticks, placeHolder),
-            activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, dpList[k as keyof typeof dpList], value, duration, placeHolder),
-            deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, dpList[k as keyof typeof dpList], placeHolder),
-            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(dpList[k as keyof typeof dpList], callback),
+            curr: (target: Entity | ItemStack | World, placeHolder?: any) => this.curr(target, this.STORE[k as keyof typeof dpList], placeHolder),
+            prev: (target: Entity | ItemStack | World, placeHolder?: any) => this.prev(target, this.STORE[k as keyof typeof dpList], placeHolder),
+            both: (target: Entity | ItemStack | World, placeHolder?: any) => this.both(target, this.STORE[k as keyof typeof dpList], placeHolder),
+            set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, this.STORE[k as keyof typeof dpList], value, placeHolder, delay),
+            cancel: (target: Entity | ItemStack | World, startTick?: number) => this.cancel(target, this.STORE[k as keyof typeof dpList], startTick),
+            temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, this.STORE[k as keyof typeof dpList], value, ticks, placeHolder),
+            activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, this.STORE[k as keyof typeof dpList], value, duration, placeHolder),
+            deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, this.STORE[k as keyof typeof dpList], placeHolder),
+            register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(this.STORE[k as keyof typeof dpList], callback),
         }))
     }
 

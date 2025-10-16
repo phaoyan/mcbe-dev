@@ -9,7 +9,8 @@ import {
     readJson,
     writeJson,
     writeText,
-    ensureDir
+    ensureDir,
+    NAME_SPACE
 } from './utils';
 
 /**
@@ -31,7 +32,8 @@ export function generateItemTextureList(): void {
 export function setupItemTextureJson(): void {
     const itemDir = path.join(BEHAVIOR_PACK_DIR, "items");
     const itemTexturePath = path.join(RESOURCE_PACK_DIR, "textures", "item_texture.json");
-    const itemTexturesDir = path.join(RESOURCE_PACK_DIR, "textures", "items");
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
+    const itemTexturesDir = path.join(RESOURCE_PACK_DIR, "textures", teamName, projName, "items");
 
     if (!fs.existsSync(itemTexturePath)) {
         console.warn(`物品纹理配置文件不存在: ${itemTexturePath}`);
@@ -61,11 +63,11 @@ export function setupItemTextureJson(): void {
 
             if (itemTextureNames.has(itemId)) {
                 itemTextureJson.texture_data[itemId] = {
-                    textures: `textures/items/${itemId}`
+                    textures: `textures/${teamName}/${projName}/items/${itemId}`
                 };
             } else {
                 itemTextureJson.texture_data[itemId] = {
-                    textures: "textures/items/book"
+                    textures: `textures/${teamName}/${projName}/items/book`
                 };
             }
         } catch (error) {

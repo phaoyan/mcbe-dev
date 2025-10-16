@@ -1,7 +1,7 @@
 {
     "format_version": "1.10.0",
     "animation_controllers": {
-        "controller.animation.player.script_driven": {
+        "controller.animation.minecraft_dev.player.script_driven": {
             "states": {
                 "default": {
                     "animations": ["idle"],
@@ -131,7 +131,7 @@
                 }
             }
         },
-        "controller.animation.player.script_driven_fpp": {
+        "controller.animation.minecraft_dev.player.script_driven_fpp": {
             "states": {
                 "default": {
                     "animations": ["idle_fpp"],

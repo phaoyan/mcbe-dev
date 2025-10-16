@@ -7,6 +7,7 @@ import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
+import { BlackboardManager } from "./behavior_utils";
 
 export type ComboData = {
     duration: number
@@ -39,8 +40,8 @@ export class EntityState {
         return cosine >= minCosine && cosine <= maxCosine
     }
 
-    static targetCosine(entity: Entity) {
-        const target = EntityState.target(entity)
+    static targetCosine(entity: Entity, target?: Entity) {
+        target = target ?? EntityState.target(entity)
         if (!target) return 0
         const base = VecUtils.unit(VecUtils.hori(entity.getViewDirection()))
         const diff = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(target.location, entity.location)))
@@ -50,12 +51,24 @@ export class EntityState {
 
     static skillAvailable(entity: Entity, skillId: string) {
         if (!entity) return 0
-        return DPUtils.store().mob_skill_cooldown.curr(entity)[skillId] ?? 0
+        return DPUtils.store().mob_skill_cooldowns.curr(entity)[skillId] ?? 0
     }
 
     static healthPercent(entity: Entity) {
         const health = CompUtils.health(entity)
         return health.currentValue / health.effectiveMax
+    }
+
+    // 距离脚下最近的方块的高度
+    static airHeight(entity: Entity, searchRange: number = 5) {
+        const location = entity.location
+        for (let i = 0; i < searchRange; i++) {
+            const block = entity.dimension.getBlock(Vector3Utils.add(location, {y: -i}))
+            if (block?.isAir) continue
+            const res = entity.location.y - block!.location.y - 1
+            return res
+        }
+        return searchRange
     }
 }
 
@@ -141,6 +154,24 @@ export class EntityOperation {
         })
     }
 
+    healthAbs(change: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const current = CompUtils.health(entity).currentValue
+            const max = CompUtils.health(entity).effectiveMax
+            const newCurrent = Math.floor(Math.max(0, Math.min(max, current + change)))
+            CompUtils.health(entity).setCurrentValue(newCurrent)
+        })
+    }
+
+    healthPct(percent: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const current = CompUtils.health(entity).currentValue
+            const max = CompUtils.health(entity).effectiveMax
+            const newCurrent = Math.floor(Math.max(0, Math.min(max, current + max * percent)))
+            CompUtils.health(entity).setCurrentValue(newCurrent)
+        })
+    }
+
     superarmor(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_superarmor.cancel(entity)
@@ -165,7 +196,7 @@ export class EntityOperation {
     cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
-                entity.runCommand(`camerashake add @s ${ticks / 20} ${intensity} ${mode}`)
+                entity.runCommand(`camerashake add @s ${intensity} ${ticks / 20}  ${mode}`)
             }
         })
     }
@@ -203,24 +234,58 @@ export class EntityOperation {
         })
     }
 
+    removeEffect(effect: string): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (
+                effect === "superarmor"
+            ) {
+                DPUtils.store().effect_superarmor.cancel(entity)
+                DPUtils.store().effect_superarmor.set(entity, false)
+            }
+            else if (
+                effect === "dizzy"
+            ) {
+                DPUtils.store().effect_dizzy.cancel(entity)
+                DPUtils.store().effect_dizzy.set(entity, false)
+            }
+            else if (
+                effect === "blind"
+            ) {
+                DPUtils.store().effect_blind.cancel(entity)
+                DPUtils.store().effect_blind.set(entity, false)
+            }
+            else if (
+                effect === "untargetable"
+            ) {
+                DPUtils.store().effect_blind.cancel(entity)
+                DPUtils.store().effect_blind.set(entity, false)
+            }
+            else {
+                entity.removeEffect(effect)
+            }
+        })
+    }
+
     // 在技能释放前配置一些通用的效果，包括减速、定向、霸体
     preskill(ticks: {
-        slowness: number
-        rotation: number
-        superarmor: number
+        slowness?: number
+        rotation?: number
+        superarmor?: number
     }, options?: {
         slownessLvl?: number
         rotationMode?: "fixed" | "facingTarget"
     }) {
         const { slownessLvl = 5, rotationMode = "fixed" } = options ?? {}
         return this._enqueue((entity: Entity) => {
-            const ops = EntityOperation.create()
-                .slowness(ticks.slowness, slownessLvl, false)
-                .superarmor(ticks.superarmor)
-            const direction = entity.getViewDirection()
-            rotationMode === "fixed" && ops.rotateToDirection(() => direction, ticks.rotation)
-            const target = EntityState.target(entity)
-            !!target && rotationMode === "facingTarget" && ops.rotateFacing(target, ticks.rotation)
+            let ops = EntityOperation.create()
+            if (ticks.slowness) ops = ops.slowness(ticks.slowness, slownessLvl, false)
+            if (ticks.superarmor) ops = ops.superarmor(ticks.superarmor)
+            if (ticks.rotation) {
+                const direction = entity.getViewDirection()
+                rotationMode === "fixed" && ops.rotateToDirection(() => direction, ticks.rotation)
+                const target = EntityState.target(entity)
+                !!target && rotationMode === "facingTarget" && ops.rotateFacing(target, ticks.rotation)
+            }
             ops.run(entity)
         })
     }
@@ -253,6 +318,39 @@ export class EntityOperation {
             if (location instanceof Entity) loc = location.location
             const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(loc, entity.location)), Vector3Utils.distance(entity.location, loc) * scaler)
             entity.applyKnockback({ x: unit.x, z: unit.z }, y)
+        })
+    }
+
+    impulse(vec: Vector3): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            entity.applyImpulse(vec)
+        })
+    }
+
+    impulseBaseView(viewEntity: Entity, strength: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const facingEntity = viewEntity
+            entity.applyImpulse(VecUtils.unit(facingEntity.getViewDirection(), strength))
+        })
+    }
+
+    impulseBaseLoc(location: Entity | Vector3, strength: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const loc = location instanceof Entity ? location.location : location
+            const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(loc, entity.location)))
+            entity.applyImpulse(VecUtils.unit(unit, strength))
+        })
+    }
+
+    impulseToPlace(location: Entity | Vector3, scaler: number = 1, scalerY: number = 1): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            const loc = location instanceof Entity ? location.location : location
+            const unit = {
+                x: (loc.x - entity.location.x) * scaler,
+                y: (loc.y - entity.location.y) * scaler * scalerY,
+                z: (loc.z - entity.location.z) * scaler
+            }
+            entity.applyImpulse(unit)
         })
     }
 
@@ -293,7 +391,7 @@ export class EntityOperation {
 
     skillCooldown(skillId: string, skillCD: number, skillDuration: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().mob_skill_cooldown.set(entity, (cdList: { [key: string]: number }) => {
+            DPUtils.store().mob_skill_cooldowns.set(entity, (cdList: { [key: string]: number }) => {
                 return Object.fromEntries(
                     Object.entries(cdList).map(([id,]) => [id, system.currentTick + (id === skillId ? skillCD : skillDuration)])
                 )
@@ -305,6 +403,12 @@ export class EntityOperation {
         return this._enqueue((target: Entity) => {
             target.addTag(TagList.TargetedBy(entity.typeId))
             DPUtils.store().mob_targeted_by.set(target, (curr: string[]) => (curr ?? []).includes(entity.id) ? curr : [...(curr ?? []), entity.id], [])
+        })
+    }
+
+    resetSkill(): EntityOperation {
+        return this._enqueue((target: Entity) => {
+            BlackboardManager.set(target, 'skill_locking', system.currentTick - 1);
         })
     }
 
@@ -436,6 +540,7 @@ export class EntityQuery {
     static entityById(id: string): EntityQuery {
         const query = new EntityQuery()
         query._query = (target: Entity) => world.getEntity(id) ? [world.getEntity(id) as Entity] : []
+        query._target = world.getEntity(id) as Entity
         return query
     }
 

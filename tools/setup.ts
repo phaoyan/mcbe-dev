@@ -11,11 +11,23 @@ import {
     writeText
 } from './utils';
 
+// 命名空间需满足：至少2个字母 + 下划线 + 至少2个字母（仅小写字母）
+const NAMESPACE_REGEX = /^[a-z]{2,}_[a-z]{2,}$/;
+
+function assertValidNamespace(namespace: string): void {
+    if (!NAMESPACE_REGEX.test(namespace)) {
+        throw new Error("命名空间格式不合法：需满足 '至少2个字母_至少2个字母'（仅小写字母），例如 'ab_cd'");
+    }
+}
+
 /**
  * 设置项目
  */
 export function setup(projectName: string): void {
     try {
+        // 校验命名空间格式
+        assertValidNamespace(projectName);
+
         // 重命名资源包和行为包文件夹
         const newResourcePackDir = path.join(path.dirname(RESOURCE_PACK_DIR), projectName);
         const newBehaviorPackDir = path.join(path.dirname(BEHAVIOR_PACK_DIR), projectName);
@@ -31,6 +43,13 @@ export function setup(projectName: string): void {
         } else {
             console.warn(`行为包目录不存在: ${BEHAVIOR_PACK_DIR}`);
         }
+
+        // 基于命名空间创建 textures 和 sounds 的 团队名/项目名 目录
+        const [teamName, projName] = projectName.split('_', 2);
+        const texturesTargetDir = path.join(newResourcePackDir, 'textures', teamName, projName);
+        const soundsTargetDir = path.join(newResourcePackDir, 'sounds', teamName, projName);
+        fs.mkdirSync(texturesTargetDir, { recursive: true });
+        fs.mkdirSync(soundsTargetDir, { recursive: true });
 
         // 更新环境变量文件
         const envContent = [
@@ -109,6 +128,11 @@ export function main(): void {
     }
 
     const projectName = args[0];
+    // 入口处先行校验，避免继续执行
+    if (!NAMESPACE_REGEX.test(projectName)) {
+        console.error("错误: 命名空间格式不合法：需满足 '至少2个字母_至少2个字母'（仅小写字母），例如 'ab_cd'");
+        process.exit(1);
+    }
     setup(projectName);
     console.log(`Project '${projectName}' setup complete.`);
 }

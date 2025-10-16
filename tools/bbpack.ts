@@ -324,12 +324,23 @@ function resolveTexturePath(textureRef: string): string | null {
     const ensurePng = (p: string) => (p.endsWith('.png') ? p : `${p}.png`);
 
     const candidates: string[] = [];
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
+    const nsPrefix = `textures/${teamName}/${projName}/`;
     // 已经带有 textures/ 前缀
     if (name.startsWith('textures/')) {
         candidates.push(path.join(RESOURCE_PACK_DIR, ensurePng(name)));
+        // 尝试在 textures/ 后插入 团队/项目 前缀
+        if (!name.startsWith(nsPrefix)) {
+            candidates.push(path.join(
+                RESOURCE_PACK_DIR,
+                ensurePng(name.replace(/^textures\//, nsPrefix))
+            ));
+        }
     }
     // 直接拼 textures/<name>
     candidates.push(path.join(RESOURCE_PACK_DIR, 'textures', ensurePng(name)));
+    // 直接拼 textures/<团队>/<项目>/<name>
+    candidates.push(path.join(RESOURCE_PACK_DIR, ensurePng(path.join('textures', teamName, projName, name))));
     // 偏向粒子材质目录
     candidates.push(path.join(RESOURCE_PACK_DIR, 'textures', 'particle', ensurePng(name)));
 
@@ -352,6 +363,76 @@ function dedupe(list: string[]): string[] {
         }
     }
     return out;
+}
+
+/**
+ * 修复 resource_packs 中 particles 的粒子文件纹理引用路径
+ * 将无命名空间或命名空间为当前 NAME_SPACE 的 `textures/` 路径
+ * 统一改写为 `textures/<团队>/<项目>/...`
+ */
+function fixParticleTexturePaths(): void {
+    const particlesDir = path.join(RESOURCE_PACK_DIR, 'particles');
+    if (!fs.existsSync(particlesDir)) {
+        console.log('ℹ️ 找不到 particles 目录，跳过纹理路径修复');
+        return;
+    }
+
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
+    const insertPrefix = `textures/${teamName}/${projName}/`;
+
+    const files = rglob('.*\\.particle\\.json$', particlesDir);
+    let updated = 0;
+    let scanned = 0;
+
+    for (const file of files) {
+        try {
+            const data: any = readJson(file);
+            const desc = data?.particle_effect?.description;
+            const brp = desc?.basic_render_parameters;
+            const textureRef: unknown = brp?.texture;
+            scanned++;
+
+            if (typeof textureRef !== 'string' || textureRef.length === 0) {
+                continue;
+            }
+
+            let ns = '';
+            let pathPart = textureRef.trim();
+            const colon = pathPart.indexOf(':');
+            if (colon >= 0) {
+                ns = pathPart.substring(0, colon);
+                pathPart = pathPart.substring(colon + 1);
+            }
+
+            // 仅修复：无命名空间 或 命名空间为当前 NAME_SPACE 的路径
+            if (ns && ns !== NAME_SPACE) {
+                continue;
+            }
+
+            if (!pathPart.startsWith('textures/')) {
+                continue;
+            }
+
+            // 已包含团队/项目则跳过
+            if (pathPart.startsWith(insertPrefix)) {
+                continue;
+            }
+
+            const newPathPart = pathPart.replace(/^textures\//, insertPrefix);
+            const newTextureRef = ns ? `${ns}:${newPathPart}` : newPathPart;
+
+            if (newTextureRef !== textureRef) {
+                data.particle_effect.description.basic_render_parameters.texture = newTextureRef;
+                writeJson(file, data);
+                updated++;
+                console.log(`  ✅ 修复纹理: ${path.basename(file)}  ${textureRef} -> ${newTextureRef}`);
+            }
+        } catch (err) {
+            console.log(`  ❌ 修复纹理失败 ${path.basename(file)}: ${err}`);
+        }
+    }
+
+    console.log(`  完成：扫描 ${scanned} 个粒子文件，更新 ${updated} 个纹理引用`);
 }
 
 /**
@@ -796,7 +877,11 @@ export function processBbpackFiles(): void {
     console.log("-".repeat(40));
     copyBbpackFiles();
 
-    console.log("\n📋 第四步：修复flipbook UV");
+    console.log("\n🧩 第四步：修复粒子材质纹理路径");
+    console.log("-".repeat(40));
+    fixParticleTexturePaths();
+
+    console.log("\n📋 第五步：修复flipbook UV");
     console.log("-".repeat(40));
     fixFlipbookUVs()
 

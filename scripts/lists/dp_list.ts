@@ -29,7 +29,7 @@ export const dpList = {
 
     mob_spawning: "minecraft_dev:mob_spawning",
     mob_first_spawn: "minecraft_dev:mob_first_spawn",
-    mob_skill_cooldown: "minecraft_dev:mob_skill_cooldown",
+    mob_skill_cooldowns: "minecraft_dev:mob_skill_cooldowns",
     mob_skill_locking: "minecraft_dev:mob_skill_locking",
     mob_behavior_state: "minecraft_dev:mob_behavior_state",
     mob_target: "minecraft_dev:mob_target",

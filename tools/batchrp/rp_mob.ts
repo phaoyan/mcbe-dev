@@ -17,7 +17,7 @@ export const rpMob = (bbmodel: string, animationController: string) => {
                     default: `geometry.${geometry}`
                 },
                 textures: {
-                    default: `textures/entity/${textures[0]}`
+                    default: `textures/${NAME_SPACE.replace('_', '/')}/entity/${textures[0]}`
                 },
                 materials: {
                     default: "entity_alphatest"

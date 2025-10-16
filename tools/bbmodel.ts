@@ -34,12 +34,38 @@ function setupBasic(bbmodelFile: string): void {
     const animations: any[] = data.animations || [];
 
     // 处理动画
+    function normalizeAnimationName(rawName: string, base: string): string {
+        const trimmed = (rawName || "").trim();
+        const defaultTail = "default";
+
+        // 提取尾部（去除前缀、命名空间、重复的basename），保留多级后缀
+        let tailSegments: string[] = [];
+        if (trimmed.startsWith("animation.")) {
+            const afterAnim = trimmed.substring("animation.".length);
+            const parts = afterAnim.split('.').filter(s => s.length > 0);
+            // 去掉可能存在的命名空间段
+            if (parts.length > 0) parts.shift();
+            // 去掉一个或多个前置的 basename 段
+            while (parts.length > 0 && parts[0] === base) {
+                parts.shift();
+            }
+            tailSegments = parts;
+        } else {
+            const parts = trimmed.split('.').filter(s => s.length > 0);
+            // 去掉一个或多个前置的 basename 段
+            while (parts.length > 0 && parts[0] === base) {
+                parts.shift();
+            }
+            tailSegments = parts;
+        }
+
+        const tail = (tailSegments.length > 0 ? tailSegments.join('.') : defaultTail);
+        return `animation.${NAME_SPACE}.${base}.${tail}`;
+    }
+
     for (const animation of animations) {
         animation.path = path.resolve(RESOURCE_PACK_DIR, "animations", `${model}.animation.json`);
-        const animName: string = animation.name || "";
-        if (!animName.startsWith("animation.")) {
-            animation.name = `animation.${NAME_SPACE}.${basename}.${animName}`;
-        }
+        animation.name = normalizeAnimationName(animation.name || "", basename);
     }
 
     // 处理纹理
@@ -606,9 +632,8 @@ function exportAnimation(bbmodelFile: string): void {
     function toNumberOrKeep(v: any): any {
         if (typeof v === "string") {
             const trimmed = v.trim();
-            if (trimmed.length === 0) return 0; // 空串视为 0
-            // 非空字符串直接保留，以兼容 molang 表达式
-            return v;
+            if (trimmed.length === 0) return 0;
+            return isFloat(trimmed) ? parseFloat(trimmed) : v;
         }
         return isFloat(v) ? parseFloat(v) : v;
     }
@@ -618,27 +643,16 @@ function exportAnimation(bbmodelFile: string): void {
     }
 
     function mapVectorByChannel(channel: string, vec: [any, any, any]): [any, any, any] {
-        // 对需要取反的分量，若为字符串则生成字符串表达式 -(...)，若为数值则直接取反
-        const negateComponent = (val: any): any => {
-            if (typeof val === "string") {
-                const trimmed = val.trim();
-                if (trimmed.length === 0) return 0;
-                return `-(${trimmed})`;
-            }
-            if (typeof val === "number") return -val;
-            return isFloat(val) ? -parseFloat(val) : val;
-        };
-
         if (channel === "rotation") {
             return [
-                negateComponent(vec[0]),
-                negateComponent(vec[1]),
+                toNumberOrKeep(vec[0]) * -1,
+                toNumberOrKeep(vec[1]) * -1,
                 toNumberOrKeep(vec[2])
             ];
         }
         if (channel === "position") {
             return [
-                negateComponent(vec[0]),
+                toNumberOrKeep(vec[0]) * -1,
                 toNumberOrKeep(vec[1]),
                 toNumberOrKeep(vec[2])
             ];

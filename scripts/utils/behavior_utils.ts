@@ -5,7 +5,6 @@ import { EntityEventIds } from "../lists/event_list";
 import { EntityQuery } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 import entityIds from "../json/entity_ids.json";
-import { CompUtils } from "./comp_utils";
 
 // 行为树框架
 export enum NodeState {
@@ -562,7 +561,7 @@ export class BehaviorTemplates {
         // 技能相关actions
         skill: {
             checkCooldown: (skillId: string, cooldown: number) => (entity: Entity) => {
-                const cooldowns = BlackboardManager.get(entity, 'skill_cooldowns', {});
+                const cooldowns = DPUtils.store().mob_skill_cooldowns.curr(entity, {});
                 const lastUseTime = cooldowns[skillId] || 0;
                 return system.currentTick - lastUseTime >= cooldown;
             },
@@ -574,9 +573,9 @@ export class BehaviorTemplates {
                 BlackboardManager.set(entity, 'current_skill_once', !!skill.once);
 
                 // 更新冷却时间
-                const cooldowns = BlackboardManager.get(entity, 'skill_cooldowns', {});
+                const cooldowns = DPUtils.store().mob_skill_cooldowns.curr(entity, {});
                 cooldowns[skill.id] = system.currentTick;
-                BlackboardManager.set(entity, 'skill_cooldowns', cooldowns);
+                DPUtils.store().mob_skill_cooldowns.set(entity, cooldowns);
 
                 // 设置动画锁定
                 if (skill.duration) {
@@ -657,6 +656,7 @@ export class BehaviorTemplates {
                         const handled = BlackboardManager.get(entity, '__death_handled', false);
                         if (!handled) {
                             BlackboardManager.set(entity, '__death_handled', true);
+                            entity.triggerEvent(EntityEventIds.TargetEscape)
                             return actions.death.execute(deathAction)(entity);
                         }
                         return NodeState.SUCCESS;
@@ -688,8 +688,7 @@ export class BehaviorTemplates {
                         .action("LockedGate", (entity) => {
                             const locked = actions.skill.checkLock(entity);
                             if (locked) {
-                                const res = actions.skill.continueCurrent(skills)(entity);
-                                return res === NodeState.FAILURE ? NodeState.RUNNING : res;
+                                return actions.skill.continueCurrent(skills)(entity);
                             }
                             return NodeState.FAILURE;
                         })
@@ -734,6 +733,14 @@ export class BehaviorTemplates {
 
                 return moveAction(entity, target);
             })
+            .end()
+            .build();
+    }
+
+    static repeat(action: (entity: Entity) => NodeState): BehaviorTree {
+        return BehaviorTree.create()
+            .repeater()
+            .action("RepeatAction", action)
             .end()
             .build();
     }
