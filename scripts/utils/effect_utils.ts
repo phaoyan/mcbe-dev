@@ -1,8 +1,8 @@
-import { Entity, Player } from "@minecraft/server";
+import { Entity, Player, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
-import { EntityState } from "./entity_utils";
+import { EntityOperation, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 
 DPUtils.store().effect_superarmor.register((target, curr, prev)=>{
@@ -76,5 +76,19 @@ DPUtils.store().effect_die.register((entity, curr, prev)=>{
         try {
             entity.triggerEvent(EntityEventIds.Death)
         } catch (e) {}
+    }
+})
+
+DPUtils.store().player_camera_reset.register((player, curr, prev)=>{
+    if (!(player instanceof Player)) return
+    if (curr) {
+        player.camera.clear()
+    }
+})
+
+world.afterEvents.entityHurt.subscribe(({ hurtEntity, damage }) => {
+    const absorption = DPUtils.store().effect_damage_absorption.curr(hurtEntity, false)
+    if (absorption) {
+        EntityOperation.create().healthAbs(damage).run(hurtEntity)
     }
 })

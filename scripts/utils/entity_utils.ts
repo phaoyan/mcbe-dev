@@ -180,6 +180,15 @@ export class EntityOperation {
         })
     }
 
+    // 伤害吸收：指实体受到伤害后立刻恢复到原来的血量，在伤害吸收条件下可以记录累计受到的伤害，用于一些反伤计算
+    damageAbsorption(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_damage_absorption.cancel(entity)
+            DPUtils.store().effect_damage_absorption.set(entity, true)
+            DPUtils.store().effect_damage_absorption.set(entity, false, false, ticks)
+        })
+    }
+
     dizzy(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
             const dir = { ...entity.getViewDirection() }
@@ -197,6 +206,14 @@ export class EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 entity.runCommand(`camerashake add @s ${intensity} ${ticks / 20}  ${mode}`)
+            }
+        })
+    }
+
+    cameraReset(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (entity instanceof Player) {
+                DPUtils.store().player_camera_reset.set(entity, true, false, ticks)
             }
         })
     }
@@ -409,6 +426,12 @@ export class EntityOperation {
     resetSkill(): EntityOperation {
         return this._enqueue((target: Entity) => {
             BlackboardManager.set(target, 'skill_locking', system.currentTick - 1);
+        })
+    }
+
+    triggerSkill(skillId: string): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            BlackboardManager.set(entity, 'trigger_skill_id', skillId);
         })
     }
 

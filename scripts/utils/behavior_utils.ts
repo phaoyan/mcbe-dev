@@ -692,6 +692,17 @@ export class BehaviorTemplates {
                             }
                             return NodeState.FAILURE;
                         })
+                        .sequence("TriggerSkill")
+                            .condition("HasTriggerSkillId", (entity: Entity) => BlackboardManager.get(entity, 'trigger_skill_id'))
+                            .action("TriggerSkillAction", (entity: Entity) => {
+                                const skillId: string = BlackboardManager.get(entity, 'trigger_skill_id');
+                                if (!skillId) return NodeState.FAILURE;
+                                const skill = skills.find(s => s.id === skillId);
+                                if (!skill) return NodeState.FAILURE;
+                                BlackboardManager.delete(entity, 'trigger_skill_id');
+                                return actions.skill.execute(skill)(entity);
+                            })
+                            .end()
                         .actions(skills.map(skill => ({
                             name: `Skill_${skill.id}`,
                             action: (entity: Entity) => {

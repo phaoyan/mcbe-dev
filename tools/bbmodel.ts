@@ -72,7 +72,8 @@ function setupBasic(bbmodelFile: string): void {
     for (let idx = 0; idx < textures.length; idx++) {
         const texture = textures[idx];
         texture.name = `${basename}_${idx}`;
-        texture.path = path.resolve(RESOURCE_PACK_DIR, "textures", "entity", texture.name);
+        const [teamName, projName] = NAME_SPACE.split('_', 2);
+        texture.path = path.resolve(RESOURCE_PACK_DIR, "textures", teamName, projName, "entity", texture.name);
     }
 
     writeJson(bbmodelFile, data);
@@ -192,7 +193,8 @@ function saveBase64Image(base64Str: string, outputPath: string): void {
  * 导出纹理
  */
 function exportTexture(bbmodelFile: string): void {
-    const outputDir = path.join(RESOURCE_PACK_DIR, "textures", "entity");
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
+    const outputDir = path.join(RESOURCE_PACK_DIR, "textures", teamName, projName, "entity");
     const bbmodel = readJson(bbmodelFile);
     const textures = bbmodel.textures || [];
 
@@ -862,8 +864,11 @@ function deployBbmodel(bbmodelFile: string): void {
  */
 export function setupBbmodels(): void {
     const bbmodelFiles = listBbmodelFiles();
-
+    const ignores: string[] = [];
     for (const bbmodelFile of bbmodelFiles) {
+        if (ignores.includes(path.basename(bbmodelFile, '.bbmodel'))) {
+            continue;
+        }
         setupBasic(bbmodelFile);
         deployBbmodel(bbmodelFile);
     }

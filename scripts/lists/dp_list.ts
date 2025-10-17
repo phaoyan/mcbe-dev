@@ -21,6 +21,7 @@ export const dpList = {
     player_legs: "minecraft_dev:player_legs",
     player_feet: "minecraft_dev:player_feet",
     player_selected_slot_idx: "minecraft_dev:player_selected_slot_idx",
+    player_camera_reset: "minecraft_dev:player_camera_reset",
 
     world_dp_timeline: "minecraft_dev:world_dp_timeline",
     world_dp_activate: "minecraft_dev:world_dp_activate",
@@ -51,5 +52,6 @@ export const dpList = {
     effect_untargetable: "minecraft_dev:effect_untargetable",
     effect_blind: "minecraft_dev:effect_blind",
     effect_remove: "minecraft_dev:effect_remove",
-    effect_die: "minecraft_dev:effect_die"
+    effect_die: "minecraft_dev:effect_die",
+    effect_damage_absorption: "minecraft_dev:effect_damage_absorption",
 }
