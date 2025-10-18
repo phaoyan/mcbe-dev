@@ -7,11 +7,58 @@ import {
     readJson,
     writeJson,
     ensureDir,
-    NAME_SPACE
+    NAME_SPACE,
+    TOOLS_DIR
 } from './utils';
 
 // 动画名称前缀
 const ANIMATION_PREFIX = `animation.${NAME_SPACE}.`;
+
+// 将日志输出重定向到 @outputs/bbpack.log（基于 WriteStream 异步写入以提升性能）
+const OUTPUTS_DIR = path.join(TOOLS_DIR, 'outputs');
+ensureDir(OUTPUTS_DIR);
+const BBPACK_LOG = path.join(OUTPUTS_DIR, 'bbpack.log');
+const __logStream = fs.createWriteStream(BBPACK_LOG, { flags: 'w' });
+__logStream.write(`==== bbpack log started ${new Date().toISOString()} ====\n`);
+
+function formatLogLine(level: string, args: any[]): string {
+    const ts = new Date().toISOString();
+    const text = args.map((a) => {
+        try {
+            if (typeof a === 'string') return a;
+            return JSON.stringify(a);
+        } catch {
+            return String(a);
+        }
+    }).join(' ');
+    return `[${ts}] [${level}] ${text}\n`;
+}
+
+console.log = (...args: any[]) => { try { __logStream.write(formatLogLine('INFO', args)); } catch { } };
+console.warn = (...args: any[]) => { try { __logStream.write(formatLogLine('WARN', args)); } catch { } };
+console.error = (...args: any[]) => { try { __logStream.write(formatLogLine('ERROR', args)); } catch { } };
+
+function __closeLogger() { try { __logStream.end(); } catch { } }
+
+// 轻量级性能分析器（毫秒级）
+const __prof = (() => {
+    const stats = new Map<string, { timeMs: number; count: number }>();
+    return {
+        start(): number { return Date.now(); },
+        end(label: string, t0: number) {
+            const dt = Date.now() - t0;
+            const prev = stats.get(label) ?? { timeMs: 0, count: 0 };
+            prev.timeMs += dt; prev.count += 1; stats.set(label, prev);
+        },
+        report(max: number = 30) {
+            const arr = Array.from(stats.entries()).sort((a, b) => b[1].timeMs - a[1].timeMs);
+            console.log(`--- profiling summary (top ${max}) ---`);
+            for (const [k, v] of arr.slice(0, max)) {
+                console.log(`${k}: ${v.timeMs.toFixed(2)} ms (x${v.count})`);
+            }
+        }
+    };
+})();
 
 interface MissingReference {
     directory: string;
@@ -23,6 +70,7 @@ interface MissingReference {
  * 检查粒子引用关系
  */
 export function checkParticleReferences(): void {
+    const t0 = __prof.start();
     console.log("开始检查bbmodel与particle.json文件的引用关系...");
     console.log("=".repeat(60));
 
@@ -35,44 +83,89 @@ export function checkParticleReferences(): void {
         return;
     }
 
+    const tDirs = __prof.start();
     const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => path.join(BBPACK_DIR, dirent.name));
+    __prof.end('list_subdirs', tDirs);
+
+    // 预先构建一次全局回退映射：唯一的回退目录为 BBPACK_DIR/@particles（只扫描一次）
+    const tFallback = __prof.start();
+    const globalFallbackIdToFile: Record<string, string> = {};
+    const particlesFallbackDir = path.join(BBPACK_DIR, '@particles');
+    if (fs.existsSync(particlesFallbackDir)) {
+        const tGlob = __prof.start();
+        const fallbackParticleFiles = rglob('.*\\.particle\\.json$', particlesFallbackDir);
+        __prof.end('glob_fallback_particles', tGlob);
+        const map = getParticleIdMap(fallbackParticleFiles);
+        for (const [k, v] of Object.entries(map)) {
+            if (!globalFallbackIdToFile[k]) globalFallbackIdToFile[k] = v;
+        }
+    }
+    __prof.end('build_global_fallback_map', tFallback);
 
     for (const subdir of subdirs) {
         totalDirs++;
         const subdirName = path.basename(subdir);
         console.log(`\n检查目录: ${subdirName}`);
 
+        const tGlob1 = __prof.start();
         const bbmodelFiles = rglob('.*\\.bbmodel$', subdir);
+        __prof.end('glob_bbmodel', tGlob1);
+        const tGlob2 = __prof.start();
         const particleFiles = rglob('.*\\.particle\\.json$', subdir);
+        __prof.end('glob_particles', tGlob2);
 
         if (bbmodelFiles.length === 0) {
             console.log("  警告：目录中没有找到.bbmodel文件");
             continue;
         }
 
+        const tIds = __prof.start();
         const availableParticleIds = getParticleIds(particleFiles);
-        console.log(`  找到 ${particleFiles.length} 个particle.json文件`);
-
-        if (particleFiles.length > 0) {
-            console.log(`  可用的粒子ID: ${Array.from(availableParticleIds).join(', ')}`);
-        }
+        __prof.end('build_local_particle_ids', tIds);
+        console.log(`  找到 ${particleFiles.length} 个particle.json文件，可用ID数量: ${availableParticleIds.size}`);
 
         for (const bbmodelFile of bbmodelFiles) {
             console.log(`  检查bbmodel: ${path.basename(bbmodelFile)}`);
+            const tChk = __prof.start();
             const missingIds = checkSingleBbmodel(bbmodelFile, availableParticleIds);
+            __prof.end('check_bbmodel_missing', tChk);
 
             if (missingIds.length > 0) {
-                totalMissing += missingIds.length;
-                console.log(`    ❌ 找到 ${missingIds.length} 个缺失的粒子引用`);
-
-                for (const missingId of missingIds) {
-                    missingReferences.push({
-                        directory: subdirName,
-                        bbmodelFile: path.basename(bbmodelFile),
-                        missingId
-                    });
+                // 尝试回填：从上级 @particles 目录复制对应粒子
+                const tCopy = __prof.start();
+                for (const mid of missingIds) {
+                    const src = globalFallbackIdToFile[mid];
+                    if (src) {
+                        try {
+                            const dest = path.join(subdir, path.basename(src));
+                            if (!fs.existsSync(dest)) {
+                                fs.copyFileSync(src, dest);
+                                console.log(`    ♻️  从 @particles 复制: ${mid} -> ${path.basename(dest)}`);
+                            }
+                            // 更新可用ID集合，便于后续判定
+                            availableParticleIds.add(mid);
+                        } catch (e) {
+                            console.log(`    ⚠️  复制失败: ${mid} -> ${e}`);
+                        }
+                    }
+                }
+                __prof.end('copy_fallback_particles', tCopy);
+                // 复制尝试后重新评估缺失
+                const unresolved = missingIds.filter(id => !availableParticleIds.has(id));
+                if (unresolved.length > 0) {
+                    totalMissing += unresolved.length;
+                    console.log(`    ❌ 找到 ${unresolved.length} 个缺失的粒子引用`);
+                    for (const missingId of unresolved) {
+                        missingReferences.push({
+                            directory: subdirName,
+                            bbmodelFile: path.basename(bbmodelFile),
+                            missingId
+                        });
+                    }
+                } else {
+                    console.log("    ✅ 所有粒子引用都正常");
                 }
             } else {
                 console.log("    ✅ 所有粒子引用都正常");
@@ -84,6 +177,7 @@ export function checkParticleReferences(): void {
     console.log("检查完成！");
     console.log(`总共检查了 ${totalDirs} 个目录`);
     console.log(`总共发现 ${totalMissing} 个缺失的粒子引用`);
+    __prof.end('checkParticleReferences_total', t0);
 
     if (missingReferences.length > 0) {
         console.log("\n" + "=".repeat(60));
@@ -108,6 +202,7 @@ export function checkParticleReferences(): void {
  * 检查并修复bbpack中粒子文件的命名空间
  */
 export function checkParticleIds(): void {
+    const t0 = __prof.start();
     console.log("开始检查并修复bbpack中的粒子ID命名空间...");
     console.log("=".repeat(60));
 
@@ -120,16 +215,20 @@ export function checkParticleIds(): void {
     let totalParticleFiles = 0;
     let totalFixed = 0;
 
+    const tDirs = __prof.start();
     const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => path.join(BBPACK_DIR, dirent.name));
+    __prof.end('list_subdirs_checkParticleIds', tDirs);
 
     for (const subdir of subdirs) {
         totalDirs++;
         const subdirName = path.basename(subdir);
         console.log(`\n处理目录: ${subdirName}`);
 
+        const tGlob = __prof.start();
         const particleFiles = rglob('.*\\.particle\\.json$', subdir);
+        __prof.end('glob_particles_checkParticleIds', tGlob);
 
         if (particleFiles.length === 0) {
             console.log("  ℹ️  未找到particle.json文件");
@@ -139,7 +238,9 @@ export function checkParticleIds(): void {
         for (const particleFile of particleFiles) {
             totalParticleFiles++;
             try {
+                const tRead = __prof.start();
                 const data = readJson(particleFile);
+                __prof.end('read_particle_json', tRead);
                 const description = data?.particle_effect?.description;
                 const identifier: string | undefined = description?.identifier;
 
@@ -164,7 +265,9 @@ export function checkParticleIds(): void {
                 if (currentNamespace !== NAME_SPACE) {
                     const newIdentifier = `${NAME_SPACE}:${idWithoutNs}`;
                     data.particle_effect.description.identifier = newIdentifier;
+                    const tWrite = __prof.start();
                     writeJson(particleFile, data);
+                    __prof.end('write_particle_json', tWrite);
                     totalFixed++;
                     console.log(`  ✅ 修复: ${path.basename(particleFile)}  ${identifier} -> ${newIdentifier}`);
                 } else {
@@ -180,6 +283,7 @@ export function checkParticleIds(): void {
     console.log("检查完成！");
     console.log(`总共检查了 ${totalDirs} 个目录`);
     console.log(`共处理 ${totalParticleFiles} 个particle文件`);
+    __prof.end('checkParticleIds_total', t0);
     if (totalFixed > 0) {
         console.log(`✅ 已修复 ${totalFixed} 个粒子ID命名空间`);
     } else {
@@ -194,6 +298,7 @@ export function checkParticleIds(): void {
  * 同时按新旧宽高比率分别缩放 uv.flipbook.base_UV / size_UV / step_UV。
  */
 export function fixFlipbookUVs(): void {
+    const t0 = __prof.start();
     if (!fs.existsSync(BBPACK_DIR)) {
         console.log('❌ bbpack 文件夹不存在！');
         return;
@@ -202,16 +307,20 @@ export function fixFlipbookUVs(): void {
     console.log('开始修正（bbpack）中使用 flipbook 的粒子 UV...');
     console.log('='.repeat(60));
 
+    const tDirs = __prof.start();
     const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
         .filter(d => d.isDirectory())
         .map(d => path.join(BBPACK_DIR, d.name));
+    __prof.end('list_subdirs_fixFlipbookUVs', tDirs);
 
     let processed = 0;
     let updated = 0;
     let skipped = 0;
 
     for (const subdir of subdirs) {
+        const tGlob = __prof.start();
         const particleFiles = rglob('.*\\.particle\\.json$', subdir);
+        __prof.end('glob_particles_fixFlipbookUVs', tGlob);
         if (particleFiles.length === 0) continue;
 
         console.log(`\n处理目录: ${path.basename(subdir)}  （${particleFiles.length} 个 particle）`);
@@ -219,7 +328,9 @@ export function fixFlipbookUVs(): void {
         for (const particleFile of particleFiles) {
             processed++;
             try {
+                const tRead = __prof.start();
                 const data: any = readJson(particleFile);
+                __prof.end('read_particle_json_fixUV', tRead);
                 const pe = data?.particle_effect;
                 const desc = pe?.description;
                 const comps = pe?.components;
@@ -239,14 +350,18 @@ export function fixFlipbookUVs(): void {
                     continue;
                 }
 
+                const tRes = __prof.start();
                 const texturePath = resolveTexturePath(textureRef);
+                __prof.end('resolve_texture_path', tRes);
                 if (!texturePath) {
                     console.log(`  ⚠️ 跳过（找不到纹理文件）: ${path.basename(particleFile)} -> ${textureRef}`);
                     skipped++;
                     continue;
                 }
 
+                const tDim = __prof.start();
                 const size = readPngDimensions(texturePath);
+                __prof.end('read_png_dimensions', tDim);
                 if (!size) {
                     console.log(`  ⚠️ 跳过（无法读取纹理尺寸）: ${path.basename(particleFile)} -> ${texturePath}`);
                     skipped++;
@@ -299,7 +414,9 @@ export function fixFlipbookUVs(): void {
                 if (changedBase || changedSize || changedStep) changed = true;
 
                 if (changed) {
+                    const tWrite = __prof.start();
                     writeJson(particleFile, data);
+                    __prof.end('write_particle_json_fixUV', tWrite);
                     updated++;
                     console.log(`  ✅ 修正: ${path.basename(particleFile)} -> (${oldW}x${oldH}) => (${realW}x${realH})`);
                 } else {
@@ -313,6 +430,7 @@ export function fixFlipbookUVs(): void {
 
     console.log('\n' + '='.repeat(60));
     console.log(`处理完成（bbpack）。共扫描 ${processed} 个文件，修正 ${updated} 个，跳过 ${skipped} 个。`);
+    __prof.end('fixFlipbookUVs_total', t0);
 }
 
 /** 解析纹理引用为实际 PNG 路径 */
@@ -383,6 +501,7 @@ function fixParticleTexturePaths(): void {
     const files = rglob('.*\\.particle\\.json$', particlesDir);
     let updated = 0;
     let scanned = 0;
+    const missingTextureReports: { particleFile: string; textureRefInFile: string; expectedPath: string }[] = [];
 
     for (const file of files) {
         try {
@@ -413,8 +532,18 @@ function fixParticleTexturePaths(): void {
                 continue;
             }
 
-            // 已包含团队/项目则跳过
+            // 已包含团队/项目则跳过路径替换，但仍检查贴图存在性
             if (pathPart.startsWith(insertPrefix)) {
+                const effectivePathPart = pathPart;
+                const baseName = path.basename(effectivePathPart).replace(/\.png$/i, '');
+                const expectedParticlePng = path.join(RESOURCE_PACK_DIR, 'textures', teamName, projName, 'particle', `${baseName}.png`);
+                if (!fs.existsSync(expectedParticlePng)) {
+                    missingTextureReports.push({
+                        particleFile: path.basename(file),
+                        textureRefInFile: textureRef,
+                        expectedPath: path.relative(RESOURCE_PACK_DIR, expectedParticlePng).replace(/\\\\/g, '/')
+                    });
+                }
                 continue;
             }
 
@@ -427,12 +556,41 @@ function fixParticleTexturePaths(): void {
                 updated++;
                 console.log(`  ✅ 修复纹理: ${path.basename(file)}  ${textureRef} -> ${newTextureRef}`);
             }
+
+            // 检查 particle 目录是否有对应贴图
+            const effectivePathPart = newPathPart;
+            const baseName = path.basename(effectivePathPart).replace(/\.png$/i, '');
+            const expectedParticlePng = path.join(RESOURCE_PACK_DIR, 'textures', teamName, projName, 'particle', `${baseName}.png`);
+            if (!fs.existsSync(expectedParticlePng)) {
+                missingTextureReports.push({
+                    particleFile: path.basename(file),
+                    textureRefInFile: ns ? `${ns}:${effectivePathPart}` : effectivePathPart,
+                    expectedPath: path.relative(RESOURCE_PACK_DIR, expectedParticlePng).replace(/\\\\/g, '/')
+                });
+            }
         } catch (err) {
             console.log(`  ❌ 修复纹理失败 ${path.basename(file)}: ${err}`);
         }
     }
 
     console.log(`  完成：扫描 ${scanned} 个粒子文件，更新 ${updated} 个纹理引用`);
+
+    // 直接输出缺失贴图报告到日志（bbpack.log）
+    if (missingTextureReports.length > 0) {
+        console.log('缺失的粒子贴图报告');
+        console.log('========================================');
+        console.log(`总计缺失：${missingTextureReports.length}`);
+        console.log('');
+        for (const item of missingTextureReports) {
+            console.log(`文件: ${item.particleFile}`);
+            console.log(`引用: ${item.textureRefInFile}`);
+            console.log(`期望存在: ${item.expectedPath}`);
+            console.log('----------------------------------------');
+        }
+        console.log('  ⚠️ 上述缺失贴图信息已记录到 bbpack.log');
+    } else {
+        console.log('  ✅ 未发现缺失的粒子贴图');
+    }
 }
 
 /**
@@ -492,6 +650,29 @@ function getParticleIds(particleFiles: string[]): Set<string> {
     }
 
     return particleIds;
+}
+
+/**
+ * 构建 粒子ID -> 文件路径 的映射
+ */
+function getParticleIdMap(particleFiles: string[]): Record<string, string> {
+    const idToFile: Record<string, string> = {};
+    for (const file of particleFiles) {
+        try {
+            const data = readJson(file);
+            const identifier = data.particle_effect?.description?.identifier || '';
+            let particleId: string;
+            if (identifier.includes(':')) {
+                particleId = identifier.split(':')[1];
+            } else {
+                particleId = identifier;
+            }
+            if (particleId && !idToFile[particleId]) {
+                idToFile[particleId] = file;
+            }
+        } catch { }
+    }
+    return idToFile;
 }
 
 /**
@@ -705,6 +886,7 @@ function renameBbmodelFiles(): void {
  * 检查动画名称规范
  */
 export function checkAnimationIds(): void {
+    const t0 = __prof.start();
     if (!fs.existsSync(BBPACK_DIR)) {
         console.log("❌ bbpack文件夹不存在！");
         return;
@@ -717,9 +899,11 @@ export function checkAnimationIds(): void {
     console.log("开始检查bbmodel文件中的动画名称规范...");
     console.log("=".repeat(60));
 
+    const tDirs = __prof.start();
     const subdirs = fs.readdirSync(BBPACK_DIR, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => path.join(BBPACK_DIR, dirent.name));
+    __prof.end('list_subdirs_checkAnimationIds', tDirs);
 
     for (const subdir of subdirs) {
         totalDirs++;
@@ -728,7 +912,9 @@ export function checkAnimationIds(): void {
         for (const bbmodelFile of bbmodelFiles) {
             totalFiles++;
             try {
+                const tRead = __prof.start();
                 const data = readJson(bbmodelFile);
+                __prof.end('read_bbmodel_json', tRead);
                 let fileModified = false;
                 const bbmodelBaseName = path.basename(bbmodelFile, '.bbmodel');
 
@@ -759,7 +945,9 @@ export function checkAnimationIds(): void {
                 }
 
                 if (fileModified) {
+                    const tWrite = __prof.start();
                     writeJson(bbmodelFile, data);
+                    __prof.end('write_bbmodel_json', tWrite);
                     console.log(`💾 文件已保存: ${path.relative(BBPACK_DIR, bbmodelFile)}`);
                 }
             } catch (error) {
@@ -771,6 +959,7 @@ export function checkAnimationIds(): void {
     console.log("\n" + "=".repeat(60));
     console.log("检查完成！");
     console.log(`总共检查了 ${totalDirs} 个目录中的 ${totalFiles} 个bbmodel文件`);
+    __prof.end('checkAnimationIds_total', t0);
     if (totalFixed > 0) {
         console.log(`✅ 成功修复了 ${totalFixed} 个不规范的动画名称`);
     } else {
@@ -858,6 +1047,7 @@ function generateValidAnimationName(name: string, bbmodelName: string): string {
  * 综合处理bbpack文件 - 包括检查和复制
  */
 export function processBbpackFiles(): void {
+    const t0 = __prof.start();
     console.log("🚀 开始处理bbpack文件...");
     console.log("=".repeat(80));
 
@@ -888,6 +1078,9 @@ export function processBbpackFiles(): void {
     console.log("\n" + "=".repeat(80));
     console.log("🎉 bbpack文件处理完成！");
     console.log("=".repeat(80));
+    __prof.end('processBbpackFiles_total', t0);
+    __prof.report(40);
+    __closeLogger();
 }
 
 // 如果直接运行此文件
