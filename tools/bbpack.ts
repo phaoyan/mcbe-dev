@@ -14,12 +14,16 @@ import {
 // 动画名称前缀
 const ANIMATION_PREFIX = `animation.${NAME_SPACE}.`;
 
-// 将日志输出重定向到 @outputs/bbpack.log（基于 WriteStream 异步写入以提升性能）
+// 将日志输出到 @outputs/bbpack.log（仅在本模块处理期间生效）
 const OUTPUTS_DIR = path.join(TOOLS_DIR, 'outputs');
-ensureDir(OUTPUTS_DIR);
 const BBPACK_LOG = path.join(OUTPUTS_DIR, 'bbpack.log');
-const __logStream = fs.createWriteStream(BBPACK_LOG, { flags: 'w' });
-__logStream.write(`==== bbpack log started ${new Date().toISOString()} ====\n`);
+let __logStream: fs.WriteStream | null = null;
+
+const __origConsole = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+};
 
 function formatLogLine(level: string, args: any[]): string {
     const ts = new Date().toISOString();
@@ -34,11 +38,26 @@ function formatLogLine(level: string, args: any[]): string {
     return `[${ts}] [${level}] ${text}\n`;
 }
 
-console.log = (...args: any[]) => { try { __logStream.write(formatLogLine('INFO', args)); } catch { } };
-console.warn = (...args: any[]) => { try { __logStream.write(formatLogLine('WARN', args)); } catch { } };
-console.error = (...args: any[]) => { try { __logStream.write(formatLogLine('ERROR', args)); } catch { } };
+function __setupLogger() {
+    try {
+        ensureDir(OUTPUTS_DIR);
+        __logStream = fs.createWriteStream(BBPACK_LOG, { flags: 'w' });
+        __logStream.write(`==== bbpack log started ${new Date().toISOString()} ====\n`);
+        console.log = (...args: any[]) => { try { __logStream?.write(formatLogLine('INFO', args)); } catch { } };
+        console.warn = (...args: any[]) => { try { __logStream?.write(formatLogLine('WARN', args)); } catch { } };
+        console.error = (...args: any[]) => { try { __logStream?.write(formatLogLine('ERROR', args)); } catch { } };
+    } catch { }
+}
 
-function __closeLogger() { try { __logStream.end(); } catch { } }
+function __restoreConsole() {
+    console.log = __origConsole.log;
+    console.warn = __origConsole.warn;
+    console.error = __origConsole.error;
+}
+
+function __closeLogger() {
+    try { __logStream?.end(); } catch { } finally { __logStream = null; }
+}
 
 // 轻量级性能分析器（毫秒级）
 const __prof = (() => {
@@ -1047,6 +1066,7 @@ function generateValidAnimationName(name: string, bbmodelName: string): string {
  * 综合处理bbpack文件 - 包括检查和复制
  */
 export function processBbpackFiles(): void {
+    __setupLogger();
     const t0 = __prof.start();
     console.log("🚀 开始处理bbpack文件...");
     console.log("=".repeat(80));
@@ -1081,6 +1101,7 @@ export function processBbpackFiles(): void {
     __prof.end('processBbpackFiles_total', t0);
     __prof.report(40);
     __closeLogger();
+    __restoreConsole();
 }
 
 // 如果直接运行此文件
