@@ -25,7 +25,7 @@ const exportData = (data: any, name: string): void => {
  * 主函数
  */
 export async function main(): Promise<void> {
-    exportData(rpEffect("breathing_skill_dragon_head"),"effect/breathing_skill_dragon_head")
+
 }
 
 // 如果直接运行此文件

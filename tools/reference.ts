@@ -249,6 +249,47 @@ export function soundIdRefs(): void {
 }
 
 /**
+ * 生成实体动画引用
+ * 扫描 @entity/ 文件夹中的 .ce.json 文件
+ * 从中抽取 ID 作为 key，animations 作为值
+ */
+export function entityAnimationsRefs(): void {
+    const entityAnimations: Record<string, Record<string, string>> = {};
+
+    const entityDir = path.join(RESOURCE_PACK_DIR, "entity");
+    const entityFiles = rglob('.*\\.ce\\.json$', entityDir);
+
+    for (const entityFile of entityFiles) {
+        try {
+            const entityData = readJson(entityFile);
+            const clientEntity = entityData["minecraft:client_entity"];
+
+            if (!clientEntity || !clientEntity.description) {
+                console.warn(`跳过无效的客户端实体文件: ${entityFile}`);
+                continue;
+            }
+
+            const identifier = clientEntity.description.identifier;
+            const animations = clientEntity.description.animations || {};
+
+            // 只有当存在动画时才添加到映射中
+            if (identifier && Object.keys(animations).length > 0) {
+                entityAnimations[identifier] = animations;
+            }
+        } catch (error) {
+            console.error(`读取客户端实体文件失败 ${entityFile}: ${error}`);
+        }
+    }
+
+    // 写入实体动画引用文件
+    const outputPath = path.join(SCRIPTS_DIR, "json", "entity_animations.json");
+    ensureDir(path.dirname(outputPath));
+    writeJson(outputPath, entityAnimations);
+
+    console.log(`已生成 entity_animations.json，共 ${Object.keys(entityAnimations).length} 个实体`);
+}
+
+/**
  * 主函数
  */
 export async function main(): Promise<void> {
@@ -257,6 +298,7 @@ export async function main(): Promise<void> {
     animationIdRefs();
     particleIdRefs();
     soundIdRefs();
+    entityAnimationsRefs();
 }
 
 // 如果直接运行此文件

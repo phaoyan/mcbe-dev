@@ -1,2 +1,1 @@
-debug_menu.item.json
-combo.item.json
+minecraft_dev:debug_menu.item.json

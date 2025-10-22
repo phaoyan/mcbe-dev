@@ -6,7 +6,7 @@ export const bpEffect = (typeId: string) => {
         "minecraft:entity": {
             "description": {
                 "identifier": `${NAME_SPACE}:${typeId}`,
-                "is_spawnable": true,
+                "is_spawnable": false,
                 "is_summonable": true,
                 "is_experimental": false
             },

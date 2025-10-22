@@ -1,9 +1,11 @@
 import { Entity, ItemStack, Player, system, World, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { EntityQuery } from "./entity_utils";
+import { EntityOperation, EntityQuery } from "./entity_utils";
 import entityTree from "../json/entity_tree.json"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
+import { dpList } from "../lists/dp_list";
+import animationTree from "../json/animation_tree.json"
 
 const INPUT_PATTERN_LENGTH = 3
 const RCL_THRESHOLD = 2 // 右键长按阈值Ticks
@@ -69,7 +71,7 @@ DPUtils.store().player_operation_map.register((target) => {
 // 左键检测
 world.afterEvents.entityHitEntity.subscribe(({ damagingEntity }) => {
     if (!inputDetectionEnable(damagingEntity, "lc")) return
-    DPUtils.store().player_input_pattern.set(damagingEntity, (curr: any)=>([...curr, {moment: system.currentTick, type: "lclick"}]).slice(-INPUT_PATTERN_LENGTH), [])
+    DPUtils.store().player_input_pattern.set(damagingEntity, (curr: any)=>([...curr, {moment: system.currentTick, type: "lc"}]).slice(-INPUT_PATTERN_LENGTH), [])
 })  
 
 // 右键检测

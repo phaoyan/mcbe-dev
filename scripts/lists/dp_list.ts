@@ -8,6 +8,7 @@ export const dpList = {
 
     player_animation_reverse: "minecraft_dev:player_animation_reverse",
     player_animation_combo: "minecraft_dev:player_animation_combo",
+    player_animation_hand_blade: "minecraft_dev:player_animation_hand_blade",
     player_prev_itembind: "minecraft_dev:player_prev_itembind",
     player_is_onground: "minecraft_dev:player_is_onground",
     player_is_jumping: "minecraft_dev:player_is_jumping",

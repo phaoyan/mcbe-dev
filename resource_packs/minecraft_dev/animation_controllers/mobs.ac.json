@@ -1,0 +1,46 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.minecraft_dev.idle_walk_run": {
+            "states": {
+                "default": {
+                    "animations": [
+                        {
+                            "idle": "q.modified_move_speed < (v.walk_threshold ?? 0.1)"
+                        },
+                        {
+                            "walk": "q.modified_move_speed >= (v.walk_threshold ?? 0.1) && q.modified_move_speed <= (v.run_threshold ?? 0.35)"
+                        },
+                        {
+                            "run": "q.modified_move_speed > (v.run_threshold ?? 0.35)"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                }
+            }
+        },
+        "controller.animation.minecraft_dev.idle_walk": {
+            "states": {
+                "default": {
+                    "animations": [
+                        {
+                            "idle": "q.modified_move_speed < (v.walk_threshold ?? 0.1)"
+                        },
+                        {
+                            "walk": "q.modified_move_speed >= (v.walk_threshold ?? 0.1)"
+                        }
+                    ],
+                    "blend_transition": 0.0
+                }
+            }
+        },
+        "controller.animation.minecraft_dev.idle": {
+            "states": {
+                "default": {
+                    "animations": ["idle"],
+                    "blend_transition": 0.0
+                }
+            }
+        }
+    }
+}

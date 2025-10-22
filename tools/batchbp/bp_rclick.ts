@@ -1,6 +1,6 @@
 import { NAME_SPACE } from "../utils";
 
-export const setupRclick = (typeId: string, cd: number) => {
+export const bpRclick = (typeId: string, cd: number) => {
     return {
         "format_version": "1.21.10",
         "minecraft:item": {

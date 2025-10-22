@@ -1,4 +1,4 @@
-import { NAME_SPACE } from "../utils"
+import { BBMODEL_JSON, NAME_SPACE } from "../utils"
 
 export interface MobParams {
     typeId: string
@@ -8,6 +8,8 @@ export interface MobParams {
     movementFightMultiplier?: number
     boss?: boolean
     targetDist?: number
+    fallDamageImmune?: boolean
+    properties?: Record<string, any>
 }
 
 export const bpMob = (params: MobParams) => {
@@ -18,7 +20,9 @@ export const bpMob = (params: MobParams) => {
         health = 100,
         movement = 0.2,
         movementFightMultiplier = 2,
-        targetDist = 64
+        targetDist = 64,
+        fallDamageImmune = false,
+        properties = undefined
     } = params;
 
     const spawnGroups = [
@@ -39,7 +43,8 @@ export const bpMob = (params: MobParams) => {
                 "identifier": `${NAME_SPACE}:${typeId}`,
                 "is_spawnable": true,
                 "is_summonable": true,
-                "is_experimental": false
+                "is_experimental": false,
+                ...(properties ? { properties: properties } : {})
             },
             "component_groups": {
                 "comp:base": {
@@ -97,7 +102,11 @@ export const bpMob = (params: MobParams) => {
                                     "event": "event:hurt"
                                 },
                                 "deals_damage": true
-                            }
+                            },
+                            ...(fallDamageImmune ? [{
+                                "cause": "fall",
+                                "deals_damage": false
+                            }] : [])
                         ]
                     },
                     "minecraft:on_target_acquired": {
@@ -351,4 +360,20 @@ export const bpMob = (params: MobParams) => {
             }
         }
     }
+}
+
+export const bpMobWithSkin = (bbmodel: string, params: MobParams) => {
+    const bbmodelConfig = BBMODEL_JSON[bbmodel] || {};
+    const textures = bbmodelConfig.textures || [];
+    const mob: any = bpMob(params);
+    mob["minecraft:entity"].description["properties"] = {
+        ...(mob["minecraft:entity"].description["properties"] ?? {}),
+        [`minecraft_dev:skin`]: {
+            "type": "int",
+            "range": [ 0, 255 ],
+            "default": `math.random_integer(0, ${textures.length-1})`,
+            "client_sync": true
+        }
+    }
+    return mob;
 }

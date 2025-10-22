@@ -2,6 +2,7 @@ import { Entity, ItemStack, Player, world, World } from "@minecraft/server"
 import animationTree from "../json/animation_tree.json"
 import { DPUtils } from "./dp_utils"
 import { TimeUtils } from "./time_utils"
+import { dpList } from "../lists/dp_list"
 
 // Player Invert ACs
 export const PILegsAC: AnimCtrl = {
@@ -86,6 +87,7 @@ export class AnimUtils {
         world.afterEvents.worldLoad.subscribe(() => {
             DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
                 if (!(target instanceof Player)) return
+                console.warn("TEST")
                 if (!!prev && Object.keys(data.animbinds).includes(prev))
                     AnimUtils.unregister(target, data.animbinds[prev])
                 if (!!curr && Object.keys(data.animbinds).includes(curr))
