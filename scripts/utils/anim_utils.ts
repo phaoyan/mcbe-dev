@@ -122,3 +122,8 @@ export class AnimUtils {
         TimeUtils.timeout(() => player.playAnimation(animationTree.minecraft_dev.common.slot0), delay)
     }
 }
+
+DPUtils.store().player_animation_slot.register((entity: Entity | ItemStack | World, curr: number, prev: number) => {
+    if (!(entity instanceof Player)) return
+    entity.playAnimation(animationTree.minecraft_dev.common.slot0.replace("0", curr.toString()))
+})
