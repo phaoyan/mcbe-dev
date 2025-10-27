@@ -289,6 +289,42 @@ export function entityAnimationsRefs(): void {
     console.log(`已生成 entity_animations.json，共 ${Object.keys(entityAnimations).length} 个实体`);
 }
 
+export function attachableAnimationsRefs(): void {
+    const attAnimations: Record<string, Record<string, string>> = {};
+
+    const attDir = path.join(RESOURCE_PACK_DIR, "attachables", "items");
+    const attFiles = rglob('.*\\.att\\.json$', attDir);
+
+    for (const attFile of attFiles) {
+        try {
+            const attData = readJson(attFile);
+            const att = attData["minecraft:attachable"];
+
+            if (!att || !att.description) {
+                console.warn(`跳过无效的附着物文件: ${attFile}`);
+                continue;
+            }
+
+            const identifier = att.description.identifier;
+            const animations = att.description.animations || {};
+
+            // 只有当存在动画时才添加到映射中
+            if (identifier && Object.keys(animations).length > 0) {
+                attAnimations[identifier] = animations;
+            }
+        } catch (error) {
+            console.error(`读取附着物文件失败 ${attFile}: ${error}`);
+        }
+    }
+
+    // 写入实体动画引用文件
+    const outputPath = path.join(SCRIPTS_DIR, "json", "attachable_animations.json");
+    ensureDir(path.dirname(outputPath));
+    writeJson(outputPath, attAnimations);
+
+    console.log(`已生成 attachable_animations.json，共 ${Object.keys(attAnimations).length} 个实体`);
+}
+
 /**
  * 主函数
  */
@@ -299,6 +335,7 @@ export async function main(): Promise<void> {
     particleIdRefs();
     soundIdRefs();
     entityAnimationsRefs();
+    attachableAnimationsRefs();
 }
 
 // 如果直接运行此文件

@@ -29,6 +29,7 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
   bbpack              - 处理bbpack文件夹：检查动画名称、检查粒子引用、复制文件
   bbpack-check        - 仅检查bbpack中的粒子引用
   bbpack-names        - 仅检查和修复动画名称规范
+  bbpack-ids          - 检查并修复粒子ID命名空间
   import              - 生成TypeScript项目的main.ts导入文件
   reference           - 生成资源引用配置JSON文件
   resources           - 生成资源配置（纹理、声音等）
@@ -101,6 +102,18 @@ async function main(): Promise<void> {
                 break;
             }
 
+            case 'bbpack-names': {
+                const { checkAnimationIds } = await import('./bbpack');
+                checkAnimationIds();
+                break;
+            }
+
+            case 'bbpack-ids': {
+                const { checkParticleIds } = await import('./bbpack');
+                checkParticleIds();
+                break;
+            }
+
             case 'import': {
                 const { main: importMain } = await import('./import');
                 importMain();
@@ -135,6 +148,71 @@ async function main(): Promise<void> {
                 const { setupBbmodels } = await import('./bbmodel');
                 setupBbmodels();
 
+                // 3. 生成behavior pack资源
+                console.log('⚙️  生成behavior pack资源...');
+                const { main: batchBpMain } = await import('./batchBp');
+                await batchBpMain();
+
+                // 4. 生成resource pack资源
+                console.log('🎭 生成resource pack资源...');
+                const { main: batchRpMain } = await import('./batchRp');
+                await batchRpMain();
+
+                // 5. 生成资源配置文件
+                console.log('📋 生成资源配置文件...');
+                const { main: resourcesMain } = await import('./resources');
+                await resourcesMain();
+
+                // 6. 生成引用配置文件
+                console.log('🔗 生成引用配置文件...');
+                const { main: referenceMain } = await import('./reference');
+                await referenceMain();
+
+                // 7. 生成TypeScript导入文件
+                console.log('📦 生成TypeScript导入文件...');
+                const { main: importMain } = await import('./import');
+                importMain();
+
+                console.log('🎉 完整的资源生成流程执行完成！');
+                break;
+            }
+
+            case 'from-bbmodel': {
+                // 2. 处理bbmodel文件
+                console.log('🎨 处理bbmodel文件...');
+                const { setupBbmodels } = await import('./bbmodel');
+                setupBbmodels();
+
+                // 3. 生成behavior pack资源
+                console.log('⚙️  生成behavior pack资源...');
+                const { main: batchBpMain } = await import('./batchBp');
+                await batchBpMain();
+
+                // 4. 生成resource pack资源
+                console.log('🎭 生成resource pack资源...');
+                const { main: batchRpMain } = await import('./batchRp');
+                await batchRpMain();
+
+                // 5. 生成资源配置文件
+                console.log('📋 生成资源配置文件...');
+                const { main: resourcesMain } = await import('./resources');
+                await resourcesMain();
+
+                // 6. 生成引用配置文件
+                console.log('🔗 生成引用配置文件...');
+                const { main: referenceMain } = await import('./reference');
+                await referenceMain();
+
+                // 7. 生成TypeScript导入文件
+                console.log('📦 生成TypeScript导入文件...');
+                const { main: importMain } = await import('./import');
+                importMain();
+
+                console.log('🎉 完整的资源生成流程执行完成！');
+                break;
+            }
+
+            case 'from-batch': {
                 // 3. 生成behavior pack资源
                 console.log('⚙️  生成behavior pack资源...');
                 const { main: batchBpMain } = await import('./batchBp');

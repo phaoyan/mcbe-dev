@@ -1,11 +1,10 @@
 import { Entity, ItemStack, Player, system, World, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { EntityOperation, EntityQuery } from "./entity_utils";
+import { EntityQuery } from "./entity_utils";
 import entityTree from "../json/entity_tree.json"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
-import { dpList } from "../lists/dp_list";
-import animationTree from "../json/animation_tree.json"
+import { OpList } from "../lists/op_list";
 
 const INPUT_PATTERN_LENGTH = 3
 const RCL_THRESHOLD = 2 // 右键长按阈值Ticks
@@ -22,6 +21,15 @@ export interface PlayerOperationMap {
     jump?: string
     sneak?: string
     run?: string
+}
+
+export const DefaultPlayerOperationMap: PlayerOperationMap = {
+    lc: OpList.None,
+    rcs: OpList.None,
+    rcl: OpList.None,
+    jump: OpList.None,
+    sneak: OpList.None,
+    run: OpList.None,
 }
 
 const inputDetectionEnable = (player: Entity, type: keyof PlayerOperationMap)=>{
@@ -155,9 +163,8 @@ export class PlayerUtils {
     }
 
     static opbinds(data: {
-        type: keyof PlayerOperationMap,
         triggers: string | string[],
-        mapping: (player: Player) => string | undefined
+        mapping: (player: Player) => PlayerOperationMap
     }){
         const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
         world.afterEvents.worldLoad.subscribe(() => {
@@ -165,12 +172,14 @@ export class PlayerUtils {
                 DPUtils.register(trigger, (target: Entity | ItemStack | World, curr, prev) => {
                     if (prev === curr) return
                     if (!(target instanceof Player)) return
-                    const opId = data.mapping(target)
-                    if (!opId || !this.PlayerOperations[opId]) {
-                        this.resetOp(target, data.type)
-                    } else {
-                        this.setOp(target, data.type, opId)
-                    }
+                    const opMap = data.mapping(target)
+                    Object.entries(opMap).forEach(([key, value]) => {
+                        if (!this.PlayerOperations[value]) {
+                            this.resetOp(target, key)
+                        } else {
+                            this.setOp(target, key, value)
+                        }
+                    })
                 })
             })
         })

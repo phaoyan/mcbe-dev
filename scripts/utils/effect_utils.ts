@@ -4,6 +4,7 @@ import { EntityEventIds } from "../lists/event_list";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { EntityOperation, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
+import animationTree from "../json/animation_tree.json";
 
 DPUtils.store().effect_superarmor.register((target, curr, prev)=>{
     if (!(target instanceof Entity)) return
@@ -59,6 +60,26 @@ DPUtils.store().effect_blind.register((entity, curr, prev)=>{
             entity.triggerEvent(EntityEventIds.TargetAcquired)
         }
     } catch (e) {}
+})
+
+DPUtils.store().effect_invisible.register((entity, curr, prev)=>{
+    if (!(entity instanceof Entity)) return
+    if (curr) {
+        entity.addEffect(MinecraftEffectTypes.Invisibility, 20000000, { showParticles: false})
+        entity.playAnimation(animationTree.minecraft_dev.common.invisible_on)
+    } else {
+        entity.removeEffect(MinecraftEffectTypes.Invisibility)
+        entity.playAnimation(animationTree.minecraft_dev.common.invisible_off)
+    }
+})
+
+DPUtils.store().effect_lose_target.register((entity, curr, prev)=>{
+    if (!(entity instanceof Entity)) return
+    if (curr) {
+        entity.triggerEvent(EntityEventIds.LoseTargetOn)
+    } else {
+        entity.triggerEvent(EntityEventIds.LoseTargetOff)
+    }
 })
 
 DPUtils.store().effect_remove.register((entity, curr, prev)=>{

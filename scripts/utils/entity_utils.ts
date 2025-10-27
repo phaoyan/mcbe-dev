@@ -8,6 +8,7 @@ import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
 import { BlackboardManager } from "./behavior_utils";
+import animationLength from "../json/animation_length.json"
 
 export type ComboData = {
     duration: number
@@ -97,8 +98,11 @@ export class EntityOperation {
         return this
     }
 
-    do(callback: (entity: Entity, ops: EntityOperation) => void): EntityOperation {
-        return this._enqueue((entity: Entity) => callback(entity, this))
+    do(callback: (entity: Entity, ops: EntityOperation) => void, condition?: (entity: Entity) => boolean): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (condition && !condition(entity)) return
+            callback(entity, this)
+        })
     }
 
     for(ticks: number | number[]): EntityOperation {
@@ -133,6 +137,16 @@ export class EntityOperation {
                 if (DPUtils.store().mob_dead.curr(entity, false)) return
                 entity.playAnimation(animation)
             }, ticks)
+        })
+    }
+
+    dead(animation: string, removeTicks?: number): EntityOperation {
+        removeTicks = removeTicks ?? (Math.floor((animationLength[animation as keyof typeof animationLength] ?? 1) * 20) - 1)
+        return this._enqueue((entity: Entity) => {
+            entity.clearVelocity()
+            entity.addEffect(MinecraftEffectTypes.Slowness, 2000, { amplifier: 255, showParticles: false })
+            entity.playAnimation(animation)
+            EntityOperation.create().dizzy(2).remove(removeTicks).run(entity)
         })
     }
 
@@ -189,13 +203,14 @@ export class EntityOperation {
         })
     }
 
-    dizzy(ticks: number): EntityOperation {
+    dizzy(ticks: number, interrupt?: boolean): EntityOperation {
+        interrupt = interrupt ?? true
         return this._enqueue((entity: Entity) => {
             const dir = { ...entity.getViewDirection() }
             TimeUtils.timeseries(() => {
                 entity.setRotation({ x: 0, y: MathUtils.yaw(dir.x, dir.z) })
             }, TimeUtils.ticks(1, 1, ticks))
-            DPUtils.store().entity_sched_id.set(entity, undefined)
+            interrupt && DPUtils.store().entity_sched_id.set(entity, undefined)
             DPUtils.store().effect_dizzy.cancel(entity)
             DPUtils.store().effect_dizzy.set(entity, true)
             DPUtils.store().effect_dizzy.set(entity, false, false, ticks)
@@ -226,6 +241,14 @@ export class EntityOperation {
         })
     }
 
+    invisible(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_invisible.cancel(entity)
+            DPUtils.store().effect_invisible.set(entity, true)
+            DPUtils.store().effect_invisible.set(entity, false, false, ticks)
+        })
+    }
+
     blind(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
@@ -235,6 +258,14 @@ export class EntityOperation {
                 DPUtils.store().effect_blind.set(entity, true)
                 DPUtils.store().effect_blind.set(entity, false, false, ticks)
             }
+        })
+    }
+
+    loseTarget(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_lose_target.cancel(entity)
+            DPUtils.store().effect_lose_target.set(entity, true)
+            DPUtils.store().effect_lose_target.set(entity, false, false, ticks)
         })
     }
 
@@ -457,6 +488,12 @@ export class EntityOperation {
                 data[comboState.state].callback(entity)
                 return
             }
+        })
+    }
+
+    setFaction(faction: string): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().entity_faction.set(entity, faction)
         })
     }
 }

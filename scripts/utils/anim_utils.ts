@@ -1,8 +1,9 @@
-import { Entity, ItemStack, Player, world, World } from "@minecraft/server"
+import { Entity, ItemStack, Player, system, world, World } from "@minecraft/server"
 import animationTree from "../json/animation_tree.json"
 import { DPUtils } from "./dp_utils"
 import { TimeUtils } from "./time_utils"
-import { dpList } from "../lists/dp_list"
+import animationLength from "../json/animation_length.json"
+import attachableAnimations from "../json/attachable_animations.json"
 
 // Player Invert ACs
 export const PILegsAC: AnimCtrl = {
@@ -86,8 +87,8 @@ export class AnimUtils {
     static animbinds(data: { dpId: string, animbinds: { [key: string]: AnimCtrl } }) {
         world.afterEvents.worldLoad.subscribe(() => {
             DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
+                if (curr === prev) return
                 if (!(target instanceof Player)) return
-                console.warn("TEST")
                 if (!!prev && Object.keys(data.animbinds).includes(prev))
                     AnimUtils.unregister(target, data.animbinds[prev])
                 if (!!curr && Object.keys(data.animbinds).includes(curr))
@@ -96,34 +97,28 @@ export class AnimUtils {
         })
     }
 
-    static animationWithAtt(player: Player, animationId: string, value: number, delay: number) {
-        const setMap: { [key: number]: string } = {
-            0: animationTree.minecraft_dev.common.set0,
-            1: animationTree.minecraft_dev.common.set1,
-            2: animationTree.minecraft_dev.common.set2,
-            3: animationTree.minecraft_dev.common.set3,
-            4: animationTree.minecraft_dev.common.set4,
-            5: animationTree.minecraft_dev.common.set5,
-            6: animationTree.minecraft_dev.common.set6,
-            7: animationTree.minecraft_dev.common.set7,
-            8: animationTree.minecraft_dev.common.set8,
-            9: animationTree.minecraft_dev.common.set9,
-            10: animationTree.minecraft_dev.common.set10,
-            11: animationTree.minecraft_dev.common.set11,
-            12: animationTree.minecraft_dev.common.set12,
-            13: animationTree.minecraft_dev.common.set13,
-            14: animationTree.minecraft_dev.common.set14,
-            15: animationTree.minecraft_dev.common.set15,
-            16: animationTree.minecraft_dev.common.set16,
-            17: animationTree.minecraft_dev.common.set17,
-            18: animationTree.minecraft_dev.common.set18,
-            19: animationTree.minecraft_dev.common.set19,
-            20: animationTree.minecraft_dev.common.set20,
+    static slots(player: Player, ...series: number[][]) {
+        for (let [slot, tick] of series) {
+            DPUtils.store().player_animation_slot.set(player, slot, 0, tick)
         }
-        player.playAnimation(setMap[value])
+        return this
+    }
+
+    static slotCancel(player: Player, offset: number = 1) {
+        DPUtils.store().player_animation_slot.cancel(player, system.currentTick + offset)
+        return this
+    }
+
+    static animationWithAtt(player: Player, animationId: string, attachableId: keyof typeof attachableAnimations, delay?: number) {
+        if (!delay) {
+            delay = Math.floor((animationLength[animationId as keyof typeof animationLength] ?? 0) * 20 - 1)
+        }
+
+        const attAnimations = attachableAnimations[attachableId]
+        const entry = Object.entries(attAnimations).find(([, value]) => value === animationId)?.[0]
+        const slot = entry ? parseInt(entry.replace("slot", "")) : 0
+        player.playAnimation(animationTree.minecraft_dev.common[`slot${slot}` as keyof typeof animationTree.minecraft_dev.common])
         TimeUtils.timeout(() => player.playAnimation(animationId), 1)
-        TimeUtils.timeout(() => {
-            player.playAnimation(animationTree.minecraft_dev.common.set0)
-        }, delay)
+        TimeUtils.timeout(() => player.playAnimation(animationTree.minecraft_dev.common.slot0), delay)
     }
 }

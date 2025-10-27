@@ -1,3 +1,5 @@
 
 // 存放玩家操作的ID
-export const OpList = {}
+export const OpList = {
+    None: "None",
+}

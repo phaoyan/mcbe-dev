@@ -15,6 +15,8 @@ export const EntityEventIds = {
     UntargetableOff: "event:untargetable_off",
     BlindOn: "event:blind_on",
     BlindOff: "event:blind_off",
+    LoseTargetOn: "event:lose_target_on",
+    LoseTargetOff: "event:lose_target_off",
     InvisiableOn: "event:invisiable_on",
     InvisiableOff: "event:invisiable_off",
 }
