@@ -1,9 +1,11 @@
-import { Dimension, Entity, Player, Vector3 } from "@minecraft/server";
+import { Dimension, Entity, Player, Vector3, world } from "@minecraft/server";
 import { TimeUtils } from "./time_utils";
 import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { VecUtils } from "./math_utils";
 import { Vector3Utils } from "@minecraft/math";
 import { EntityOperation, EntityQuery } from "./entity_utils";
+import { DPUtils } from "./dp_utils";
+import { CompUtils } from "./comp_utils";
 
 export interface VoidbindOptions {
     duration?: number
@@ -12,14 +14,23 @@ export interface VoidbindOptions {
     invisible?: boolean
     follow?: {
         host: Entity
-        offsetF?: number
-        offsetY?: number
-        offsetR?: number
+        offsetF?: number | ((host: Entity) => number)
+        offsetY?: number | ((host: Entity) => number)
+        offsetR?: number | ((host: Entity) => number)
         correction?: number
         constY?: boolean
         beforeAnimation?: boolean
         randomOffset?: number
     }
+}
+
+export interface ProjectileOptions {
+    knockback: number
+    searchSize: number
+    searchOffsetF: number
+    hitOnDestroy?: boolean
+    removeOnHit?: boolean
+    hitCallback: (voidbind: Entity, target?: Entity)=>void
 }
 
 export class VoidbindUtils {
@@ -43,18 +54,21 @@ export class VoidbindUtils {
         EntityOperation.create().remove(duration).run(voidbind)
         if (follow) {
             TimeUtils.timeseries(() => {
+                const offsetF = typeof follow.offsetF === "function" ? follow.offsetF(follow.host) : follow.offsetF ?? 0
+                const offsetY = typeof follow.offsetY === "function" ? follow.offsetY(follow.host) : follow.offsetY ?? 0
+                const offsetR = typeof follow.offsetR === "function" ? follow.offsetR(follow.host) : follow.offsetR ?? 0
                 const loc = Vector3Utils.add(
                     VecUtils
                         .start(follow.host)
-                        .moveF(follow.offsetF ?? 0)
-                        .moveY(follow.offsetY ?? 0)
-                        .moveR(follow.offsetR ?? 0)
+                        .moveF(offsetF)
+                        .moveY(offsetY)
+                        .moveR(offsetR)
                         // 随机偏移
                         .moveF(Math.random() * (follow.randomOffset ?? 0.05))
                         .end(),
                     {
                         x: follow.host.getVelocity().x * (follow.correction ?? 6),
-                        y: follow.host.getVelocity().y + (follow.correction ?? 6),
+                        y: follow.host.getVelocity().y * (follow.correction ?? 6),
                         z: follow.host.getVelocity().z * (follow.correction ?? 6)
                     }
                 )
@@ -96,27 +110,34 @@ export class VoidbindUtils {
                 location: location,
                 type: entityId,
                 maxDistance: 1,
-            })[0]
+            }).filter(e=>!DPUtils.store().voidbind_used.curr(e, false))[0]
             if (!voidbind) return
+            DPUtils.store().voidbind_used.set(voidbind, true)
             callback?.(voidbind)
             voidbind.addEffect(MinecraftEffectTypes.Invisibility, duration, { showParticles: false })
             !invisible && TimeUtils.timeout(() => voidbind.addEffect(MinecraftEffectTypes.Invisibility, 1, { amplifier: 2 }), delay)
             animation && TimeUtils.timeout(() => voidbind.playAnimation(animation), delay)
             EntityOperation.create().remove(duration).run(voidbind)
+            TimeUtils.timeout(()=>{
+                try {voidbind.remove()}catch (e) {}
+            }, duration)
             if (follow) {
                 TimeUtils.timeseries(() => {
+                    const offsetF = typeof follow.offsetF === "function" ? follow.offsetF(follow.host) : follow.offsetF ?? 0
+                    const offsetY = typeof follow.offsetY === "function" ? follow.offsetY(follow.host) : follow.offsetY ?? 0
+                    const offsetR = typeof follow.offsetR === "function" ? follow.offsetR(follow.host) : follow.offsetR ?? 0
                     const loc = Vector3Utils.add(
                         VecUtils
                             .start(follow.host)
-                            .moveF(follow.offsetF ?? 0)
-                            .moveY(follow.offsetY ?? 0)
-                            .moveR(follow.offsetR ?? 0)
+                            .moveF(offsetF)
+                            .moveY(offsetY)
+                            .moveR(offsetR)
                             // 随机偏移
                             .moveF(Math.random() * (follow.randomOffset ?? 0.05))
                             .end(),
                         {
                             x: follow.host.getVelocity().x * (follow.correction ?? 6),
-                            y: follow.host.getVelocity().y + (follow.correction ?? 6),
+                            y: follow.host.getVelocity().y * (follow.correction ?? 6),
                             z: follow.host.getVelocity().z * (follow.correction ?? 6)
                         }
                     )
@@ -124,7 +145,12 @@ export class VoidbindUtils {
                         loc.y = location.y
                     }
                     if (follow.host instanceof Player) {
-                        const facing = VecUtils.start(follow.host).moveF(128).moveR(Math.sign(follow.host.inputInfo.getMovementVector().x) * 128).end()
+                        const moveStraight = DPUtils.store().effect_move_straight.curr(follow.host, false)
+                        const disableMovement = DPUtils.store().effect_disable_movement.curr(follow.host, false)
+                        const facing = VecUtils.start(follow.host)
+                            .moveF(128)
+                            .moveR((moveStraight || disableMovement) ? 0 : Math.sign(follow.host.inputInfo.getMovementVector().x) * 128)
+                            .end()
                         voidbind.teleport(loc, { facingLocation: facing })
                     } else {
                         voidbind.teleport(loc, { facingLocation: VecUtils.start(follow.host).moveF(128).end() })
@@ -134,4 +160,59 @@ export class VoidbindUtils {
         }, 1)
     }
 
+    static projectile(
+        entityId: string,
+        dimension: Dimension,
+        location: Vector3,
+        options: VoidbindOptions,
+        projectileOptions: ProjectileOptions,
+    ){
+        const {
+            duration = 20,
+            delay = 2,
+            follow,
+        } = options
+
+        const {
+            knockback,
+            searchSize,
+            searchOffsetF,
+            hitOnDestroy = true,
+            removeOnHit = true,
+            hitCallback,
+        } = projectileOptions
+        this.voidbindV2(entityId, dimension, location, options, (voidbind)=>{
+            EntityOperation.create()
+                .at(delay)
+                .knockbackBaseView(voidbind, knockback, 0, 0, duration)
+                .at(duration - 1)
+                .do(()=>hitOnDestroy && hitCallback(voidbind))
+                .do(()=>{ try { voidbind.remove() } catch (e) {} })
+                .run(voidbind)
+            const search = EntityQuery.entities(voidbind, { dist: searchSize, offset: [searchOffsetF,0,0], filter: e=>e.id!==follow?.host.id })
+            let flag = false
+            const hit = EntityOperation.create().do((target)=>{
+                if (removeOnHit && flag) return
+                flag = true
+                hitCallback(voidbind, target)
+                if (removeOnHit) {
+                    TimeUtils.timeout(()=>{
+                        try { voidbind.remove() } catch (e) {}
+                    }, 1)
+                }
+            })
+
+            search.sched(hit.callable(), TimeUtils.ticks(delay, 1, duration))
+        })
+    }
+
 }
+
+world.afterEvents.entitySpawn.subscribe((event)=>{
+    try {
+        const entity = event.entity
+        if (CompUtils.typeFamily(entity).hasTypeFamily("effect")) {
+            entity.addEffect(MinecraftEffectTypes.Invisibility, 2, { showParticles: false })
+        }
+    } catch (e) {}
+})

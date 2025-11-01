@@ -87,7 +87,6 @@ export class AnimUtils {
     static animbinds(data: { dpId: string, animbinds: { [key: string]: AnimCtrl } }) {
         world.afterEvents.worldLoad.subscribe(() => {
             DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
-                if (curr === prev) return
                 if (!(target instanceof Player)) return
                 if (!!prev && Object.keys(data.animbinds).includes(prev))
                     AnimUtils.unregister(target, data.animbinds[prev])

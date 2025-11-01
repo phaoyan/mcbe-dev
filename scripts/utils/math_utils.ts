@@ -221,6 +221,11 @@ export class VecUtils {
         return this.LOCATION
     }
 
+    static moveLocation(location: Vector3) {
+        this.LOCATION = location
+        return VecUtils
+    }
+
     static moveX(x: number) {
         this.LOCATION = Vector3Utils.add(this.LOCATION, { x: x, y: 0, z: 0 })
         return VecUtils

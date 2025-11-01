@@ -2,6 +2,7 @@ import { Entity, EquipmentSlot, ItemStack, system, world, World } from "@minecra
 import { dpList } from "../lists/dp_list";
 import { ScriptEventIds } from "../lists/event_list";
 import { InventoryUtils } from "./inventory_utils";
+import { dpListV2 } from "../lists/dp_list_v2";
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity }) => {
     if (id !== ScriptEventIds.DPList) return
@@ -101,7 +102,7 @@ system.runInterval(() => {
 
 export class DPUtils {
 
-    static STORE = { ...dpList }
+    static STORE = { ...dpList, ...dpListV2 }
 
     static REGISTRATION: { [key: string]: ((target: Entity | ItemStack | World, curr: any, prev: any) => any)[] } = {}
 

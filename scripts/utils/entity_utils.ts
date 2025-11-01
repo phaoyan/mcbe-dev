@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, Vector3, world } from "@minecraft/server";
+import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, TeleportOptions, Vector3, world } from "@minecraft/server";
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
@@ -9,11 +9,12 @@ import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
 import { BlackboardManager } from "./behavior_utils";
 import animationLength from "../json/animation_length.json"
+import { CameraMoveOptions } from "./effect_utils";
 
 export type ComboData = {
     duration: number
     wait: number
-    callback: (entity: Entity) => void
+    callback: (player: Player) => void
 }[]
 
 export class EntityState {
@@ -105,7 +106,7 @@ export class EntityOperation {
         })
     }
 
-    for(ticks: number | number[]): EntityOperation {
+    for(ticks: number | number[], condition?: (entity: Entity) => boolean): EntityOperation {
         if (!this._lastStep) return this
         const last = this._lastStep
         const lastAction: (entity: Entity) => void = last.action
@@ -114,7 +115,10 @@ export class EntityOperation {
         for (const interval of intervals) {
             const dt = Math.max(0, Math.floor(interval))
             const at = baseTick + dt
-            const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: lastAction }
+            const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: (entity: Entity) => {
+                if (condition && !condition(entity)) return
+                lastAction(entity)
+            } }
             this._steps.push(step)
             this._lastStep = step
         }
@@ -162,9 +166,36 @@ export class EntityOperation {
         })
     }
 
+    intervalEffect(dpId: string, ticks: number[], v?: any): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (ticks.length === 0) {
+                DPUtils.cancel(entity, dpId)
+                DPUtils.set(entity, dpId, undefined)
+            } else if (v !== undefined) {
+                DPUtils.cancel(entity, dpId)
+                ticks.forEach((tick) => DPUtils.set(entity, dpId, v, undefined, tick))
+            } else {
+                DPUtils.cancel(entity, dpId)
+                ticks.forEach((tick) => DPUtils.set(entity, dpId, true, false, tick))
+            }
+        })
+    }
+
     slowness(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOperation {
         return this._enqueue((entity: Entity) => {
             entity.addEffect(MinecraftEffectTypes.Slowness, ticks, { amplifier: amp, showParticles: showParticles })
+        })
+    }
+
+    speed(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            entity.addEffect(MinecraftEffectTypes.Speed, ticks, { amplifier: amp, showParticles: showParticles })
+        })
+    }
+
+    setOnFire(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            entity.setOnFire(ticks)
         })
     }
 
@@ -183,6 +214,12 @@ export class EntityOperation {
             const max = CompUtils.health(entity).effectiveMax
             const newCurrent = Math.floor(Math.max(0, Math.min(max, current + max * percent)))
             CompUtils.health(entity).setCurrentValue(newCurrent)
+        })
+    }
+
+    bleed(damage: number, ticks: number[]): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            TimeUtils.timeseries(() => {DamageUtils.damage(damage, entity)}, ticks)
         })
     }
 
@@ -217,6 +254,31 @@ export class EntityOperation {
         })
     }
 
+    moveStraight(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_move_straight.cancel(entity)
+            if (ticks === 0) return
+            DPUtils.store().effect_move_straight.set(entity, true)
+            DPUtils.store().effect_move_straight.set(entity, false, false, ticks)
+        })
+    }
+
+    disableMovement(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_disable_movement.cancel(entity)
+            DPUtils.store().effect_disable_movement.set(entity, true)
+            DPUtils.store().effect_disable_movement.set(entity, false, false, ticks)
+        })
+    }
+
+    disableCamera(ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_disable_camera.cancel(entity)
+            DPUtils.store().effect_disable_camera.set(entity, true)
+            DPUtils.store().effect_disable_camera.set(entity, false, false, ticks)
+        })
+    }
+
     cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
@@ -225,9 +287,53 @@ export class EntityOperation {
         })
     }
 
+    cameraSet(loc: Vector3, facing?: Vector3, ease?: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().effect_camera_set.set(entity, { loc, facing: facing ?? entity.getHeadLocation(), ease: ease ?? 0.1 }, undefined, 0)
+        })
+    }
+
+    cameraMove(data: {options: CameraMoveOptions, moment: number}[]): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            data.forEach((item) => {
+                DPUtils.store().effect_camera_set.set(entity, item.options, undefined, item.moment)
+            })
+            DPUtils.store().effect_camera_set.set(entity, undefined, undefined, data[data.length - 1].moment + 1)
+        })
+    }
+
+    cameraBack(base: number, scaler: number,ticks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (!(entity instanceof Player)) return
+            const view = entity.getViewDirection()
+            const data = TimeUtils.ticks(1, 1, ticks).map((tick) => {
+                const loc = Vector3Utils.subtract(entity.getHeadLocation(), Vector3Utils.scale(view, base + scaler * tick))
+                return { options: { loc, facing: entity.getHeadLocation(), ease: 0.1 }, moment: tick }
+            })
+            EntityOperation.create().cameraMove(data).run(entity)
+        })
+    }
+
+    cameraBackForward(base: number, scaler: number,backTicks: number, stopTicks: number,forwardTicks: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            if (!(entity instanceof Player)) return
+            const view = entity.getViewDirection()
+            const data = TimeUtils.ticks(1, 1, backTicks + stopTicks + forwardTicks).map((tick, idx) => {
+                const headLoc = entity.getHeadLocation()
+                const loc = 
+                    idx < backTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * tick)) : 
+                    idx < backTicks + stopTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks)) :
+                    Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks - scaler * (tick - stopTicks - backTicks) * backTicks / forwardTicks))
+                return { options: { loc, facing: headLoc, ease: 0.1 }, moment: tick }
+            })
+            EntityOperation.create().cameraMove(data).run(entity)
+        })
+    }
+
     cameraReset(ticks: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
+                DPUtils.store().effect_camera_set.cancel(entity)
                 DPUtils.store().player_camera_reset.set(entity, true, false, ticks)
             }
         })
@@ -241,11 +347,11 @@ export class EntityOperation {
         })
     }
 
-    invisible(ticks: number): EntityOperation {
+    invisible(ticks: number, removeEffect: boolean = true): EntityOperation {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_invisible.cancel(entity)
-            DPUtils.store().effect_invisible.set(entity, true)
-            DPUtils.store().effect_invisible.set(entity, false, false, ticks)
+            DPUtils.store().effect_invisible.set(entity, "on")
+            DPUtils.store().effect_invisible.set(entity, removeEffect ? "off_both" : "off_att", false, ticks)
         })
     }
 
@@ -437,6 +543,14 @@ export class EntityOperation {
         })
     }
 
+    teleport(location: Entity | Vector3, options: TeleportOptions): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            let loc = location as Vector3
+            if (location instanceof Entity) loc = location.location
+            entity.teleport(loc, options)
+        })
+    }
+
     skillCooldown(skillId: string, skillCD: number, skillDuration: number): EntityOperation {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().mob_skill_cooldowns.set(entity, (cdList: { [key: string]: number }) => {
@@ -466,8 +580,12 @@ export class EntityOperation {
         })
     }
 
-    triggerCombo(dpId: string, data: ComboData): EntityOperation {
+    triggerCombo(params: {
+        dpId: string, data: ComboData, comboStop?: (entity: Player)=>void
+    }): EntityOperation {
+        const { dpId, data, comboStop } = params
         return this._enqueue((entity: Entity) => {
+            if (!(entity instanceof Player)) return
             const comboState: { state: number, last: number } = DPUtils.curr(entity, dpId, { state: 0, last: 0 })
             if (comboState.state >= data.length) {
                 comboState.state = 0
@@ -480,13 +598,19 @@ export class EntityOperation {
                 comboState.last = system.currentTick
                 data[0].callback(entity)
                 DPUtils.set(entity, dpId, comboState)
-                return
             } else {
                 comboState.state = (comboState.state + 1) % data.length
                 comboState.last = system.currentTick
                 DPUtils.set(entity, dpId, comboState)
                 data[comboState.state].callback(entity)
-                return
+            }
+            if (comboStop) {
+                DPUtils.store().player_combo_stop.set(entity, system.currentTick + data[comboState.state].duration + data[comboState.state].wait)
+                TimeUtils.timeout(()=>{
+                    const stop = DPUtils.store().player_combo_stop.curr(entity, 0)
+                    if (system.currentTick < stop) return
+                    comboStop(entity)
+                }, data[comboState.state].duration + data[comboState.state].wait)
             }
         })
     }
@@ -494,6 +618,19 @@ export class EntityOperation {
     setFaction(faction: string): EntityOperation {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().entity_faction.set(entity, faction)
+        })
+    }
+
+    inputLock(types: string[], ticks?: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().player_input_lock.set(entity, types)
+            ticks && DPUtils.store().player_input_lock.set(entity, undefined, false, ticks)
+        })
+    }
+
+    inputUnlock(ticks?: number): EntityOperation {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.store().player_input_lock.set(entity, undefined, false, ticks ?? 0)
         })
     }
 }
