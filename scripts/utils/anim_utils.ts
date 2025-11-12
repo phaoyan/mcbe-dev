@@ -87,6 +87,7 @@ export class AnimUtils {
     static animbinds(data: { dpId: string, animbinds: { [key: string]: AnimCtrl } }) {
         world.afterEvents.worldLoad.subscribe(() => {
             DPUtils.register(data.dpId, (target: Entity | ItemStack | World, curr: string, prev: string) => {
+                if (curr === prev) return
                 if (!(target instanceof Player)) return
                 if (!!prev && Object.keys(data.animbinds).includes(prev))
                     AnimUtils.unregister(target, data.animbinds[prev])
@@ -108,6 +109,16 @@ export class AnimUtils {
         return this
     }
 
+    static animationWithSlot(player: Player, animationId: string, slot: number, delay?: number) {
+        if (!delay) {
+            delay = Math.floor((animationLength[animationId as keyof typeof animationLength] ?? 0) * 20 - 1)
+        }
+
+        player.playAnimation(animationTree.minecraft_dev.common[`slot${slot}` as keyof typeof animationTree.minecraft_dev.common])
+        TimeUtils.timeout(() => player.playAnimation(animationId), 1)
+        TimeUtils.timeout(() => player.playAnimation(animationTree.minecraft_dev.common.slot0), delay)
+    }
+
     static animationWithAtt(player: Player, animationId: string, attachableId: keyof typeof attachableAnimations, delay?: number) {
         if (!delay) {
             delay = Math.floor((animationLength[animationId as keyof typeof animationLength] ?? 0) * 20 - 1)
@@ -115,7 +126,8 @@ export class AnimUtils {
 
         const attAnimations = attachableAnimations[attachableId]
         const entry = Object.entries(attAnimations).find(([, value]) => value === animationId)?.[0]
-        const slot = entry ? parseInt(entry.replace("slot", "")) : 0
+        const slot = entry ? parseInt(entry.replace("slot", "").replace("_fpp", "")) : 0
+
         player.playAnimation(animationTree.minecraft_dev.common[`slot${slot}` as keyof typeof animationTree.minecraft_dev.common])
         TimeUtils.timeout(() => player.playAnimation(animationId), 1)
         TimeUtils.timeout(() => player.playAnimation(animationTree.minecraft_dev.common.slot0), delay)

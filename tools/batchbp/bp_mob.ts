@@ -333,6 +333,22 @@ export const bpMob = (params: MobParams) => {
                         ]
                     }
                 },
+                "event:lose_target_on": {
+                    "remove": {
+                        "component_groups": [
+                            "comp:targeting",
+                            "comp:fight"
+                        ]
+                    }
+                },
+                "event:lose_target_off": {
+                    "add": {
+                        "component_groups": [
+                            "comp:targeting",
+                            "comp:fight"
+                        ]
+                    }
+                },
                 "event:invisiable_on": {
                     "remove": {
                         "component_groups": [

@@ -67,6 +67,12 @@ export class InventoryUtils {
         this.equippables(target).setEquipment(slot, item)
     }
 
+    static replace(target: Entity, rep: (item?: ItemStack) => ItemStack | undefined, slot: EquipmentSlot) {
+        const item = this.equippables(target).getEquipment(slot)
+        const newItem = rep(item)
+        this.equippables(target).setEquipment(slot, newItem)
+    }
+
     static clear(target: Entity, typeId: string, slot?: number) {
         if (slot === undefined) {
             target.runCommand(`clear @s ${typeId}`)

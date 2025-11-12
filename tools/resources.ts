@@ -4,7 +4,6 @@ import {
     RESOURCE_PACK_DIR,
     SCRIPTS_DIR,
     TOOLS_DIR,
-    JSON_INDENT,
     rglob,
     readJson,
     writeJson,
@@ -123,7 +122,7 @@ export function setupSoundsDefinition(): void {
         try {
             // 获取相对于sounds目录的路径
             const relativePath = path.relative(soundsDir, soundFile);
-            const soundPath = `sounds/${relativePath.replace(/\\/g, '/')}`;
+            const soundPath = `sounds/${relativePath.replace(/\\/g, '/').replace(/\.ogg$/, '')}`;
 
             // 生成声音ID（将路径中的/和\替换为.）
             const soundId = relativePath.replace(/[/\\]/g, '.').replace(/\.ogg$/, '');

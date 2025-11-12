@@ -1,6 +1,7 @@
 import { BBMODEL_JSON, client_entity, NAME_SPACE } from "../utils";
 
-export const rpEffect = (bbmodel: string) => {
+export const rpEffect = (bbmodel: string, typeId?: string, params?: { extraAnimate?: string[] }) => {
+    if (!typeId) typeId = bbmodel;
     const bbmodelConfig = BBMODEL_JSON[bbmodel] || {};
     const geometry = bbmodelConfig.geometry || "";
     const textures = bbmodelConfig.textures || [];
@@ -12,7 +13,7 @@ export const rpEffect = (bbmodel: string) => {
         format_version: "1.21.10",
         [client_entity]: {
             description: {
-                identifier: `${NAME_SPACE}:${bbmodel}`,
+                identifier: `${NAME_SPACE}:${typeId}`,
                 geometry: {
                     default: `geometry.${geometry}`
                 },
@@ -27,7 +28,12 @@ export const rpEffect = (bbmodel: string) => {
                 ],
                 ...(Object.keys(animations).length > 0 && { animations }),
                 ...(Object.keys(particleEffects).length > 0 && { particle_effects: particleEffects }),
-                ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects })
+                ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects }),
+                ...(params?.extraAnimate && params.extraAnimate.length > 0 && {
+                    scripts: {
+                        animate: [...params.extraAnimate]
+                    }
+                }),
             }
         }
     };

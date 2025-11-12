@@ -25,7 +25,7 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
   setup <项目名称>     - 初始化项目，设置项目名称和UUID
   batch-bp            - 批量生成behavior pack资源
   batch-rp            - 批量生成resource pack资源
-  bbmodel             - 处理bbmodel文件，导出纹理、几何体和动画
+  bbmodel [--force]   - 处理bbmodel文件，导出纹理、几何体和动画（使用 --force 或 -f 强制全部重新部署）
   bbpack              - 处理bbpack文件夹：检查动画名称、检查粒子引用、复制文件
   bbpack-check        - 仅检查bbpack中的粒子引用
   bbpack-names        - 仅检查和修复动画名称规范
@@ -33,15 +33,20 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
   import              - 生成TypeScript项目的main.ts导入文件
   reference           - 生成资源引用配置JSON文件
   resources           - 生成资源配置（纹理、声音等）
-  all                 - 执行完整的资源生成流程 (bbpack→bbmodel→batch-bp→batch-rp→resources→reference→import)
+  all [--force]       - 执行完整的资源生成流程 (bbpack→bbmodel→batch-bp→batch-rp→resources→reference→import)
+  from-bbmodel [--force] - 从bbmodel开始的资源生成流程
   help                - 显示此帮助信息
+
+选项:
+  --force, -f         - 强制全部重新部署（用于 bbmodel, all, from-bbmodel 命令）
 
 示例:
   node main.ts setup my_project
   node main.ts batch-bp
-  node main.ts bbmodel
+  node main.ts bbmodel              # 增量部署（只部署有修改的文件）
+  node main.ts bbmodel --force      # 强制全部重新部署
   node main.ts bbpack-check
-  node main.ts all
+  node main.ts all -f               # 强制全部重新部署
 `);
 }
 
@@ -84,33 +89,34 @@ async function main(): Promise<void> {
             }
 
             case 'bbmodel': {
+                const force = args.includes('--force') || args.includes('-f');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels();
+                setupBbmodels(force);
                 console.log('✅ BBModel 文件处理完成');
                 break;
             }
 
             case 'bbpack': {
                 const { processBbpackFiles } = await import('./bbpack');
-                processBbpackFiles();
+                await processBbpackFiles();
                 break;
             }
 
             case 'bbpack-check': {
                 const { checkParticleReferences } = await import('./bbpack');
-                checkParticleReferences();
+                await checkParticleReferences();
                 break;
             }
 
             case 'bbpack-names': {
                 const { checkAnimationIds } = await import('./bbpack');
-                checkAnimationIds();
+                await checkAnimationIds();
                 break;
             }
 
             case 'bbpack-ids': {
                 const { checkParticleIds } = await import('./bbpack');
-                checkParticleIds();
+                await checkParticleIds();
                 break;
             }
 
@@ -137,16 +143,17 @@ async function main(): Promise<void> {
 
             case 'all': {
                 console.log('🚀 开始执行完整的资源生成流程...');
+                const force = args.includes('--force') || args.includes('-f');
 
                 // 1. 处理bbpack文件
                 console.log('📁 处理bbpack文件...');
                 const { processBbpackFiles } = await import('./bbpack');
-                processBbpackFiles();
+                await processBbpackFiles();
 
                 // 2. 处理bbmodel文件
                 console.log('🎨 处理bbmodel文件...');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels();
+                setupBbmodels(force);
 
                 // 3. 生成behavior pack资源
                 console.log('⚙️  生成behavior pack资源...');
@@ -178,10 +185,12 @@ async function main(): Promise<void> {
             }
 
             case 'from-bbmodel': {
+                const force = args.includes('--force') || args.includes('-f');
+
                 // 2. 处理bbmodel文件
                 console.log('🎨 处理bbmodel文件...');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels();
+                setupBbmodels(force);
 
                 // 3. 生成behavior pack资源
                 console.log('⚙️  生成behavior pack资源...');

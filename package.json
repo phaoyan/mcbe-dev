@@ -22,12 +22,17 @@
     "enablemcloopback": "CheckNetIsolation.exe LoopbackExempt -a -p=S-1-15-2-1958404141-86561845-1752920682-3514627264-368642714-62675701-733520436",
     "enablemcpreviewloopback": "CheckNetIsolation.exe LoopbackExempt -a -p=S-1-15-2-424268864-5579737-879501358-346833251-474568803-887069379-4040235476",
     "tools": "ts-node tools/main.ts",
-    "tools:setup": "ts-node tools/main.ts setup",
-    "tools:batch-bp": "ts-node tools/main.ts batch-bp",
-    "tools:batch-rp": "ts-node tools/main.ts batch-rp",
-    "tools:bbmodel": "ts-node tools/main.ts bbmodel",
-    "tools:bbpack": "ts-node tools/main.ts bbpack",
-    "tools:all": "ts-node tools/main.ts all"
+    "dts": "just-scripts local-deploy-script",
+    "drp": "just-scripts local-deploy-rp",
+    "dbp": "just-scripts local-deploy-bp",
+    "dall": "just-scripts local-deploy-bp && just-scripts local-deploy-rp && just-scripts local-deploy-script",
+    "tbp": "ts-node tools/main.ts batch-bp",
+    "trp": "ts-node tools/main.ts batch-rp",
+    "tbbmodel": "ts-node tools/main.ts bbmodel",
+    "tbbpack": "ts-node tools/main.ts bbpack",
+    "tall": "ts-node tools/main.ts all",
+    "rp": "npm run tbbmodel && npm run drp && npm run dts",
+    "all": "npm run tall && npm run dall"
   },
   "dependencies": {
     "@minecraft/math": "^2.2.7",

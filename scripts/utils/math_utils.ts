@@ -253,6 +253,10 @@ export class VecUtils {
         return VecUtils
     }
 
+    static moveFYR(entity: Entity, fyr: number[]){
+        return VecUtils.start(entity).moveF(fyr[0] ?? 0).moveY(fyr[1] ?? 0).moveR(fyr[2] ?? 0).end()
+    }
+
     static moveView(dist: number) {
         this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale(this.DIRECTION, dist))
         return VecUtils

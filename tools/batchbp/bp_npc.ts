@@ -44,6 +44,15 @@ export const bpNpc = (typeId: string) => {
                         }
                     ]
                 }
+            },
+            "events": {
+                "minecraft:entity_spawned": {
+                    "queue_command": {
+                        "command": [
+                            "scriptevent ns_gl:dialogue_change"
+                        ]
+                    }
+                }
             }
         }
     }

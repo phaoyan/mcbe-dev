@@ -6,7 +6,9 @@ import {
     rglob,
     readJson,
     writeJson,
-    ensureDir
+    ensureDir,
+    readText,
+    writeText
 } from './utils';
 
 /**
@@ -325,6 +327,11 @@ export function attachableAnimationsRefs(): void {
     console.log(`已生成 attachable_animations.json，共 ${Object.keys(attAnimations).length} 个实体`);
 }
 
+export function batchDataRefs(): void {
+    const data = readText("tools/data.ts").split("\n");
+    writeText(path.join(SCRIPTS_DIR, "data.ts"), data.join("\n"));
+}
+
 /**
  * 主函数
  */
@@ -336,6 +343,7 @@ export async function main(): Promise<void> {
     soundIdRefs();
     entityAnimationsRefs();
     attachableAnimationsRefs();
+    batchDataRefs();
 }
 
 // 如果直接运行此文件

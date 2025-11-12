@@ -1,6 +1,6 @@
 import { Entity, ItemStack, Player, system, World, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { EntityQuery } from "./entity_utils";
+import { EntityQr } from "./entity_utils";
 import entityTree from "../json/entity_tree.json"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
@@ -46,7 +46,7 @@ export const DefaultPlayerOperationMap: PlayerOperationMap = {
     rtw: OpList.None,
 }
 
-const inputDetectionEnable = (player: Entity, type: keyof PlayerOperationMap)=>{
+const inputDetectionEnable = (player: Entity, type: keyof PlayerOperationMap) => {
     const opMap: PlayerOperationMap = DPUtils.store().player_operation_map.curr(player, {})
     return Object.keys(opMap).includes(type)
 }
@@ -81,7 +81,7 @@ DPUtils.store().player_operation_map.register((target) => {
     const lclickEnable = inputDetectionEnable(target, "lc")
     if (!lclickEnable) return
     const dummyType = entityTree.dummy.lclick.lclick_dummy
-    const dummy = EntityQuery.entities(target, {dist: 32, types: [dummyType], filter: e => DPUtils.store().lclick_host.curr(e) === target.id}).first()
+    const dummy = EntityQr.entities(target, { dist: 32, types: [dummyType], filter: e => DPUtils.store().lclick_host.curr(e) === target.id }).first()
     if (lclickEnable && !dummy) {
         const lclick = target.dimension.spawnEntity(dummyType, target.location)
         DPUtils.store().lclick_host.set(lclick, target.id)
@@ -94,18 +94,18 @@ DPUtils.store().player_operation_map.register((target) => {
 world.afterEvents.entityHitEntity.subscribe(({ damagingEntity }) => {
     if (!(damagingEntity instanceof Player)) return
     if (!inputDetectionEnable(damagingEntity, "lc")) return
-    DPUtils.store().player_input_pattern.set(damagingEntity, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.lc}]).slice(-INPUT_PATTERN_LENGTH), [])
-})  
+    DPUtils.store().player_input_pattern.set(damagingEntity, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.lc }]).slice(-INPUT_PATTERN_LENGTH), [])
+})
 
 // 右键检测
 world.afterEvents.itemStartUse.subscribe(({ source: player }) => {
     if (!inputDetectionEnable(player, "rca")) return
-    DPUtils.store().player_input_pattern.set(player, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.rca}]).slice(-INPUT_PATTERN_LENGTH), [])
+    DPUtils.store().player_input_pattern.set(player, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.rca }]).slice(-INPUT_PATTERN_LENGTH), [])
 })
 
 world.afterEvents.itemReleaseUse.subscribe(({ source: player }) => {
     if (!inputDetectionEnable(player, "rcr")) return
-    DPUtils.store().player_input_pattern.set(player, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.rcr}]).slice(-INPUT_PATTERN_LENGTH), [])
+    DPUtils.store().player_input_pattern.set(player, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.rcr }]).slice(-INPUT_PATTERN_LENGTH), [])
 })
 
 // 跳跃检测
@@ -113,7 +113,7 @@ DPUtils.store().player_is_jumping.register((target, curr, prev) => {
     if (prev === curr) return
     if (!(target instanceof Player) || !inputDetectionEnable(target, "jump")) return
     if (curr && !prev) {
-        DPUtils.store().player_input_pattern.set(target, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.jump}]).slice(-INPUT_PATTERN_LENGTH), [])
+        DPUtils.store().player_input_pattern.set(target, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.jump }]).slice(-INPUT_PATTERN_LENGTH), [])
     }
 })
 
@@ -122,7 +122,7 @@ DPUtils.store().player_is_sneaking.register((target, curr, prev) => {
     if (prev === curr) return
     if (!(target instanceof Player) || !inputDetectionEnable(target, "sneak")) return
     if (curr && !prev) {
-        DPUtils.store().player_input_pattern.set(target, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.sneak}].slice(-INPUT_PATTERN_LENGTH)), [])
+        DPUtils.store().player_input_pattern.set(target, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.sneak }].slice(-INPUT_PATTERN_LENGTH)), [])
     }
 })
 
@@ -130,8 +130,8 @@ DPUtils.store().player_is_sneaking.register((target, curr, prev) => {
 DPUtils.store().player_is_sneaking.register((target, curr, prev) => {
     if (prev === curr) return
     if (!(target instanceof Player) || !inputDetectionEnable(target, "stw")) return
-    if (!curr && prev ) {
-        DPUtils.store().player_input_pattern.set(target, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.stw}]).slice(-INPUT_PATTERN_LENGTH), [])
+    if (!curr && prev) {
+        DPUtils.store().player_input_pattern.set(target, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.stw }]).slice(-INPUT_PATTERN_LENGTH), [])
     }
 })
 
@@ -140,7 +140,7 @@ DPUtils.store().player_is_running.register((target, curr, prev) => {
     if (prev === curr) return
     if (!(target instanceof Player) || !inputDetectionEnable(target, "run")) return
     if (curr && !prev) {
-        DPUtils.store().player_input_pattern.set(target, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.run}]).slice(-INPUT_PATTERN_LENGTH), [])
+        DPUtils.store().player_input_pattern.set(target, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.run }]).slice(-INPUT_PATTERN_LENGTH), [])
     }
 })
 
@@ -148,8 +148,8 @@ DPUtils.store().player_is_running.register((target, curr, prev) => {
 DPUtils.store().player_is_running.register((target, curr, prev) => {
     if (prev === curr) return
     if (!(target instanceof Player) || !inputDetectionEnable(target, "rtw")) return
-    if (!curr && prev ) {
-        DPUtils.store().player_input_pattern.set(target, (curr: any)=>([...curr, {moment: system.currentTick, type: InputLockTypes.rtw}]).slice(-INPUT_PATTERN_LENGTH), [])
+    if (!curr && prev) {
+        DPUtils.store().player_input_pattern.set(target, (curr: any) => ([...curr, { moment: system.currentTick, type: InputLockTypes.rtw }]).slice(-INPUT_PATTERN_LENGTH), [])
     }
 })
 
@@ -166,15 +166,15 @@ DPUtils.store().player_input_pattern.register((target, curr, prev) => {
 })
 
 export class InputUtils {
-    static PlayerOperations: { [key: string]: (player: Player)=>void } = {}
+    static PlayerOperations: { [key: string]: (player: Player) => void } = {}
     static PlayerOperationMaps: { [key: string]: PlayerOperationMap } = {}
 
-    static registerOp(opId: string, operation: (player: Player)=>void) {
+    static registerOp(opId: string, operation: (player: Player) => void) {
         InputUtils.PlayerOperations[opId] = operation
         return InputUtils
     }
 
-    static registerOps(data: { [key: string]: (player: Player)=>void }) {
+    static registerOps(data: { [key: string]: (player: Player) => void }) {
         Object.entries(data).forEach(([key, value]) => {
             InputUtils.registerOp(key, value)
         })
@@ -182,16 +182,16 @@ export class InputUtils {
     }
 
     static registerOpMap(opmapId: string, data: {
-        lc: (player: Player)=>void
-        rca: (player: Player)=>void
-        rcr: (player: Player)=>void
-        jump: (player: Player)=>void
-        sneak: (player: Player)=>void
-        stw: (player: Player)=>void
-        run: (player: Player)=>void
-        rtw: (player: Player)=>void
+        lc: (player: Player) => void
+        rca: (player: Player) => void
+        rcr: (player: Player) => void
+        jump: (player: Player) => void
+        sneak: (player: Player) => void
+        stw: (player: Player) => void
+        run: (player: Player) => void
+        rtw: (player: Player) => void
     }) {
-        
+
         Object.entries(data).forEach(([key, value]) => InputUtils.registerOp(`${opmapId}_${key}`, value))
         InputUtils.PlayerOperationMaps[opmapId] = Object.fromEntries(Object.entries(data).map(([key]) => [key, `${opmapId}_${key}`]))
         return InputUtils
@@ -202,14 +202,14 @@ export class InputUtils {
     }
 
     static setOp(player: Player, type: string, opId: string) {
-        DPUtils.store().player_operation_map.set(player, (curr: any)=>{
+        DPUtils.store().player_operation_map.set(player, (curr: any) => {
             curr[type] = opId
             return curr
         }, {})
     }
 
     static resetOp(player: Player, type: string) {
-        DPUtils.store().player_operation_map.set(player, (curr: any)=>{
+        DPUtils.store().player_operation_map.set(player, (curr: any) => {
             delete curr[type]
             return curr
         }, {})
@@ -244,10 +244,10 @@ export class InputUtils {
     static opbinds(data: {
         triggers: string | string[],
         mapping: (player: Player) => PlayerOperationMap
-    }){
+    }) {
         const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
         world.afterEvents.worldLoad.subscribe(() => {
-            triggers.forEach(trigger=>{
+            triggers.forEach(trigger => {
                 DPUtils.register(trigger, (target: Entity | ItemStack | World, curr, prev) => {
                     if (prev === curr) return
                     if (!(target instanceof Player)) return
@@ -267,23 +267,24 @@ export class InputUtils {
 }
 
 export class InputTemplates {
-    static none(player: Player) {}
+    static none(player: Player) { }
 
+    // 右键长短按
     static rcls(data: {
         rcl: (player: Player) => void,
         rcs: (player: Player) => void,
         threshold: number,
     }) {
         return {
-            rca: (player: Player)=>{
+            rca: (player: Player) => {
                 DPUtils.store().player_rcflag.set(player, true)
-                TimeUtils.timeout(()=>{
+                TimeUtils.timeout(() => {
                     const rcflag = DPUtils.store().player_rcflag.curr(player, false)
                     if (!rcflag) return
                     data.rcl(player)
-                }, data.threshold + 1)   
+                }, data.threshold + 1)
             },
-            rcr: (player: Player)=>{
+            rcr: (player: Player) => {
                 const inputDelta = InputUtils.inputDelta(player, "rca")
                 if (inputDelta <= data.threshold && DPUtils.store().player_rcflag.curr(player, false)) {
                     DPUtils.store().player_rcflag.set(player, false)
@@ -292,18 +293,45 @@ export class InputTemplates {
             },
         }
     }
+
+    // shift长短按
+    static snkls(data: {
+        snkl: (player: Player) => void,
+        snks: (player: Player) => void,
+        threshold: number,
+    }) {
+        return {
+            sneak: (player: Player) => {
+                DPUtils.store().player_snkflag.set(player, true)
+                TimeUtils.timeout(() => {
+                    const snkflag = DPUtils.store().player_snkflag.curr(player, false)
+                    if (!snkflag) return
+                    data.snkl(player)
+                }, data.threshold + 1)
+            },
+            stw: (player: Player) => {
+                DPUtils.store().player_snkflag.set(player, false)
+                const inputDelta = InputUtils.inputDelta(player, "rca")
+                if (inputDelta <= data.threshold && DPUtils.store().player_snkflag.curr(player, false)) {
+                    InputUtils.inputUnlock(player)
+                } else {
+                    data.snks(player)
+                }
+            },
+        }
+    }
 }
 
 export class CDUtils {
     static skill(
-        player: Player, 
+        player: Player,
         data: {
-        cooldown: number, 
-        skillId: string, 
-        duration?: number,
-        filter?: (player: Player) => boolean,
-        action: (player: Player) => void,
-    }){
+            cooldown: number,
+            skillId: string,
+            duration?: number,
+            filter?: (player: Player) => boolean,
+            action: (player: Player) => void,
+        }) {
         const { cooldown, skillId, duration = 0, action, filter } = data
         if (filter && !filter(player)) return
         const cooldowns = DPUtils.store().player_skill_cooldowns.curr(player, {})
@@ -313,7 +341,7 @@ export class CDUtils {
             return
         }
         const newCooldowns = Object.fromEntries(Object.entries(cooldowns).map(([key]) => [key, system.currentTick + duration]))
-        DPUtils.store().player_skill_cooldowns.set(player, {...newCooldowns, [skillId]: system.currentTick + cooldown})
+        DPUtils.store().player_skill_cooldowns.set(player, { ...newCooldowns, [skillId]: system.currentTick + cooldown })
         action(player)
     }
 }

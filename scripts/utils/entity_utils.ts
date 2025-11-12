@@ -3,7 +3,7 @@ import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, Telepo
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
-import { MinecraftEffectTypes } from "@minecraft/vanilla-data";
+import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
@@ -18,6 +18,14 @@ export type ComboData = {
 }[]
 
 export class EntityState {
+
+    static viewTarget(entity: Entity, maxDist: number = 20) {
+        return entity.getEntitiesFromViewDirection({
+            excludeFamilies: ["dummy", "effect"],
+            maxDistance: maxDist,
+        })?.[0]?.entity
+    }
+
     static target(entity: Entity) {
         const targetId = DPUtils.store().mob_target.curr(entity)
         return targetId ? world.getEntity(targetId) : undefined
@@ -65,7 +73,7 @@ export class EntityState {
     static airHeight(entity: Entity, searchRange: number = 5) {
         const location = entity.location
         for (let i = 0; i < searchRange; i++) {
-            const block = entity.dimension.getBlock(Vector3Utils.add(location, {y: -i}))
+            const block = entity.dimension.getBlock(Vector3Utils.add(location, { y: -i }))
             if (block?.isAir) continue
             const res = entity.location.y - block!.location.y - 1
             return res
@@ -74,14 +82,14 @@ export class EntityState {
     }
 }
 
-export class EntityOperation {
+export class EntityOp {
     private _steps: { tick: number; action: (entity: Entity) => void }[] = []
     private _cursor: number = 0
     private _lastStep: { tick: number; action: (entity: Entity) => void } | undefined
 
-    static create() { return new EntityOperation() }
+    static create() { return new EntityOp() }
 
-    private _enqueue(action: (entity: Entity) => void): EntityOperation {
+    private _enqueue(action: (entity: Entity) => void): EntityOp {
         const at = this._cursor
         const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action }
         this._steps.push(step)
@@ -89,24 +97,24 @@ export class EntityOperation {
         return this
     }
 
-    at(tick: number): EntityOperation {
+    at(tick: number): EntityOp {
         this._cursor = tick
         return this
     }
 
-    wait(ticks: number): EntityOperation {
+    wait(ticks: number): EntityOp {
         this._cursor += Math.max(0, Math.floor(ticks))
         return this
     }
 
-    do(callback: (entity: Entity, ops: EntityOperation) => void, condition?: (entity: Entity) => boolean): EntityOperation {
+    do(callback: (entity: Entity, ops: EntityOp) => void, condition?: (entity: Entity) => boolean): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (condition && !condition(entity)) return
             callback(entity, this)
         })
     }
 
-    for(ticks: number | number[], condition?: (entity: Entity) => boolean): EntityOperation {
+    for(ticks: number | number[], condition?: (entity: Entity) => boolean): EntityOp {
         if (!this._lastStep) return this
         const last = this._lastStep
         const lastAction: (entity: Entity) => void = last.action
@@ -115,17 +123,23 @@ export class EntityOperation {
         for (const interval of intervals) {
             const dt = Math.max(0, Math.floor(interval))
             const at = baseTick + dt
-            const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action: (entity: Entity) => {
-                if (condition && !condition(entity)) return
-                lastAction(entity)
-            } }
+            const step: { tick: number; action: (entity: Entity) => void } = {
+                tick: at, action: (entity: Entity) => {
+                    if (condition && !condition(entity)) return
+                    lastAction(entity)
+                }
+            }
             this._steps.push(step)
             this._lastStep = step
         }
         return this
     }
 
-    run(entity: Entity) {
+    run(entity: Entity | Entity[]) {
+        if (Array.isArray(entity)) {
+            entity.forEach(e => this.run(e))
+            return
+        }
         this._steps.forEach(step => TimeUtils.timeout(() => { step.action(entity) }, step.tick))
     }
 
@@ -135,7 +149,7 @@ export class EntityOperation {
         }
     }
 
-    playAnimation(animation: string, ticks: number = 0): EntityOperation {
+    playAnimation(animation: string, ticks: number = 0): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeout(() => {
                 if (DPUtils.store().mob_dead.curr(entity, false)) return
@@ -144,29 +158,41 @@ export class EntityOperation {
         })
     }
 
-    dead(animation: string, removeTicks?: number): EntityOperation {
+    playSound(soundId: string, location: Vector3, volume: number = 1, pitch: number = 1): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            entity.dimension.playSound(soundId, location, { volume, pitch })
+        })
+    }
+
+    dead(animation: string, removeTicks?: number): EntityOp {
         removeTicks = removeTicks ?? (Math.floor((animationLength[animation as keyof typeof animationLength] ?? 1) * 20) - 1)
         return this._enqueue((entity: Entity) => {
             entity.clearVelocity()
             entity.addEffect(MinecraftEffectTypes.Slowness, 2000, { amplifier: 255, showParticles: false })
             entity.playAnimation(animation)
-            EntityOperation.create().dizzy(2).remove(removeTicks).run(entity)
+            EntityOp.create().dizzy(2).remove(removeTicks).run(entity)
         })
     }
 
-    damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOperation {
+    damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOp {
         return this._enqueue((entity: Entity) => {
             DamageUtils.damage(damageRate, entity, source, tags)
         })
     }
 
-    effect(effect: string, ticks: number, options?: EntityEffectOptions): EntityOperation {
+    dp(dpId: string, value: any, placeHolder?: any, delay?: number): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            DPUtils.set(entity, dpId, value, placeHolder, delay)
+        })
+    }
+
+    effect(effect: string, ticks: number, options?: EntityEffectOptions): EntityOp {
         return this._enqueue((entity: Entity) => {
             entity.addEffect(effect, ticks, options)
         })
     }
 
-    intervalEffect(dpId: string, ticks: number[], v?: any): EntityOperation {
+    intervalEffect(dpId: string, ticks: number[], v?: any): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (ticks.length === 0) {
                 DPUtils.cancel(entity, dpId)
@@ -181,25 +207,25 @@ export class EntityOperation {
         })
     }
 
-    slowness(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOperation {
+    slowness(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
             entity.addEffect(MinecraftEffectTypes.Slowness, ticks, { amplifier: amp, showParticles: showParticles })
         })
     }
 
-    speed(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOperation {
+    speed(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
             entity.addEffect(MinecraftEffectTypes.Speed, ticks, { amplifier: amp, showParticles: showParticles })
         })
     }
 
-    setOnFire(ticks: number): EntityOperation {
+    setOnFire(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             entity.setOnFire(ticks)
         })
     }
 
-    healthAbs(change: number): EntityOperation {
+    healthAbs(change: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             const current = CompUtils.health(entity).currentValue
             const max = CompUtils.health(entity).effectiveMax
@@ -208,7 +234,7 @@ export class EntityOperation {
         })
     }
 
-    healthPct(percent: number): EntityOperation {
+    healthPct(percent: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             const current = CompUtils.health(entity).currentValue
             const max = CompUtils.health(entity).effectiveMax
@@ -217,13 +243,13 @@ export class EntityOperation {
         })
     }
 
-    bleed(damage: number, ticks: number[]): EntityOperation {
+    bleed(damage: number, ticks: number[]): EntityOp {
         return this._enqueue((entity: Entity) => {
-            TimeUtils.timeseries(() => {DamageUtils.damage(damage, entity)}, ticks)
+            TimeUtils.timeseries(() => { DamageUtils.damage(damage, entity) }, ticks)
         })
     }
 
-    superarmor(ticks: number): EntityOperation {
+    superarmor(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_superarmor.cancel(entity)
             DPUtils.store().effect_superarmor.set(entity, true)
@@ -232,7 +258,7 @@ export class EntityOperation {
     }
 
     // 伤害吸收：指实体受到伤害后立刻恢复到原来的血量，在伤害吸收条件下可以记录累计受到的伤害，用于一些反伤计算
-    damageAbsorption(ticks: number): EntityOperation {
+    damageAbsorption(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_damage_absorption.cancel(entity)
             DPUtils.store().effect_damage_absorption.set(entity, true)
@@ -240,7 +266,7 @@ export class EntityOperation {
         })
     }
 
-    dizzy(ticks: number, interrupt?: boolean): EntityOperation {
+    dizzy(ticks: number, interrupt?: boolean): EntityOp {
         interrupt = interrupt ?? true
         return this._enqueue((entity: Entity) => {
             const dir = { ...entity.getViewDirection() }
@@ -254,7 +280,7 @@ export class EntityOperation {
         })
     }
 
-    moveStraight(ticks: number): EntityOperation {
+    moveStraight(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_move_straight.cancel(entity)
             if (ticks === 0) return
@@ -263,15 +289,15 @@ export class EntityOperation {
         })
     }
 
-    disableMovement(ticks: number): EntityOperation {
+    disableMovement(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_disable_movement.cancel(entity)
-            DPUtils.store().effect_disable_movement.set(entity, true)
+            ticks !== 0 && DPUtils.store().effect_disable_movement.set(entity, true)
             DPUtils.store().effect_disable_movement.set(entity, false, false, ticks)
         })
     }
 
-    disableCamera(ticks: number): EntityOperation {
+    disableCamera(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_disable_camera.cancel(entity)
             DPUtils.store().effect_disable_camera.set(entity, true)
@@ -279,7 +305,17 @@ export class EntityOperation {
         })
     }
 
-    cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOperation {
+    cameraThirdPerson(ticks: number): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            if (entity instanceof Player) {
+                TimeUtils.timeout(() => {
+                    entity.camera.setCamera(MinecraftCameraPresetsTypes.ThirdPerson)
+                }, ticks)
+            }
+        })
+    }
+
+    cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 entity.runCommand(`camerashake add @s ${intensity} ${ticks / 20}  ${mode}`)
@@ -287,13 +323,13 @@ export class EntityOperation {
         })
     }
 
-    cameraSet(loc: Vector3, facing?: Vector3, ease?: number): EntityOperation {
+    cameraSet(loc: Vector3, facing?: Vector3, ease?: number, delay?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().effect_camera_set.set(entity, { loc, facing: facing ?? entity.getHeadLocation(), ease: ease ?? 0.1 }, undefined, 0)
+            DPUtils.store().effect_camera_set.set(entity, { loc, facing: facing ?? entity.getHeadLocation(), ease: ease ?? 0.1 }, undefined, delay ?? 0)
         })
     }
 
-    cameraMove(data: {options: CameraMoveOptions, moment: number}[]): EntityOperation {
+    cameraMove(data: { options: CameraMoveOptions, moment: number }[]): EntityOp {
         return this._enqueue((entity: Entity) => {
             data.forEach((item) => {
                 DPUtils.store().effect_camera_set.set(entity, item.options, undefined, item.moment)
@@ -302,7 +338,7 @@ export class EntityOperation {
         })
     }
 
-    cameraBack(base: number, scaler: number,ticks: number): EntityOperation {
+    cameraBack(base: number, scaler: number, ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (!(entity instanceof Player)) return
             const view = entity.getViewDirection()
@@ -310,27 +346,27 @@ export class EntityOperation {
                 const loc = Vector3Utils.subtract(entity.getHeadLocation(), Vector3Utils.scale(view, base + scaler * tick))
                 return { options: { loc, facing: entity.getHeadLocation(), ease: 0.1 }, moment: tick }
             })
-            EntityOperation.create().cameraMove(data).run(entity)
+            EntityOp.create().cameraMove(data).run(entity)
         })
     }
 
-    cameraBackForward(base: number, scaler: number,backTicks: number, stopTicks: number,forwardTicks: number): EntityOperation {
+    cameraBackForward(base: number, scaler: number, backTicks: number, stopTicks: number, forwardTicks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (!(entity instanceof Player)) return
             const view = entity.getViewDirection()
             const data = TimeUtils.ticks(1, 1, backTicks + stopTicks + forwardTicks).map((tick, idx) => {
                 const headLoc = entity.getHeadLocation()
-                const loc = 
-                    idx < backTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * tick)) : 
-                    idx < backTicks + stopTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks)) :
-                    Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks - scaler * (tick - stopTicks - backTicks) * backTicks / forwardTicks))
+                const loc =
+                    idx < backTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * tick)) :
+                        idx < backTicks + stopTicks ? Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks)) :
+                            Vector3Utils.subtract(headLoc, Vector3Utils.scale(view, base + scaler * backTicks - scaler * (tick - stopTicks - backTicks) * backTicks / forwardTicks))
                 return { options: { loc, facing: headLoc, ease: 0.1 }, moment: tick }
             })
-            EntityOperation.create().cameraMove(data).run(entity)
+            EntityOp.create().cameraMove(data).run(entity)
         })
     }
 
-    cameraReset(ticks: number): EntityOperation {
+    cameraReset(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 DPUtils.store().effect_camera_set.cancel(entity)
@@ -339,7 +375,7 @@ export class EntityOperation {
         })
     }
 
-    untargetable(ticks: number): EntityOperation {
+    untargetable(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_untargetable.cancel(entity)
             DPUtils.store().effect_untargetable.set(entity, true)
@@ -347,7 +383,7 @@ export class EntityOperation {
         })
     }
 
-    invisible(ticks: number, removeEffect: boolean = true): EntityOperation {
+    invisible(ticks: number, removeEffect: boolean = true): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_invisible.cancel(entity)
             DPUtils.store().effect_invisible.set(entity, "on")
@@ -355,7 +391,7 @@ export class EntityOperation {
         })
     }
 
-    blind(ticks: number): EntityOperation {
+    blind(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 entity.addEffect(MinecraftEffectTypes.Blindness, ticks, { amplifier: 255, showParticles: false })
@@ -367,7 +403,7 @@ export class EntityOperation {
         })
     }
 
-    loseTarget(ticks: number): EntityOperation {
+    loseTarget(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_lose_target.cancel(entity)
             DPUtils.store().effect_lose_target.set(entity, true)
@@ -376,19 +412,19 @@ export class EntityOperation {
     }
 
 
-    remove(ticks: number): EntityOperation {
+    remove(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_remove.set(entity, true, false, ticks)
         })
     }
 
-    die(ticks: number): EntityOperation {
+    die(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_die.set(entity, true, false, ticks)
         })
     }
 
-    removeEffect(effect: string): EntityOperation {
+    removeEffect(effect: string): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (
                 effect === "superarmor"
@@ -431,7 +467,7 @@ export class EntityOperation {
     }) {
         const { slownessLvl = 5, rotationMode = "fixed" } = options ?? {}
         return this._enqueue((entity: Entity) => {
-            let ops = EntityOperation.create()
+            let ops = EntityOp.create()
             if (ticks.slowness) ops = ops.slowness(ticks.slowness, slownessLvl, false)
             if (ticks.superarmor) ops = ops.superarmor(ticks.superarmor)
             if (ticks.rotation) {
@@ -444,7 +480,7 @@ export class EntityOperation {
         })
     }
 
-    knockbackBaseView(viewEntity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOperation {
+    knockbackBaseView(viewEntity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOp {
         if (!viewEntity) return this
         return this._enqueue((entity: Entity) => {
             const facingEntity = viewEntity
@@ -455,9 +491,9 @@ export class EntityOperation {
         })
     }
 
-    knockbackBaseLoc(location: Entity | Vector3, f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOperation {
+    knockbackBaseLoc(location: Entity | Vector3 | ((entity: Entity) => Vector3), f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
-            let loc = location as Vector3
+            let loc = typeof location === "function" ? location(entity) : (location as Vector3)
             if (location instanceof Entity) loc = location.location
             const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(entity.location, loc)))
             TimeUtils.timeseries(() => {
@@ -466,7 +502,7 @@ export class EntityOperation {
         })
     }
 
-    knockbackToPlace(location: Entity | Vector3, y: number = 0, scaler: number = 1): EntityOperation {
+    knockbackToPlace(location: Entity | Vector3, y: number = 0, scaler: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
             let loc = location as Vector3
             if (location instanceof Entity) loc = location.location
@@ -475,20 +511,32 @@ export class EntityOperation {
         })
     }
 
-    impulse(vec: Vector3): EntityOperation {
+    knockbackToAir(data: {
+        y: number
+        f?: number
+        duration: number
+        delay?: number
+    }): EntityOp {
+        const { y, f = 0, duration, delay = 5 } = data
+        return this._enqueue((entity: Entity) => {
+            EntityOp.create().knockbackBaseView(entity, f, y).at(delay).knockbackBaseView(entity, 0, 0.05, 0, duration - delay).run(entity)
+        })
+    }
+
+    impulse(vec: Vector3): EntityOp {
         return this._enqueue((entity: Entity) => {
             entity.applyImpulse(vec)
         })
     }
 
-    impulseBaseView(viewEntity: Entity, strength: number): EntityOperation {
+    impulseBaseView(viewEntity: Entity, strength: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             const facingEntity = viewEntity
             entity.applyImpulse(VecUtils.unit(facingEntity.getViewDirection(), strength))
         })
     }
 
-    impulseBaseLoc(location: Entity | Vector3, strength: number): EntityOperation {
+    impulseBaseLoc(location: Entity | Vector3, strength: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             const loc = location instanceof Entity ? location.location : location
             const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(loc, entity.location)))
@@ -496,7 +544,7 @@ export class EntityOperation {
         })
     }
 
-    impulseToPlace(location: Entity | Vector3, scaler: number = 1, scalerY: number = 1): EntityOperation {
+    impulseToPlace(location: Entity | Vector3, scaler: number = 1, scalerY: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
             const loc = location instanceof Entity ? location.location : location
             const unit = {
@@ -508,7 +556,7 @@ export class EntityOperation {
         })
     }
 
-    rotateToDirection(direction: (target: Entity) => Vector3, ticks: number = 1): EntityOperation {
+    rotateToDirection(direction: (target: Entity) => Vector3, ticks: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeseries(() => {
                 const dir = direction(entity)
@@ -517,7 +565,7 @@ export class EntityOperation {
         })
     }
 
-    rotateFacing(facingEntity: Entity, ticks: number): EntityOperation {
+    rotateFacing(facingEntity: Entity, ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeseries(() => {
                 const locDiff = Vector3Utils.subtract(facingEntity.location, entity.location)
@@ -526,7 +574,7 @@ export class EntityOperation {
         })
     }
 
-    rotateToNearest(ticks: number, options?: EntityQueryOptions): EntityOperation {
+    rotateToNearest(ticks: number, options?: EntityQueryOptions): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeseries(() => {
                 const nearest = entity.dimension.getEntities({
@@ -543,15 +591,22 @@ export class EntityOperation {
         })
     }
 
-    teleport(location: Entity | Vector3, options: TeleportOptions): EntityOperation {
+    teleport(location: Entity | Vector3 | ((entity: Entity) => Vector3), options?: TeleportOptions): EntityOp {
         return this._enqueue((entity: Entity) => {
-            let loc = location as Vector3
+            let loc = typeof location === "function" ? location(entity) : (location as Vector3)
             if (location instanceof Entity) loc = location.location
             entity.teleport(loc, options)
         })
     }
 
-    skillCooldown(skillId: string, skillCD: number, skillDuration: number): EntityOperation {
+    tp(data: (entity: Entity) => { loc: Vector3, facing?: Vector3 }): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            const { loc, facing } = data(entity)
+            entity.teleport(loc, { facingLocation: facing ?? entity.getHeadLocation() })
+        })
+    }
+
+    skillCooldown(skillId: string, skillCD: number, skillDuration: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().mob_skill_cooldowns.set(entity, (cdList: { [key: string]: number }) => {
                 return Object.fromEntries(
@@ -561,28 +616,28 @@ export class EntityOperation {
         })
     }
 
-    setTargetedBy(entity: Entity): EntityOperation {
+    setTargetedBy(entity: Entity): EntityOp {
         return this._enqueue((target: Entity) => {
             target.addTag(TagList.TargetedBy(entity.typeId))
             DPUtils.store().mob_targeted_by.set(target, (curr: string[]) => (curr ?? []).includes(entity.id) ? curr : [...(curr ?? []), entity.id], [])
         })
     }
 
-    resetSkill(): EntityOperation {
+    resetSkill(): EntityOp {
         return this._enqueue((target: Entity) => {
             BlackboardManager.set(target, 'skill_locking', system.currentTick - 1);
         })
     }
 
-    triggerSkill(skillId: string): EntityOperation {
+    triggerSkill(skillId: string): EntityOp {
         return this._enqueue((entity: Entity) => {
             BlackboardManager.set(entity, 'trigger_skill_id', skillId);
         })
     }
 
     triggerCombo(params: {
-        dpId: string, data: ComboData, comboStop?: (entity: Player)=>void
-    }): EntityOperation {
+        dpId: string, data: ComboData, comboStop?: (entity: Player) => void
+    }): EntityOp {
         const { dpId, data, comboStop } = params
         return this._enqueue((entity: Entity) => {
             if (!(entity instanceof Player)) return
@@ -606,7 +661,7 @@ export class EntityOperation {
             }
             if (comboStop) {
                 DPUtils.store().player_combo_stop.set(entity, system.currentTick + data[comboState.state].duration + data[comboState.state].wait)
-                TimeUtils.timeout(()=>{
+                TimeUtils.timeout(() => {
                     const stop = DPUtils.store().player_combo_stop.curr(entity, 0)
                     if (system.currentTick < stop) return
                     comboStop(entity)
@@ -615,20 +670,20 @@ export class EntityOperation {
         })
     }
 
-    setFaction(faction: string): EntityOperation {
+    setFaction(faction: string): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().entity_faction.set(entity, faction)
         })
     }
 
-    inputLock(types: string[], ticks?: number): EntityOperation {
+    inputLock(types: string[], ticks?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().player_input_lock.set(entity, types)
             ticks && DPUtils.store().player_input_lock.set(entity, undefined, false, ticks)
         })
     }
 
-    inputUnlock(ticks?: number): EntityOperation {
+    inputUnlock(ticks?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().player_input_lock.set(entity, undefined, false, ticks ?? 0)
         })
@@ -649,14 +704,14 @@ export interface EntityQueryParams {
     filter?: (entity: Entity) => boolean
 }
 
-export class EntityQuery {
+export class EntityQr {
     private _target: Entity | undefined
     private _query: (target: Entity) => Entity[] = () => []
     private _sort: (entity: Entity) => number = () => 0
     private _limit: number = 99999
 
-    static enumerate(entities: Entity[] = []): EntityQuery {
-        const query = new EntityQuery()
+    static enumerate(entities: Entity[] = []): EntityQr {
+        const query = new EntityQr()
         query._query = () => entities
         return query
     }
@@ -664,12 +719,12 @@ export class EntityQuery {
     static entities(
         entity: Entity,
         options: EntityQueryParams | EntityQueryParams[]
-    ): EntityQuery {
+    ): EntityQr {
         if (!Array.isArray(options)) {
             options = [options]
         }
 
-        const query = new EntityQuery()
+        const query = new EntityQr()
         query._target = entity
         query._query = (target: Entity) => {
             const res: Entity[] = []
@@ -734,19 +789,19 @@ export class EntityQuery {
         return query
     }
 
-    static entityById(id: string): EntityQuery {
-        const query = new EntityQuery()
+    static entityById(id: string): EntityQr {
+        const query = new EntityQr()
         query._query = (target: Entity) => world.getEntity(id) ? [world.getEntity(id) as Entity] : []
         query._target = world.getEntity(id) as Entity
         return query
     }
 
-    limit(limit: number): EntityQuery {
+    limit(limit: number): EntityQr {
         this._limit = limit
         return this
     }
 
-    sort(sort: (entity: Entity) => number): EntityQuery {
+    sort(sort: (entity: Entity) => number): EntityQr {
         this._sort = sort
         return this
     }
@@ -774,4 +829,25 @@ export class EntityQuery {
     }
 
 
+}
+
+export class EntityUtils {
+
+    static sched(data: {
+        op: EntityOp,
+        qr: EntityQr,
+        tk: number[],
+    }[] | {
+        op: EntityOp,
+        qr: EntityQr,
+        tk: number[],
+    }) {
+        if (!Array.isArray(data)) {
+            data = [data]
+        }
+        data.forEach(item => {
+            item.qr.sched(item.op.callable(), item.tk)
+        })
+        return this
+    }
 }

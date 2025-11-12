@@ -2,11 +2,11 @@ import { EasingType, Entity, Player, Vector3, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
-import { EntityOperation, EntityState } from "./entity_utils";
+import { EntityOp, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 import animationTree from "../json/animation_tree.json";
 
-DPUtils.store().effect_superarmor.register((target, curr, prev)=>{
+DPUtils.store().effect_superarmor.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         target.triggerEvent(EntityEventIds.SuperArmorOn)
@@ -15,14 +15,14 @@ DPUtils.store().effect_superarmor.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_dizzy.register((target, curr, prev)=>{
+DPUtils.store().effect_dizzy.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         if (target instanceof Player) {
             target.runCommand("inputpermission set @s movement disabled")
             target.runCommand("inputpermission set @s camera disabled")
         } else {
-            target.addEffect(MinecraftEffectTypes.Slowness, 20000000, { amplifier: 255, showParticles: false})
+            target.addEffect(MinecraftEffectTypes.Slowness, 20000000, { amplifier: 255, showParticles: false })
         }
     } else {
         if (target instanceof Player) {
@@ -34,7 +34,7 @@ DPUtils.store().effect_dizzy.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_move_straight.register((target, curr, prev)=>{
+DPUtils.store().effect_move_straight.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         target.runCommand("inputpermission set @s move_left disabled")
@@ -47,7 +47,7 @@ DPUtils.store().effect_move_straight.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_disable_camera.register((target, curr, prev)=>{
+DPUtils.store().effect_disable_camera.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         target.runCommand("inputpermission set @s camera disabled")
@@ -56,7 +56,7 @@ DPUtils.store().effect_disable_camera.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_disable_movement.register((target, curr, prev)=>{
+DPUtils.store().effect_disable_movement.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         target.runCommand("inputpermission set @s move_left disabled")
@@ -71,7 +71,7 @@ DPUtils.store().effect_disable_movement.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_untargetable.register((target, curr, prev)=>{
+DPUtils.store().effect_untargetable.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
     if (curr) {
         target.triggerEvent(EntityEventIds.UntargetableOn)
@@ -80,7 +80,7 @@ DPUtils.store().effect_untargetable.register((target, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_blind.register((entity, curr, prev)=>{
+DPUtils.store().effect_blind.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
     try {
         if (curr) {
@@ -96,23 +96,23 @@ DPUtils.store().effect_blind.register((entity, curr, prev)=>{
             entity.triggerEvent(EntityEventIds.BlindOff)
             entity.triggerEvent(EntityEventIds.TargetAcquired)
         }
-    } catch (e) {}
+    } catch (e) { }
 })
 
-DPUtils.store().effect_invisible.register((entity, curr, prev)=>{
+DPUtils.store().effect_invisible.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
-    if (curr=="on") {
-        entity.addEffect(MinecraftEffectTypes.Invisibility, 20000000, { showParticles: false})
+    if (curr == "on") {
+        entity.addEffect(MinecraftEffectTypes.Invisibility, 20000000, { showParticles: false })
         entity.playAnimation(animationTree.minecraft_dev.common.invisible_on)
-    } else if (curr=="off_both") {
+    } else if (curr == "off_both") {
         entity.removeEffect(MinecraftEffectTypes.Invisibility)
         entity.playAnimation(animationTree.minecraft_dev.common.invisible_off)
-    } else if (curr=="off_att") {
+    } else if (curr == "off_att") {
         entity.playAnimation(animationTree.minecraft_dev.common.invisible_off)
     }
 })
 
-DPUtils.store().effect_lose_target.register((entity, curr, prev)=>{
+DPUtils.store().effect_lose_target.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
     if (curr) {
         entity.triggerEvent(EntityEventIds.LoseTargetOn)
@@ -121,21 +121,21 @@ DPUtils.store().effect_lose_target.register((entity, curr, prev)=>{
     }
 })
 
-DPUtils.store().effect_remove.register((entity, curr, prev)=>{
+DPUtils.store().effect_remove.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
     if (curr) {
         try {
             entity.remove()
-        } catch (e) {}
+        } catch (e) { }
     }
 })
 
-DPUtils.store().effect_die.register((entity, curr, prev)=>{
+DPUtils.store().effect_die.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
     if (curr) {
         try {
             entity.triggerEvent(EntityEventIds.Death)
-        } catch (e) {}
+        } catch (e) { }
     }
 })
 
@@ -145,7 +145,7 @@ export interface CameraMoveOptions {
     ease: number
 }
 
-DPUtils.store().effect_camera_set.register((player, curr, prev)=>{
+DPUtils.store().effect_camera_set.register((player, curr, prev) => {
     if (!(player instanceof Player)) return
     if (curr !== undefined) {
         const options = curr as CameraMoveOptions
@@ -159,7 +159,7 @@ DPUtils.store().effect_camera_set.register((player, curr, prev)=>{
     }
 })
 
-DPUtils.store().player_camera_reset.register((player, curr, prev)=>{
+DPUtils.store().player_camera_reset.register((player, curr, prev) => {
     if (!(player instanceof Player)) return
     if (curr) {
         player.camera.clear()
@@ -169,6 +169,6 @@ DPUtils.store().player_camera_reset.register((player, curr, prev)=>{
 world.afterEvents.entityHurt.subscribe(({ hurtEntity, damage }) => {
     const absorption = DPUtils.store().effect_damage_absorption.curr(hurtEntity, false)
     if (absorption) {
-        EntityOperation.create().healthAbs(damage).run(hurtEntity)
+        EntityOp.create().healthAbs(damage).run(hurtEntity)
     }
 })

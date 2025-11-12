@@ -5,18 +5,116 @@ import {
     RESOURCE_PACK_DIR,
     SCRIPTS_DIR,
     NAME_SPACE,
-    JSON_INDENT,
     rglob,
     writeJson,
     readJson,
-    ensureDir
+    ensureDir,
+    TOOLS_DIR
 } from './utils';
+
+// 部署状态文件路径
+const OUTPUTS_DIR = path.join(TOOLS_DIR, 'outputs');
+const DEPLOY_STATE_FILE = path.join(OUTPUTS_DIR, 'bbmodel_deploy_state.json');
+
+// 部署时间阈值（毫秒），默认 1 秒
+const DEPLOY_TIME_THRESHOLD = 1000;
+
+/**
+ * 部署状态接口
+ */
+interface DeployState {
+    [filePath: string]: {
+        lastDeployTime: number;  // 上次部署时间戳
+        lastModifyTime: number;  // 部署时文件的修改时间
+    };
+}
+
+/**
+ * 读取部署状态
+ */
+function loadDeployState(): DeployState {
+    try {
+        if (fs.existsSync(DEPLOY_STATE_FILE)) {
+            return readJson(DEPLOY_STATE_FILE);
+        }
+    } catch (error) {
+        console.log(`⚠️ 读取部署状态失败: ${error}`);
+    }
+    return {};
+}
+
+/**
+ * 保存部署状态
+ */
+function saveDeployState(state: DeployState): void {
+    try {
+        ensureDir(OUTPUTS_DIR);
+        writeJson(DEPLOY_STATE_FILE, state);
+    } catch (error) {
+        console.log(`⚠️ 保存部署状态失败: ${error}`);
+    }
+}
+
+/**
+ * 检查文件是否需要部署
+ */
+function needsDeploy(bbmodelFile: string, deployState: DeployState, force: boolean): boolean {
+    if (force) {
+        return true;
+    }
+
+    try {
+        const stats = fs.statSync(bbmodelFile);
+        const currentMtime = stats.mtimeMs;
+        const state = deployState[bbmodelFile];
+
+        if (!state) {
+            // 未记录过部署状态，需要部署
+            return true;
+        }
+
+        // 检查文件修改时间是否晚于上次部署时记录的修改时间
+        if (currentMtime > state.lastModifyTime + DEPLOY_TIME_THRESHOLD) {
+            return true;
+        }
+
+        return false;
+    } catch (error) {
+        // 文件不存在或读取失败，默认需要部署
+        return true;
+    }
+}
+
+/**
+ * 更新部署状态
+ */
+function updateDeployState(bbmodelFile: string, deployState: DeployState): void {
+    try {
+        const stats = fs.statSync(bbmodelFile);
+        deployState[bbmodelFile] = {
+            lastDeployTime: Date.now(),
+            lastModifyTime: stats.mtimeMs
+        };
+    } catch (error) {
+        console.log(`⚠️ 更新部署状态失败 ${bbmodelFile}: ${error}`);
+    }
+}
 
 /**
  * 列出所有bbmodel文件
+ * bbmodel文件固定存放在 bbpack/bbmodels/ 目录下
  */
 function listBbmodelFiles(): string[] {
-    return rglob('\\.bbmodel$', BBPACK_DIR);
+    const bbmodelsDir = path.join(BBPACK_DIR, 'bbmodels');
+
+    if (!fs.existsSync(bbmodelsDir)) {
+        console.warn(`⚠️ bbmodels 目录不存在: ${bbmodelsDir}`);
+        return [];
+    }
+
+    return fs.readdirSync(bbmodelsDir)
+        .filter(file => file.endsWith('.bbmodel'))
+        .map(file => path.join(bbmodelsDir, file));
 }
 
 /**
@@ -26,8 +124,20 @@ function setupBasic(bbmodelFile: string): void {
     const data = readJson(bbmodelFile);
     const basename = path.basename(bbmodelFile, '.bbmodel');
 
-    data.model_identifier = `${NAME_SPACE}.${basename}`;
-    data.name = basename;
+    let hasChanges = false;
+
+    // 检查并更新 model_identifier
+    const expectedModelId = `${NAME_SPACE}.${basename}`;
+    if (data.model_identifier !== expectedModelId) {
+        data.model_identifier = expectedModelId;
+        hasChanges = true;
+    }
+
+    // 检查并更新 name
+    if (data.name !== basename) {
+        data.name = basename;
+        hasChanges = true;
+    }
 
     const model: string = data.model_identifier;
     const textures: any[] = data.textures || [];
@@ -63,20 +173,45 @@ function setupBasic(bbmodelFile: string): void {
         return `animation.${NAME_SPACE}.${base}.${tail}`;
     }
 
+    // 检查并更新动画
+    const expectedAnimPath = path.resolve(RESOURCE_PACK_DIR, "animations", `${model}.animation.json`);
     for (const animation of animations) {
-        animation.path = path.resolve(RESOURCE_PACK_DIR, "animations", `${model}.animation.json`);
-        animation.name = normalizeAnimationName(animation.name || "", basename);
+        const expectedName = normalizeAnimationName(animation.name || "", basename);
+
+        if (animation.path !== expectedAnimPath) {
+            animation.path = expectedAnimPath;
+            hasChanges = true;
+        }
+
+        if (animation.name !== expectedName) {
+            animation.name = expectedName;
+            hasChanges = true;
+        }
     }
 
-    // 处理纹理
+    // 检查并更新纹理
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
     for (let idx = 0; idx < textures.length; idx++) {
         const texture = textures[idx];
-        texture.name = `${basename}_${idx}`;
-        const [teamName, projName] = NAME_SPACE.split('_', 2);
-        texture.path = path.resolve(RESOURCE_PACK_DIR, "textures", teamName, projName, "entity", texture.name);
+        const expectedTextureName = `${basename}_${idx}`;
+        const expectedTexturePath = path.resolve(RESOURCE_PACK_DIR, "textures", teamName, projName, "entity", expectedTextureName);
+
+        if (texture.name !== expectedTextureName) {
+            texture.name = expectedTextureName;
+            hasChanges = true;
+        }
+
+        if (texture.path !== expectedTexturePath) {
+            texture.path = expectedTexturePath;
+            hasChanges = true;
+        }
     }
 
-    writeJson(bbmodelFile, data);
+    // 只在有实质性修改时才写入文件
+    if (hasChanges) {
+        writeJson(bbmodelFile, data);
+        console.log(`✅ 更新bbmodel: ${basename}`);
+    }
 }
 
 /**
@@ -85,7 +220,7 @@ function setupBasic(bbmodelFile: string): void {
 function setupBbmodelJson(): void {
     const data: Record<string, any> = {};
 
-    const bbmodelFiles = rglob('\\.bbmodel$', BBPACK_DIR);
+    const bbmodelFiles = listBbmodelFiles();
 
     for (const bbmodelFile of bbmodelFiles) {
         const bbmodel = readJson(bbmodelFile);
@@ -134,6 +269,7 @@ function setupBbmodelJson(): void {
         const textures = bbmodel.textures || [];
 
         data[basename] = {
+            id: basename,
             geometry: modelIdentifier,
             textures: textures.map((texture: any, i: number) =>
                 texture.name || `${basename}_${i}`
@@ -160,13 +296,10 @@ function setupBbmodelJson(): void {
             sound_effects: sounds
         };
 
-        console.log(`处理bbmodel: ${basename}, 动画数量: ${animations.length}`);
     }
 
-    const bbmodelJsonPath = path.join(BBPACK_DIR, "bbmodel.json");
-    writeJson(bbmodelJsonPath, data);
-
-    ensureDir(path.join(SCRIPTS_DIR, "json"));
+    writeJson(path.join(BBPACK_DIR, "bbmodel.json"), data);
+    writeJson(path.join(TOOLS_DIR, "json", "bbmodel.json"), data);
     writeJson(path.join(SCRIPTS_DIR, "json", "bbmodel.json"), data);
 
     console.log(`生成bbmodel.json完成，包含 ${Object.keys(data).length} 个模型`);
@@ -479,8 +612,8 @@ function compileJSON(object: any): string {
         } else if (o === null || o === Infinity || o === -Infinity) {
             out += "null";
         } else if (typeof o === "number") {
-            o = (Math.round(o * 100000) / 100000).toString();
-            out += o;
+            const cleaned = cleanNumber(o);
+            out += cleaned.toString();
         } else if (typeof o === "object" && Array.isArray(o)) {
             // 数组
             let hasContent = false;
@@ -613,6 +746,35 @@ function isFloat(s: any): boolean {
 }
 
 /**
+ * 清理数值：将极小值设为0，限制极大值，保持合理精度
+ */
+function cleanNumber(n: any, epsilon: number = 1e-6, maxValue: number = 1e8): any {
+    // 如果不是数字，直接返回（可能是表达式字符串）
+    if (typeof n !== 'number') {
+        return n;
+    }
+
+    // 检查是否为无效值
+    if (!isFinite(n) || isNaN(n)) {
+        return 0;
+    }
+
+    // 极小值视为0
+    if (Math.abs(n) < epsilon) {
+        return 0;
+    }
+
+    // 限制极大值
+    if (Math.abs(n) > maxValue) {
+        console.warn(`⚠️ 检测到异常大数值: ${n}，已限制为 ${Math.sign(n) * maxValue}`);
+        return Math.sign(n) * maxValue;
+    }
+
+    // 舍入到合理精度
+    return Math.round(n * 100000) / 100000;
+}
+
+/**
  * 导出动画
  */
 function exportAnimation(bbmodelFile: string): void {
@@ -635,9 +797,17 @@ function exportAnimation(bbmodelFile: string): void {
         if (typeof v === "string") {
             const trimmed = v.trim();
             if (trimmed.length === 0) return 0;
-            return isFloat(trimmed) ? parseFloat(trimmed) : v;
+            if (isFloat(trimmed)) {
+                const num = parseFloat(trimmed);
+                return cleanNumber(num);
+            }
+            return v;
         }
-        return isFloat(v) ? parseFloat(v) : v;
+        if (isFloat(v)) {
+            const num = parseFloat(v);
+            return cleanNumber(num);
+        }
+        return v;
     }
 
     function vectorFromPoint(p: any): [any, any, any] {
@@ -646,17 +816,23 @@ function exportAnimation(bbmodelFile: string): void {
 
     function mapVectorByChannel(channel: string, vec: [any, any, any]): [any, any, any] {
         if (channel === "rotation") {
+            const x = toNumberOrKeep(vec[0]);
+            const y = toNumberOrKeep(vec[1]);
+            const z = toNumberOrKeep(vec[2]);
             return [
-                toNumberOrKeep(vec[0]) * -1,
-                toNumberOrKeep(vec[1]) * -1,
-                toNumberOrKeep(vec[2])
+                typeof x === 'number' ? cleanNumber(x * -1) : x,
+                typeof y === 'number' ? cleanNumber(y * -1) : y,
+                z
             ];
         }
         if (channel === "position") {
+            const x = toNumberOrKeep(vec[0]);
+            const y = toNumberOrKeep(vec[1]);
+            const z = toNumberOrKeep(vec[2]);
             return [
-                toNumberOrKeep(vec[0]) * -1,
-                toNumberOrKeep(vec[1]),
-                toNumberOrKeep(vec[2])
+                typeof x === 'number' ? cleanNumber(x * -1) : x,
+                y,
+                z
             ];
         }
         // scale 或其他通道保持不变
@@ -704,11 +880,11 @@ function exportAnimation(bbmodelFile: string): void {
 
     // 统一时间键格式，避免整数键触发对象属性的数组索引排序规则
     function formatTimeKey(t: number): string {
-        const rounded = Math.round(t * 100000) / 100000;
-        if (Number.isInteger(rounded)) {
-            return rounded.toFixed(1); // 例如 0 -> "0.0"
+        const cleaned = cleanNumber(t);
+        if (Number.isInteger(cleaned)) {
+            return cleaned.toFixed(1); // 例如 0 -> "0.0"
         }
-        let out = rounded.toFixed(5); // 保留 5 位，随后去尾零
+        let out = cleaned.toFixed(5); // 保留 5 位，随后去尾零
         out = out.replace(/0+$/, "");
         if (out.endsWith(".")) out += "0"; // 确保有小数位
         return out;
@@ -748,36 +924,82 @@ function exportAnimation(bbmodelFile: string): void {
             if (animatorType === "bone") {
                 const boneData: Record<string, any> = {};
 
+                // 按通道分组关键帧
+                const keyframesByChannel: Record<string, any[]> = {};
                 for (const keyframe of keyframes) {
                     const channel = keyframe.channel || "";
-                    const time = keyframe.time || 0;
-                    const dataPoints = keyframe.data_points || [];
-                    const interpolation = keyframe.interpolation || "linear";
+                    if (!keyframesByChannel[channel]) {
+                        keyframesByChannel[channel] = [];
+                    }
+                    keyframesByChannel[channel].push(keyframe);
+                }
 
-                    if (dataPoints.length > 0) {
-                        const vectors = dataPoints.map((dp: any) => vectorFromPoint(dp));
-                        const mapped = vectors.map((v: [any, any, any]) => mapVectorByChannel(channel, v));
+                // 对每个通道的关键帧按时间排序
+                for (const channel in keyframesByChannel) {
+                    keyframesByChannel[channel].sort((a, b) => (a.time || 0) - (b.time || 0));
+                }
 
-                        let fillin: any;
-                        if (interpolation === "linear") {
-                            // 线性：直接使用映射后的第一个向量
-                            fillin = mapped[0];
-                        } else if (interpolation === "catmullrom") {
-                            // Catmull-Rom：使用 pre/post 两个切线，若缺失 post 则回退为 pre
-                            const pre = mapped[0] ?? [0, 0, 0];
-                            const post = mapped[1] ?? pre;
-                            fillin = {
-                                pre,
-                                post,
-                                lerp_mode: "catmullrom"
-                            };
-                        }
+                // 处理每个通道的关键帧
+                for (const channel in keyframesByChannel) {
+                    const channelKeyframes = keyframesByChannel[channel];
 
-                        if (fillin !== undefined) {
-                            if (!boneData[channel]) {
-                                boneData[channel] = {};
+                    for (let i = 0; i < channelKeyframes.length; i++) {
+                        const keyframe = channelKeyframes[i];
+                        const time = keyframe.time || 0;
+                        const dataPoints = keyframe.data_points || [];
+                        const interpolation = keyframe.interpolation || "linear";
+
+                        if (dataPoints.length > 0) {
+                            const vectors = dataPoints.map((dp: any) => vectorFromPoint(dp));
+                            const mapped = vectors.map((v: [any, any, any]) => mapVectorByChannel(channel, v));
+
+                            let fillin: any;
+                            if (interpolation === "linear") {
+                                // 线性：直接使用映射后的第一个向量
+                                fillin = mapped[0];
+                                if (!boneData[channel]) {
+                                    boneData[channel] = {};
+                                }
+                                boneData[channel][formatTimeKey(time)] = fillin;
+                            } else if (interpolation === "catmullrom") {
+                                // Catmull-Rom：使用 pre/post 两个切线，若缺失 post 则回退为 pre
+                                const pre = mapped[0] ?? [0, 0, 0];
+                                const post = mapped[1] ?? pre;
+                                fillin = {
+                                    pre,
+                                    post,
+                                    lerp_mode: "catmullrom"
+                                };
+                                if (!boneData[channel]) {
+                                    boneData[channel] = {};
+                                }
+                                boneData[channel][formatTimeKey(time)] = fillin;
+                            } else if (interpolation === "step") {
+                                // Step：在下一帧时间点输出 {pre: 当前帧值, post: 下一帧值}
+                                const currentValue = mapped[0];
+                                const nextKeyframe = channelKeyframes[i + 1];
+
+                                if (nextKeyframe) {
+                                    const nextTime = nextKeyframe.time || 0;
+                                    const nextDataPoints = nextKeyframe.data_points || [];
+
+                                    if (nextDataPoints.length > 0) {
+                                        const nextVectors = nextDataPoints.map((dp: any) => vectorFromPoint(dp));
+                                        const nextMapped = nextVectors.map((v: [any, any, any]) => mapVectorByChannel(channel, v));
+                                        const nextValue = nextMapped[0];
+
+                                        fillin = {
+                                            pre: currentValue,
+                                            post: nextValue
+                                        };
+
+                                        if (!boneData[channel]) {
+                                            boneData[channel] = {};
+                                        }
+                                        boneData[channel][formatTimeKey(nextTime)] = fillin;
+                                    }
+                                }
                             }
-                            boneData[channel][formatTimeKey(time)] = fillin;
                         }
                     }
                 }
@@ -861,22 +1083,66 @@ function deployBbmodel(bbmodelFile: string): void {
 
 /**
  * 设置所有bbmodel文件
+ * @param force 是否强制部署所有文件（忽略部署状态）
  */
-export function setupBbmodels(): void {
+export function setupBbmodels(force: boolean = false): void {
+    console.log(`开始处理bbmodel文件... ${force ? '（强制全部部署）' : '（增量部署）'}`);
+    console.log('='.repeat(60));
+
     const bbmodelFiles = listBbmodelFiles();
     const ignores: string[] = [];
+    const deployState = loadDeployState();
+
+    let totalFiles = 0;
+    let deployedFiles = 0;
+    let skippedFiles = 0;
+
     for (const bbmodelFile of bbmodelFiles) {
-        if (ignores.includes(path.basename(bbmodelFile, '.bbmodel'))) {
+        totalFiles++;
+        const basename = path.basename(bbmodelFile, '.bbmodel');
+
+        if (ignores.includes(basename)) {
+            console.log(`⏭️  忽略文件: ${basename}`);
             continue;
         }
+
+        // 先执行 setupBasic（这个总是需要执行以保证基本信息正确）
         setupBasic(bbmodelFile);
-        deployBbmodel(bbmodelFile);
+
+        // 检查是否需要部署
+        if (needsDeploy(bbmodelFile, deployState, force)) {
+            console.log(`🚀 部署: ${basename}`);
+            deployBbmodel(bbmodelFile);
+            updateDeployState(bbmodelFile, deployState);
+            deployedFiles++;
+        } else {
+            skippedFiles++;
+        }
     }
 
+    // 保存部署状态
+    saveDeployState(deployState);
+
+    // 生成配置文件（总是需要）
     setupBbmodelJson();
+
+    console.log('\n' + '='.repeat(60));
+    console.log('处理完成！');
+    console.log(`总计: ${totalFiles} 个文件`);
+    console.log(`已部署: ${deployedFiles} 个文件`);
+    console.log(`已跳过: ${skippedFiles} 个文件`);
+    console.log('='.repeat(60));
 }
 
 // 如果直接运行此文件
 if (require.main === module) {
-    setupBbmodels();
+    // 检查命令行参数
+    const args = process.argv.slice(2);
+    const force = args.includes('--force') || args.includes('-f');
+
+    if (force) {
+        console.log('💪 检测到 --force 参数，将强制部署所有文件\n');
+    }
+
+    setupBbmodels(force);
 }

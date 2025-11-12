@@ -2,7 +2,7 @@ import { Entity, world, system } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
-import { EntityQuery } from "./entity_utils";
+import { EntityQr } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 import entityIds from "../json/entity_ids.json";
 
@@ -466,10 +466,10 @@ export class BehaviorUtils {
     static register(treeId: string, factory: (entity: Entity) => BehaviorTree) {
         this.FACTORIES[treeId] = factory;
         Object.keys(entityIds).includes(treeId) &&
-        world.afterEvents.entitySpawn.subscribe(({ entity }) => {
-            if (entity.typeId !== treeId) return
-            BehaviorUtils.bind(entity.id, treeId)
-        })
+            world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+                if (entity.typeId !== treeId) return
+                BehaviorUtils.bind(entity.id, treeId)
+            })
     }
 
     // 绑定实体到某个工厂键，并持久化到World动态属性
@@ -631,99 +631,99 @@ export class BehaviorTemplates {
         const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
         const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
         const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
-        const hurtAction = config.hurtAction ?? (()=>NodeState.SUCCESS);
+        const hurtAction = config.hurtAction ?? (() => NodeState.SUCCESS);
         const hurtCounterMax = config.hurtCounterMax ?? 99999;
         const hurtCounterResetTick = config.hurtCounterResetTick ?? 100;
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
-                .sequence("SpawnHandler")
-                    .condition("IsFirstSpawn", (entity) => DPUtils.store().mob_first_spawn.curr(entity, true))
-                    .action("SpawnAction", (entity)=>{
-                        const spawning = DPUtils.store().mob_spawning.curr(entity)
-                        if (spawning===true) return NodeState.RUNNING
-                        if (spawning===false) return NodeState.SUCCESS
-                        const delay = spawnAction(entity);
-                        entity.triggerEvent(EntityEventIds.InvisiableOff)
-                        DPUtils.store().mob_spawning.set(entity, true)
-                        DPUtils.store().mob_spawning.set(entity, false, delay + 1)
-                        DPUtils.store().mob_first_spawn.set(entity, false, false, delay)
-                        return NodeState.RUNNING
-                    })
-                    .end()
-                .sequence("DeathHandler")
-                    .condition("IsDead", actions.death.check)
-                    .action("DeathAction", (entity) => {
-                        const handled = BlackboardManager.get(entity, '__death_handled', false);
-                        if (!handled) {
-                            BlackboardManager.set(entity, '__death_handled', true);
-                            entity.triggerEvent(EntityEventIds.TargetEscape)
-                            return actions.death.execute(deathAction)(entity);
-                        }
-                        return NodeState.SUCCESS;
-                    })
-                    .end()
-                .sequence("HurtHandler")
-                    .condition("HasHurt", (entity) => system.currentTick - DPUtils.store().mob_hurt.curr(entity, 0)===0)
-                    .condition("NoSuperarmor", (entity) => !DPUtils.store().effect_superarmor.curr(entity, false))
-                    .action("HurtAction", (entity) => {
-                        if (DPUtils.store().mob_hurt_counter.curr(entity, 0) > hurtCounterMax) {
-                            return NodeState.FAILURE
-                        }
-                        if (DPUtils.store().mob_hurt_counter.curr(entity, 0) === hurtCounterMax) {
-                            DPUtils.store().mob_hurt_counter.cancel(entity)
-                            DPUtils.store().mob_hurt_counter.set(entity, 0, 0, hurtCounterResetTick)
-                            return NodeState.FAILURE
-                        }
-                        DPUtils.store().mob_hurt_counter.set(entity, (curr: any) => curr + 1, 0)
-                        return hurtAction(entity);
-                    })
-                    .end()
-                .sequence("DizzyHandler")
-                    .condition("IsDizzy", (entity) => DPUtils.store().effect_dizzy.curr(entity))
-                    .action("DizzyAction", () => NodeState.SUCCESS)
-                    .end()
-                .sequence("HasTargetBehavior")
-                    .condition("HasTarget", actions.target.check)
-                    .selector("SkillSystem")
-                        .action("LockedGate", (entity) => {
-                            const locked = actions.skill.checkLock(entity);
-                            if (locked) {
-                                return actions.skill.continueCurrent(skills)(entity);
-                            }
-                            return NodeState.FAILURE;
-                        })
-                        .sequence("TriggerSkill")
-                            .condition("HasTriggerSkillId", (entity: Entity) => BlackboardManager.get(entity, 'trigger_skill_id'))
-                            .action("TriggerSkillAction", (entity: Entity) => {
-                                const skillId: string = BlackboardManager.get(entity, 'trigger_skill_id');
-                                if (!skillId) return NodeState.FAILURE;
-                                const skill = skills.find(s => s.id === skillId);
-                                if (!skill) return NodeState.FAILURE;
-                                BlackboardManager.delete(entity, 'trigger_skill_id');
-                                return actions.skill.execute(skill)(entity);
-                            })
-                            .end()
-                        .actions(skills.map(skill => ({
-                            name: `Skill_${skill.id}`,
-                            action: (entity: Entity) => {
-                                const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
-                                const canFilter = skill.filter(entity);
-                                if (!canCD || !canFilter) return NodeState.FAILURE;
-                                return actions.skill.execute(skill)(entity);
-                            }
-                        })))
-                        .end()
-                    .action("MoveToTarget", moveToTarget)
-                    .end()
-                .sequence("TryFindTarget")
-                    .condition("NoTarget", actions.target.noTargetCheck)
-                    .condition("NoBlind", (entity) => !DPUtils.store().effect_blind.curr(entity))
-                    .action("FindTarget", findTarget)
-                    .end()
-                .sequence("NoTargetBehavior")
-                    .condition("NoTarget", actions.target.noTargetCheck)
-                    .action("IdleBehavior", idleBehavior)
-                    .end()
+            .sequence("SpawnHandler")
+            .condition("IsFirstSpawn", (entity) => DPUtils.store().mob_first_spawn.curr(entity, true))
+            .action("SpawnAction", (entity) => {
+                const spawning = DPUtils.store().mob_spawning.curr(entity)
+                if (spawning === true) return NodeState.RUNNING
+                if (spawning === false) return NodeState.SUCCESS
+                const delay = spawnAction(entity);
+                entity.triggerEvent(EntityEventIds.InvisiableOff)
+                DPUtils.store().mob_spawning.set(entity, true)
+                DPUtils.store().mob_spawning.set(entity, false, delay + 1)
+                DPUtils.store().mob_first_spawn.set(entity, false, false, delay)
+                return NodeState.RUNNING
+            })
+            .end()
+            .sequence("DeathHandler")
+            .condition("IsDead", actions.death.check)
+            .action("DeathAction", (entity) => {
+                const handled = BlackboardManager.get(entity, '__death_handled', false);
+                if (!handled) {
+                    BlackboardManager.set(entity, '__death_handled', true);
+                    entity.triggerEvent(EntityEventIds.TargetEscape)
+                    return actions.death.execute(deathAction)(entity);
+                }
+                return NodeState.SUCCESS;
+            })
+            .end()
+            .sequence("HurtHandler")
+            .condition("HasHurt", (entity) => system.currentTick - DPUtils.store().mob_hurt.curr(entity, 0) === 0)
+            .condition("NoSuperarmor", (entity) => !DPUtils.store().effect_superarmor.curr(entity, false))
+            .action("HurtAction", (entity) => {
+                if (DPUtils.store().mob_hurt_counter.curr(entity, 0) > hurtCounterMax) {
+                    return NodeState.FAILURE
+                }
+                if (DPUtils.store().mob_hurt_counter.curr(entity, 0) === hurtCounterMax) {
+                    DPUtils.store().mob_hurt_counter.cancel(entity)
+                    DPUtils.store().mob_hurt_counter.set(entity, 0, 0, hurtCounterResetTick)
+                    return NodeState.FAILURE
+                }
+                DPUtils.store().mob_hurt_counter.set(entity, (curr: any) => curr + 1, 0)
+                return hurtAction(entity);
+            })
+            .end()
+            .sequence("DizzyHandler")
+            .condition("IsDizzy", (entity) => DPUtils.store().effect_dizzy.curr(entity))
+            .action("DizzyAction", () => NodeState.SUCCESS)
+            .end()
+            .sequence("HasTargetBehavior")
+            .condition("HasTarget", actions.target.check)
+            .selector("SkillSystem")
+            .action("LockedGate", (entity) => {
+                const locked = actions.skill.checkLock(entity);
+                if (locked) {
+                    return actions.skill.continueCurrent(skills)(entity);
+                }
+                return NodeState.FAILURE;
+            })
+            .sequence("TriggerSkill")
+            .condition("HasTriggerSkillId", (entity: Entity) => BlackboardManager.get(entity, 'trigger_skill_id'))
+            .action("TriggerSkillAction", (entity: Entity) => {
+                const skillId: string = BlackboardManager.get(entity, 'trigger_skill_id');
+                if (!skillId) return NodeState.FAILURE;
+                const skill = skills.find(s => s.id === skillId);
+                if (!skill) return NodeState.FAILURE;
+                BlackboardManager.delete(entity, 'trigger_skill_id');
+                return actions.skill.execute(skill)(entity);
+            })
+            .end()
+            .actions(skills.map(skill => ({
+                name: `Skill_${skill.id}`,
+                action: (entity: Entity) => {
+                    const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
+                    const canFilter = skill.filter(entity);
+                    if (!canCD || !canFilter) return NodeState.FAILURE;
+                    return actions.skill.execute(skill)(entity);
+                }
+            })))
+            .end()
+            .action("MoveToTarget", moveToTarget)
+            .end()
+            .sequence("TryFindTarget")
+            .condition("NoTarget", actions.target.noTargetCheck)
+            .condition("NoBlind", (entity) => !DPUtils.store().effect_blind.curr(entity))
+            .action("FindTarget", findTarget)
+            .end()
+            .sequence("NoTargetBehavior")
+            .condition("NoTarget", actions.target.noTargetCheck)
+            .action("IdleBehavior", idleBehavior)
+            .end()
             .end()
             .build();
     }
@@ -770,7 +770,7 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
         DPUtils.store().mob_hurt.set(entity, system.currentTick);
     },
     [EntityEventIds.TargetAcquired]: (entity) => {
-        const target = EntityQuery.entities(entity, {dist: 64, filter: (target)=>DPUtils.store().mob_targeted_by.curr(target,[]).includes(entity.id)}).first()
+        const target = EntityQr.entities(entity, { dist: 64, filter: (target) => DPUtils.store().mob_targeted_by.curr(target, []).includes(entity.id) }).first()
         if (!target) return
         DPUtils.store().mob_target.set(entity, target.id);
     },
