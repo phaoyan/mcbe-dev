@@ -17,7 +17,6 @@ import {
 } from "@minecraft/core-build-tasks";
 import path from "path";
 import fs from "fs/promises";
-import { DEST_SCRIPT_DIR, DEST_RP_DIR, DEST_BP_DIR } from "./tools/utils";
 
 // Setup env variables
 setupEnvironment(path.resolve(__dirname, ".env"));
@@ -69,6 +68,10 @@ task(
   )
 );
 
+const DEST_DIR = getOrThrowFromProcess("CUSTOM_DEPLOYMENT_PATH");
+const DEST_BP_DIR = path.join(DEST_DIR, "development_behavior_packs", projectName);
+const DEST_RP_DIR = path.join(DEST_DIR, "development_resource_packs", projectName);
+const DEST_SCRIPT_DIR = path.join(DEST_BP_DIR, "scripts");
 
 // 通用增量部署函数
 async function deployDirectoryIncremental(

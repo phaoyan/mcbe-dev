@@ -33,6 +33,7 @@ export function setupItemTextureJson(): void {
     const itemTexturePath = path.join(RESOURCE_PACK_DIR, "textures", "item_texture.json");
     const [teamName, projName] = NAME_SPACE.split('_', 2);
     const itemTexturesDir = path.join(RESOURCE_PACK_DIR, "textures", teamName, projName, "items");
+    const entityDir = path.join(RESOURCE_PACK_DIR, "entity");
 
     if (!fs.existsSync(itemTexturePath)) {
         console.warn(`物品纹理配置文件不存在: ${itemTexturePath}`);
@@ -71,6 +72,32 @@ export function setupItemTextureJson(): void {
             }
         } catch (error) {
             console.error(`处理物品文件失败 ${itemFile}: ${error}`);
+        }
+    }
+
+    // 扫描实体文件中的生物蛋纹理（spawn_egg.texture），也加入到物品纹理中
+    if (fs.existsSync(entityDir)) {
+        const entityFiles = rglob('.*\\.ce\\.json$', entityDir);
+        for (const entityFile of entityFiles) {
+            try {
+                const data = readJson(entityFile);
+                const clientEntity = data["minecraft:client_entity"];
+                const description = clientEntity && clientEntity.description;
+                const spawnEgg = description && description.spawn_egg;
+
+                if (spawnEgg && typeof spawnEgg.texture === "string") {
+                    const textureId = spawnEgg.texture;
+
+                    // 如果该纹理ID还没有在texture_data中定义，则新增一条
+                    if (!itemTextureJson.texture_data[textureId]) {
+                        itemTextureJson.texture_data[textureId] = {
+                            textures: `textures/${teamName}/${projName}/items/${textureId}`
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error(`处理实体文件失败 ${entityFile}: ${error}`);
+            }
         }
     }
 
@@ -129,9 +156,12 @@ export function setupSoundsDefinition(): void {
 
             defJson.sound_definitions[soundId] = {
                 category: "player",
+                max_distance: 64.0,
                 sounds: [{
                     name: soundPath,
-                    volume: 1.0
+                    volume: 1.0,
+                    is3D: false,
+
                 }]
             };
         } catch (error) {

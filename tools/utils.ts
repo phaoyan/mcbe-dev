@@ -26,8 +26,26 @@ export function getProjectName(): string {
     }
 }
 
+export function getProduct(): string {
+    const envPath = path.join(__dirname, '..', '.env');
+    const defaultProduct = 'Custom';
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    const firstLine = envContent.split('\n')[1] ?? '';
+    const parts = firstLine.split('=');
+    return parts.slice(1).join('=').replace(/"/g, '').trim() || defaultProduct;
+}
+
+export function getCustomDeploymentPath(): string {
+    const envPath = path.join(__dirname, '..', '.env');
+    const defaultCustomDeploymentPath = '';
+    const envContent = fs.readFileSync(envPath, 'utf-8');
+    const firstLine = envContent.split('\n')[2] ?? '';
+    const parts = firstLine.split('=');
+    return parts.slice(1).join('=').replace(/"/g, '').trim() || defaultCustomDeploymentPath;
+}
+
 // 路径常量定义
-export const DEST_DIR = ;
+export const DEST_DIR = "";
 export const DEST_BP_DIR = path.join(DEST_DIR, "development_behavior_packs", getProjectName());
 export const DEST_RP_DIR = path.join(DEST_DIR, "development_resource_packs", getProjectName());
 export const DEST_SCRIPT_DIR = path.join(DEST_BP_DIR, "scripts");
@@ -35,7 +53,7 @@ export const DEST_SCRIPT_DIR = path.join(DEST_BP_DIR, "scripts");
 export const PROJECT_NAME = getProjectName();
 export const TOOLS_DIR = __dirname;
 export const PROJECT_ROOT = path.join(__dirname, '..');
-export const BBPACK_DIR = ;
+export const BBPACK_DIR = "";
 export const BBMODEL_JSON_PATH = path.join(BBPACK_DIR, 'bbmodel.json');
 export const ENV_PATH = path.join(PROJECT_ROOT, '.env');
 export const RESOURCE_PACK_DIR = path.join(PROJECT_ROOT, 'resource_packs', PROJECT_NAME);
@@ -135,7 +153,11 @@ export function writeJson(filePath: string, data: any): void {
  * 读取JSON文件
  */
 export function readJson(filePath: string): any {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    try {
+        return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch (error) {
+        return {};
+    }
 }
 
 /**

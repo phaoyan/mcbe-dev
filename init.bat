@@ -12,4 +12,4 @@ git init
 git add .
 git commit -m "init"
 call npm ci
-call npm run tools:setup -- "%1"
+call npm run tools setup -- "%1"

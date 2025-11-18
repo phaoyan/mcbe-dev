@@ -8,7 +8,9 @@ import {
     JSON_INDENT,
     readJson,
     writeJson,
-    writeText
+    writeText,
+    getProduct,
+    getCustomDeploymentPath
 } from './utils';
 
 // 命名空间需满足：至少2个字母 + 下划线 + 至少2个字母（仅小写字母）
@@ -54,8 +56,8 @@ export function setup(projectName: string): void {
         // 更新环境变量文件
         const envContent = [
             `PROJECT_NAME="${projectName}"`,
-            'MINECRAFT_PRODUCT="BedrockUWP"',
-            'CUSTOM_DEPLOYMENT_PATH=""'
+            `MINECRAFT_PRODUCT="${getProduct()}"`,
+            `CUSTOM_DEPLOYMENT_PATH="${getCustomDeploymentPath()}"`
         ].join('\n');
         writeText(ENV_PATH, envContent);
 
