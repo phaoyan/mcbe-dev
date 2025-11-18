@@ -1,4 +1,4 @@
-import { Entity, EntityComponentTypes, EntityEquippableComponent, EntityHealthComponent, EntityIsShearedComponent, EntityTypeFamilyComponent, EntityVariantComponent, EntityInventoryComponent, EntityItemComponent, EntityOnFireComponent, EntityRideableComponent, EntityAgeableComponent, EntityBreathableComponent, EntityCanClimbComponent, EntityCanFlyComponent, EntityCanPowerJumpComponent, EntityColorComponent, EntityColor2Component, EntityFireImmuneComponent, EntityFloatsInLiquidComponent, EntityFlyingSpeedComponent, EntityFrictionModifierComponent, EntityHealableComponent, EntityIsBabyComponent, EntityIsChargedComponent, EntityIsChestedComponent, EntityIsDyeableComponent, EntityIsHiddenWhenInvisibleComponent, EntityIsIgnitedComponent, EntityIsIllagerCaptainComponent, EntityIsSaddledComponent, EntityIsShakingComponent, EntityIsStackableComponent, EntityIsStunnedComponent, EntityIsTamedComponent, EntityLavaMovementComponent, EntityLeashableComponent, EntityMarkVariantComponent, EntityMovementComponent, EntityMovementAmphibiousComponent, EntityMovementBasicComponent, EntityMovementFlyComponent } from "@minecraft/server";
+import { Entity, EntityComponentTypes, EntityEquippableComponent, EntityHealthComponent, EntityIsShearedComponent, EntityTypeFamilyComponent, EntityVariantComponent, EntityInventoryComponent, EntityItemComponent, EntityOnFireComponent, EntityRideableComponent, EntityAgeableComponent, EntityBreathableComponent, EntityCanClimbComponent, EntityCanFlyComponent, EntityCanPowerJumpComponent, EntityColorComponent, EntityColor2Component, EntityFireImmuneComponent, EntityFloatsInLiquidComponent, EntityFlyingSpeedComponent, EntityFrictionModifierComponent, EntityHealableComponent, EntityIsBabyComponent, EntityIsChargedComponent, EntityIsChestedComponent, EntityIsDyeableComponent, EntityIsHiddenWhenInvisibleComponent, EntityIsIgnitedComponent, EntityIsIllagerCaptainComponent, EntityIsSaddledComponent, EntityIsShakingComponent, EntityIsStackableComponent, EntityIsStunnedComponent, EntityIsTamedComponent, EntityLavaMovementComponent, EntityLeashableComponent, EntityMarkVariantComponent, EntityMovementComponent, EntityMovementAmphibiousComponent, EntityMovementBasicComponent, EntityMovementFlyComponent, EntityTameableComponent } from "@minecraft/server";
 
 // 驼峰命名到组件类型的映射
 type ComponentMap = {
@@ -42,6 +42,7 @@ type ComponentMap = {
     movementAmphibious: EntityMovementAmphibiousComponent;
     movementBasic: EntityMovementBasicComponent;
     movementFly: EntityMovementFlyComponent;
+    tameable: EntityTameableComponent;
 };
 
 // 代理类型

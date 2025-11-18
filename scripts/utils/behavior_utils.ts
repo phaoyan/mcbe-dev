@@ -1,10 +1,12 @@
-import { Entity, world, system } from "@minecraft/server";
+import { Entity, world, system, Player, GameMode } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
-import { EntityQr } from "./entity_utils";
+import { EntityOp, EntityQr, EntityQueryParams, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 import entityIds from "../json/entity_ids.json";
+import { MinecraftEntityTypes } from "@minecraft/vanilla-data";
+import { CompUtils } from "./comp_utils";
 
 // 行为树框架
 export enum NodeState {
@@ -470,6 +472,7 @@ export class BehaviorUtils {
                 if (entity.typeId !== treeId) return
                 BehaviorUtils.bind(entity.id, treeId)
             })
+        return factory
     }
 
     // 绑定实体到某个工厂键，并持久化到World动态属性
@@ -554,8 +557,8 @@ export class BehaviorTemplates {
 
         // 目标相关actions
         target: {
-            check: (entity: Entity) => !!DPUtils.store().mob_target.curr(entity),
-            noTargetCheck: (entity: Entity) => !DPUtils.store().mob_target.curr(entity)
+            check: (entity: Entity) => !!EntityState.target(entity),
+            noTargetCheck: (entity: Entity) => !EntityState.target(entity)
         },
 
         // 技能相关actions
@@ -628,8 +631,15 @@ export class BehaviorTemplates {
         const skills = config.skills ?? [];
         const spawnAction = config.spawnAction ?? (() => 1);
         const deathAction = config.deathAction ?? (() => NodeState.FAILURE);
-        const moveToTarget = config.moveToTarget ?? (() => NodeState.FAILURE);
-        const idleBehavior = config.idleBehavior ?? (() => NodeState.FAILURE);
+        const moveToTarget = config.moveToTarget ?? ((entity) => {
+            if (DPUtils.store().effect_lose_target.curr(entity, false)) return NodeState.FAILURE
+            entity.triggerEvent(EntityEventIds.Fight)
+            return NodeState.SUCCESS
+        });
+        const idleBehavior = config.idleBehavior ?? ((entity) => {
+            (!CompUtils.variant(entity) || CompUtils.variant(entity).value !== 0) && entity.triggerEvent(EntityEventIds.Idle)
+            return NodeState.SUCCESS
+        });
         const findTarget = config.findTarget ?? (() => NodeState.FAILURE);
         const hurtAction = config.hurtAction ?? (() => NodeState.SUCCESS);
         const hurtCounterMax = config.hurtCounterMax ?? 99999;
@@ -748,14 +758,37 @@ export class BehaviorTemplates {
             .build();
     }
 
-    static repeat(action: (entity: Entity) => NodeState): BehaviorTree {
-        return BehaviorTree.create()
-            .repeater()
-            .action("RepeatAction", action)
-            .end()
-            .build();
+    static pet() {
+
     }
 
+}
+
+export class BehaviorTools {
+    static findPlayerTarget(entity: Entity, dist: number = 32, ignoreUntargetable: boolean = true): NodeState {
+        const target = EntityQr.entities(entity, { dist: dist, types: [MinecraftEntityTypes.Player], ignoreUntargetable: ignoreUntargetable }).first()
+        if (!target || (target as Player).getGameMode() === GameMode.Creative) return NodeState.FAILURE
+        EntityOp.create().setTargetedBy(entity).run(target)
+        entity.triggerEvent(EntityEventIds.Fight)
+        return NodeState.SUCCESS
+    }
+
+    static findEntityTarget(entity: Entity, params: EntityQueryParams): NodeState {
+        const target = EntityQr.entities(entity, params).first()
+        if (!target) return NodeState.FAILURE
+        EntityOp.create().setTargetedBy(entity).run(target)
+        entity.triggerEvent(EntityEventIds.Fight)
+        return NodeState.SUCCESS
+    }
+
+    // Spawn Action For Pets
+    static findPlayerOwner(entity: Entity, dist: number = 16): number {
+        const player = EntityQr.entities(entity, { dist: dist, types: [MinecraftEntityTypes.Player] }).first() as Player;
+        if (!player) return 0;
+        CompUtils.tameable(entity).tame(player);
+        EntityOp.create().setFaction(player.id).run(entity);
+        return 0
+    }
 }
 
 // 合并监听不同事件的处理，不使用switch

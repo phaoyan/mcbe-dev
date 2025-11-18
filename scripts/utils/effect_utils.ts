@@ -73,6 +73,7 @@ DPUtils.store().effect_disable_movement.register((target, curr, prev) => {
 
 DPUtils.store().effect_untargetable.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
+    if (target instanceof Player) return
     if (curr) {
         target.triggerEvent(EntityEventIds.UntargetableOn)
     } else {

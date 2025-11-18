@@ -5,7 +5,6 @@ import {
     RESOURCE_PACK_DIR,
     SCRIPTS_DIR,
     NAME_SPACE,
-    rglob,
     writeJson,
     readJson,
     ensureDir,

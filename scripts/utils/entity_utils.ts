@@ -158,9 +158,11 @@ export class EntityOp {
         })
     }
 
-    playSound(soundId: string, location: Vector3, volume: number = 1, pitch: number = 1): EntityOp {
+    playSound(soundId: string, location?: Vector3, delay: number = 3, volume: number = 1, pitch: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
-            entity.dimension.playSound(soundId, location, { volume, pitch })
+            TimeUtils.timeout(()=>{
+                entity.dimension.playSound(soundId, location ?? entity.location, { volume, pitch })
+            }, delay)
         })
     }
 
@@ -701,6 +703,7 @@ export interface EntityQueryParams {
     self?: boolean
     friendlyFire?: boolean
     limit?: number
+    ignoreUntargetable?: boolean
     filter?: (entity: Entity) => boolean
 }
 
@@ -741,6 +744,7 @@ export class EntityQr {
                     friendlyFire = false,
                     filter = () => true,
                     limit = 99999,
+                    ignoreUntargetable = false,
                 } = option
 
                 let entities: Entity[] = []
@@ -772,7 +776,7 @@ export class EntityQr {
                 }
                 entities = entities.filter(filter)
                     .filter(e => self ? true : e.id !== target.id)
-                    .filter(e => !DPUtils.store().effect_untargetable.curr(e, false))
+                    .filter(e => ignoreUntargetable ? true : !DPUtils.store().effect_untargetable.curr(e, false))
                     .slice(0, limit)
                 if (!friendlyFire) {
                     entities = entities.filter(e => {

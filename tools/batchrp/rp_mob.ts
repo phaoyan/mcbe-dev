@@ -5,11 +5,13 @@ const fillArray = (array: any[], length: number) => {
 }
 
 export const rpMob = (bbmodel: string, params?: { 
+    typeId?: string
     animationController?: string 
     walkThreshold?: number
     runThreshold?: number
     extraAnimate?: string[]
 }) => {
+    const typeId = params?.typeId ?? bbmodel;
     const bbmodelConfig = BBMODEL_JSON[bbmodel] || {};
     const geometry = bbmodelConfig.geometry || "";
     const textures = bbmodelConfig.textures || [];
@@ -33,7 +35,7 @@ export const rpMob = (bbmodel: string, params?: {
         format_version: "1.21.10",
         [client_entity]: {
             description: {
-                identifier: `${NAME_SPACE}:${bbmodel}`,
+                identifier: `${NAME_SPACE}:${typeId}`,
                 geometry: {
                     default: `geometry.${geometry}`
                 },
@@ -46,6 +48,9 @@ export const rpMob = (bbmodel: string, params?: {
                 render_controllers: [
                     "controller.render.default"
                 ],
+                spawn_egg: {
+                    texture: bbmodel
+                },
                 animations: {
                     ...animations,
                     ctrl: ac
