@@ -1,0 +1,57 @@
+{
+    "format_version": "1.21.10",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "minecraft_dev:locator_dummy",
+            "is_spawnable": false,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "components": {
+            "minecraft:conditional_bandwidth_optimization": {},
+            "minecraft:pushable": {
+                "is_pushable": false,
+                "is_pushable_by_piston": false
+            },
+            "minecraft:physics": {
+                "has_gravity": false
+            },
+            "minecraft:persistent": {},
+            "minecraft:type_family": {
+                "family": ["dummy"]
+            },
+            "minecraft:collision_box": {
+                "height": 0,
+                "width": 0
+            },
+            "minecraft:health": {
+                "value": 1e4
+            },
+            "minecraft:knockback_resistance": {
+                "value": 1
+            },
+            "minecraft:breathable": {
+                "breathes_air": true,
+                "breathes_solids": true,
+                "breathes_lava": true,
+                "breathes_water": true
+            },
+            "minecraft:fire_immune": {},
+            "minecraft:tick_world": {},
+            "minecraft:damage_sensor": {
+                "triggers": {
+                    "deals_damage": false
+                }
+            },
+            "minecraft:timer": {
+                "time": 0.05,
+                "time_down_event": {
+                    "event": "event:timer"
+                }
+            }
+        },
+        "events": {
+            "event:timer": {}
+        }
+    }
+}

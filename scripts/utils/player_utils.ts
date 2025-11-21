@@ -53,7 +53,7 @@ const inputDetectionEnable = (player: Entity, type: keyof PlayerOperationMap) =>
 
 // 左键检测
 // 预注册：左键Dummy跟随行为
-BehaviorUtils.register(entityTree.dummy.lclick.lclick_dummy, (entity: Entity) => {
+BehaviorUtils.register(entityTree.dummy.lclick_dummy, (entity: Entity) => {
     return BehaviorTemplates.follow(
         (e: Entity) => {
             const player = world.getEntity(DPUtils.store().lclick_host.curr(e));
@@ -80,12 +80,12 @@ DPUtils.store().player_operation_map.register((target) => {
     if (!(target instanceof Player)) return
     const lclickEnable = inputDetectionEnable(target, "lc")
     if (!lclickEnable) return
-    const dummyType = entityTree.dummy.lclick.lclick_dummy
+    const dummyType = entityTree.dummy.lclick_dummy
     const dummy = EntityQr.entities(target, { dist: 32, types: [dummyType], filter: e => DPUtils.store().lclick_host.curr(e) === target.id }).first()
     if (lclickEnable && !dummy) {
         const lclick = target.dimension.spawnEntity(dummyType, target.location)
         DPUtils.store().lclick_host.set(lclick, target.id)
-        BehaviorUtils.bind(lclick.id, entityTree.dummy.lclick.lclick_dummy)
+        BehaviorUtils.bind(lclick.id, entityTree.dummy.lclick_dummy)
     }
 })
 

@@ -1,6 +1,6 @@
 import { Entity, EntityDamageCause, EquipmentSlot, ItemStack } from "@minecraft/server"
 import { DPUtils } from "./dp_utils"
-import { DamageTags } from "../lists/damage_list"
+import { DamageTags } from "../lists/data_list"
 import { InventoryUtils } from "./inventory_utils"
 
 // 伤害公式：技能倍率×攻击力×（1+暴击率×暴击伤害）×攻击方伤害加成×防御方伤害减免×（攻击方防御力/防御方防御力）×调节常数
@@ -9,8 +9,8 @@ export interface DamageAttribute {
     def: number
     critRate: number
     critDmg: number
-    atkBonus: {id: string, tag: string, bonus: number}[]
-    defBonus: {id: string, tag: string, bonus: number}[]
+    atkBonus: { id: string, tag: string, bonus: number }[]
+    defBonus: { id: string, tag: string, bonus: number }[]
 }
 
 export const DAMAGE_ADJUST_CONSTANT = 1
@@ -34,7 +34,7 @@ export const DEFAULT_ITEM_ATTRIBUTE: DamageAttribute = {
 }
 
 export class DamageUtils {
-    
+
     static setItemAttribute(target: ItemStack, attribute: Partial<DamageAttribute>) {
         DPUtils.store().damage_attribute.set(target, {
             atk: attribute.atk ?? 0,
@@ -46,8 +46,8 @@ export class DamageUtils {
         }, DEFAULT_ITEM_ATTRIBUTE)
     }
 
-    static tempAttribute(entity: Entity, attribute: DamageAttribute, ticks: number){
-        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute)=>{
+    static tempAttribute(entity: Entity, attribute: DamageAttribute, ticks: number) {
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => {
             return {
                 atk: curr.atk + attribute.atk,
                 def: curr.def + attribute.def,
@@ -57,7 +57,7 @@ export class DamageUtils {
                 defBonus: [...curr.defBonus, ...attribute.defBonus]
             }
         }, DEFAULT_ENTITY_ATTRIBUTE)
-        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute)=>{
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => {
             return {
                 atk: curr.atk - attribute.atk,
                 def: curr.def - attribute.def,
@@ -68,8 +68,8 @@ export class DamageUtils {
             }
         }, DEFAULT_ENTITY_ATTRIBUTE, ticks)
     }
-    
-    static damageAttribute(entity: Entity){
+
+    static damageAttribute(entity: Entity) {
         let attribute = DPUtils.store().damage_attribute.curr(entity, DEFAULT_ENTITY_ATTRIBUTE)
         const equippables = InventoryUtils.equippables(entity);
         [
@@ -92,7 +92,7 @@ export class DamageUtils {
         return attribute
     }
 
-    static damage(damageRate: number, defender: Entity, attacker?: Entity, tags: string[] = []){
+    static damage(damageRate: number, defender: Entity, attacker?: Entity, tags: string[] = []) {
         const defenderAttribute = this.damageAttribute(defender)
         const attackerAttribute = attacker ? this.damageAttribute(attacker) : DEFAULT_ENTITY_ATTRIBUTE
 
@@ -145,7 +145,7 @@ export class DamageUtils {
 
         // 9. 保证伤害不小于1
         damage = Math.max(1, Math.floor(damage))
-        
+
         // 10. 造成伤害
         try {
             defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT, { damagingEntity: attacker, cause: EntityDamageCause.entityAttack })
@@ -153,6 +153,6 @@ export class DamageUtils {
             // 兼容性处理
             defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT)
         }
-        
+
     }
 }

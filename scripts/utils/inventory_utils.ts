@@ -81,6 +81,10 @@ export class InventoryUtils {
         }
     }
 
+    static remove(target: Entity, typeId: string, amount: number) {
+        target.runCommand(`clear @s ${typeId} 0 ${amount}`)
+    }
+
     // 将指定槽位的物品放到其他空的栏目里
     static move(target: Entity, slots: number[]) {
         const inventory = this.entity(target)
