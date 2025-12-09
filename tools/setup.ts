@@ -64,6 +64,7 @@ export function setup(projectName: string): void {
         // 生成UUID
         const resourceUuid = uuidv4();
         const behaviorUuid = uuidv4();
+        const dataUuid = uuidv4();
         const scriptUuid = uuidv4();
 
         // 更新资源包manifest
@@ -98,7 +99,8 @@ export function setup(projectName: string): void {
             }
 
             if (behaviorManifest.modules && behaviorManifest.modules[0]) {
-                behaviorManifest.modules[0].uuid = scriptUuid;
+                behaviorManifest.modules[0].uuid = dataUuid;
+                behaviorManifest.modules[1].uuid = scriptUuid;
             }
 
             writeJson(behaviorManifestFile, behaviorManifest);

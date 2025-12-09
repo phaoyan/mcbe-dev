@@ -1,6 +1,6 @@
 import "./debug";
 import "./init";
-import "./lists/damage_list";
+import "./lists/data_list";
 import "./lists/dp_list";
 import "./lists/dp_mapping";
 import "./lists/event_list";

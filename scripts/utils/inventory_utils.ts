@@ -51,6 +51,31 @@ export class InventoryUtils {
         return items
     }
 
+    static count(target: Entity, typeId: string){
+        let count = 0
+        const inventory = this.entity(target)
+        if (!inventory) return 0
+        for (let i = 0; i < inventory.size; i++) {
+            const item = inventory.getItem(i)
+            if (!item) continue
+            if (item.typeId === typeId) count += item.amount
+        }
+        return count
+    }
+
+    static consume(target: Entity, items: { typeId: string, amount: number }[]) {
+        const inventory = this.entity(target)
+        if (!inventory) return
+        for (const item of items) {
+            const count = this.count(target, item.typeId)
+            if (count < item.amount) return false
+        }
+        for (const item of items) {
+            this.remove(target, item.typeId, item.amount)
+        }
+        return true
+    }
+
     static give(target: Entity, item: ItemStack, options?: GiveOptions) {
         if (options?.onlyOnce && this.items(target).filter(i => i?.typeId === item.typeId).length > 0) return
         if (options?.slot !== undefined) {
