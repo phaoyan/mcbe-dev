@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import {
     BEHAVIOR_PACK_DIR,
@@ -13,12 +14,88 @@ import {
 } from './utils';
 
 /**
+ * 递归列出 rootDir 下的所有子目录（返回绝对路径），包含空目录
+ */
+function listAllSubDirs(rootDir: string): string[] {
+    const result: string[] = [];
+    if (!fs.existsSync(rootDir)) return result;
+
+    const stack: string[] = [rootDir];
+    while (stack.length > 0) {
+        const dir = stack.pop()!;
+        let items: string[] = [];
+        try {
+            items = fs.readdirSync(dir);
+        } catch {
+            continue;
+        }
+
+        for (const item of items) {
+            const full = path.join(dir, item);
+            let stat: fs.Stats | undefined;
+            try {
+                stat = fs.statSync(full);
+            } catch {
+                continue;
+            }
+            if (stat.isDirectory()) {
+                result.push(full);
+                stack.push(full);
+            }
+        }
+    }
+    return result;
+}
+
+/**
+ * 确保 tree 中存在某个目录路径对应的对象节点（空目录则最终为 {}）
+ * - 若节点被文件占用（string），则转换为 { _value: old }
+ */
+function ensureNestedObject(dictionary: any, keys: string[]): void {
+    if (!keys.length) return;
+    let current = dictionary;
+    for (const key of keys) {
+        if (!(key in current)) {
+            current[key] = {};
+        } else if (typeof current[key] === 'string') {
+            const oldValue = current[key];
+            current[key] = { "_value": oldValue };
+        } else if (current[key] == null || typeof current[key] !== 'object') {
+            current[key] = {};
+        }
+        current = current[key];
+    }
+}
+
+/**
+ * 扫描 rootDir 下所有子目录，并在 tree 中为其生成对应 key（空目录值为 {}）
+ */
+function ensureDirKeys(rootDir: string, tree: any): void {
+    const dirs = listAllSubDirs(rootDir);
+    for (const dir of dirs) {
+        const rel = path.relative(rootDir, dir).replace(/\\/g, '/');
+        const keys = rel.split('/').filter(Boolean);
+        ensureNestedObject(tree, keys);
+    }
+}
+
+function isExistingDir(p: string): boolean {
+    try {
+        return fs.existsSync(p) && fs.statSync(p).isDirectory();
+    } catch {
+        return false;
+    }
+}
+
+/**
  * 生成物品ID引用
  */
 export function itemIdRefs(): void {
     const itemIds: any = {};
 
     const itemsDir = path.join(BEHAVIOR_PACK_DIR, "items");
+    // 先把目录结构写入 tree，确保空文件夹也会生成 key（值为 {}）
+    ensureDirKeys(itemsDir, itemIds);
     const itemFiles = rglob('.*\\.item\\.json$', itemsDir);
     for (const itemFile of itemFiles) {
         try {
@@ -56,6 +133,8 @@ export function entityIdRefs(): void {
     const entityIds: any = {};
 
     const entitiesDir = path.join(BEHAVIOR_PACK_DIR, "entities");
+    // 先把目录结构写入 tree，确保空文件夹也会生成 key（值为 {}）
+    ensureDirKeys(entitiesDir, entityIds);
     const entityFiles = rglob('.*\\.se\\.json$', entitiesDir);
     for (const entityFile of entityFiles) {
         try {
@@ -88,20 +167,34 @@ export function entityIdRefs(): void {
 
 export function blockIdRefs(): void {
     const blockIds: any = {};
-    const blockFiles = rglob('.*\\.block\\.json$', path.join(BEHAVIOR_PACK_DIR, "blocks"));
-    for (const blockFile of blockFiles) {
-        try {
-            const blockData = readJson(blockFile);
-            const blockId = blockData["minecraft:block"].description.identifier;
-            const rel = path.relative(path.join(BEHAVIOR_PACK_DIR, "blocks"), blockFile).replace(/\\/g, '/');
-            const nameWithoutSuffix = rel.replace(/\.block\.json$/, '');
-            const keys = nameWithoutSuffix.split('/').filter(Boolean);
-            if (keys.length > 0) {
-                setNestedValue(blockIds, keys, blockId);
+    // 兼容两种目录布局：
+    // 1) behavior_packs/<project>/blocks
+    // 2) behavior_packs/blocks（你的工程目前就是这种）
+    const packsRoot = path.dirname(BEHAVIOR_PACK_DIR); // .../behavior_packs
+    const blocksDirs = [
+        path.join(BEHAVIOR_PACK_DIR, "blocks"),
+        path.join(packsRoot, "blocks"),
+    ].filter(isExistingDir);
+
+    for (const blocksDir of blocksDirs) {
+        // 先把目录结构写入 tree，确保空文件夹也会生成 key（值为 {}）
+        ensureDirKeys(blocksDir, blockIds);
+
+        const blockFiles = rglob('.*\\.block\\.json$', blocksDir);
+        for (const blockFile of blockFiles) {
+            try {
+                const blockData = readJson(blockFile);
+                const blockId = blockData["minecraft:block"].description.identifier;
+                const rel = path.relative(blocksDir, blockFile).replace(/\\/g, '/');
+                const nameWithoutSuffix = rel.replace(/\.block\.json$/, '');
+                const keys = nameWithoutSuffix.split('/').filter(Boolean);
+                if (keys.length > 0) {
+                    setNestedValue(blockIds, keys, blockId);
+                }
             }
-        }
-        catch (error) {
-            console.error(`读取方块文件失败 ${blockFile}: ${error}`);
+            catch (error) {
+                console.error(`读取方块文件失败 ${blockFile}: ${error}`);
+            }
         }
     }
     const treePath = path.join(SCRIPTS_DIR, "json", "block_tree.json");
@@ -367,6 +460,10 @@ export function attachableAnimationsRefs(): void {
 export function mcstructureRefs(): void {
     const structuresRoot = path.join(BEHAVIOR_PACK_DIR, "structures");
     const tree: any = {};
+
+    // 先把目录结构写入 tree，确保空文件夹也会生成 key（值为 {}）
+    // 注意：structures 的第一层子目录即命名空间（同样会被写入 tree）
+    ensureDirKeys(structuresRoot, tree);
 
     const files = rglob('.*\\.mcstructure$', structuresRoot);
     for (const file of files) {
