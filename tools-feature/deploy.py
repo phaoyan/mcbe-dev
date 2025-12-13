@@ -8,16 +8,40 @@ import shutil
 from pathlib import Path
 
 
+def get_project_name(project_root: Path) -> str:
+    """
+    与 tools/utils.ts 的 getProjectName() 保持一致：
+    - 读取项目根目录的 .env 第一行：PROJECT_NAME=xxx
+    - 去除引号与空白
+    - 读取失败/不存在则返回默认值 minecraft_dev
+    """
+    default_project_name = "minecraft_dev"
+    env_path = project_root / ".env"
+    try:
+        if not env_path.exists():
+            return default_project_name
+        first_line = env_path.read_text(encoding="utf-8").splitlines()[0] if env_path.read_text(encoding="utf-8") else ""
+        parts = first_line.split("=")
+        if len(parts) < 2:
+            return default_project_name
+        value = "=".join(parts[1:]).replace('"', "").strip()
+        return value or default_project_name
+    except Exception:
+        return default_project_name
+
+
 def extract_features():
     """
-    将 root_feature_features.zip 解压到 behavior_packs/juumii_sky/features 目录
+    将 root_feature_features.zip 解压到 behavior_packs/<命名空间>/features 目录
+    命名空间来源：项目根目录 .env（与 TS 工具一致）
     """
     # 获取项目根目录（当前脚本所在目录的上一级）
     script_dir = Path(__file__).parent
     project_root = script_dir.parent
     
     zip_file = project_root / 'root_feature_features.zip'
-    target_dir = project_root / 'behavior_packs' / 'juumii_sky'
+    project_name = get_project_name(project_root)
+    target_dir = project_root / 'behavior_packs' / project_name
     
     # 检查 zip 文件是否存在
     if not zip_file.exists():
