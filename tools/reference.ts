@@ -8,7 +8,8 @@ import {
     writeJson,
     ensureDir,
     readText,
-    writeText
+    writeText,
+    NAME_SPACE
 } from './utils';
 
 /**
@@ -83,6 +84,33 @@ export function entityIdRefs(): void {
     const flatEntityIds = flattenMapping(entityIds);
     const flatPath = path.join(SCRIPTS_DIR, "json", "entity_ids.json");
     writeJson(flatPath, flatEntityIds);
+}
+
+export function blockIdRefs(): void {
+    const blockIds: any = {};
+    const blockFiles = rglob('.*\\.block\\.json$', path.join(BEHAVIOR_PACK_DIR, "blocks"));
+    for (const blockFile of blockFiles) {
+        try {
+            const blockData = readJson(blockFile);
+            const blockId = blockData["minecraft:block"].description.identifier;
+            const rel = path.relative(path.join(BEHAVIOR_PACK_DIR, "blocks"), blockFile).replace(/\\/g, '/');
+            const nameWithoutSuffix = rel.replace(/\.block\.json$/, '');
+            const keys = nameWithoutSuffix.split('/').filter(Boolean);
+            if (keys.length > 0) {
+                setNestedValue(blockIds, keys, blockId);
+            }
+        }
+        catch (error) {
+            console.error(`读取方块文件失败 ${blockFile}: ${error}`);
+        }
+    }
+    const treePath = path.join(SCRIPTS_DIR, "json", "block_tree.json");
+    ensureDir(path.dirname(treePath));
+    writeJson(treePath, blockIds);
+
+    const flatBlockIds = flattenMapping(blockIds);
+    const flatPath = path.join(SCRIPTS_DIR, "json", "block_ids.json");
+    writeJson(flatPath, flatBlockIds);
 }
 
 /**
@@ -327,8 +355,56 @@ export function attachableAnimationsRefs(): void {
     console.log(`已生成 attachable_animations.json，共 ${Object.keys(attAnimations).length} 个实体`);
 }
 
+/**
+ * 生成结构文件（.mcstructure）ID 引用
+ * 规则：
+ * - 命名空间为 behavior_packs 下 structures 文件夹的第一层子文件夹名
+ * - 名称为结构文件名（不含扩展名）
+ * 例如：
+ * - behavior_packs/…/structures/ns_gl/boss_alex_base.mcstructure
+ *   -> ID 为 ns_gl:boss_alex_base
+ */
+export function mcstructureRefs(): void {
+    const structuresRoot = path.join(BEHAVIOR_PACK_DIR, "structures");
+    const tree: any = {};
+
+    const files = rglob('.*\\.mcstructure$', structuresRoot);
+    for (const file of files) {
+        try {
+            const rel = path.relative(structuresRoot, file).replace(/\\/g, "/");
+            const parts = rel.split("/").filter(Boolean);
+            if (parts.length === 0) continue;
+
+            // 第一段为命名空间
+            const namespace = parts[0];
+            const fileName = parts[parts.length - 1];
+            const baseName = fileName.replace(/\.mcstructure$/, "");
+
+            const id = `${namespace}:${baseName}`;
+
+            // 使用 setNestedValue 生成树结构：
+            // [namespace, ...(中间子目录), baseName] -> id
+            const middle = parts.slice(1, -1);
+            const keys = [namespace, ...middle, baseName];
+            setNestedValue(tree, keys, id);
+        } catch (error) {
+            console.error(`读取结构文件失败 ${file}: ${error}`);
+        }
+    }
+
+    const treePath = path.join(SCRIPTS_DIR, "json", "structure_tree.json");
+    ensureDir(path.dirname(treePath));
+    writeJson(treePath, tree);
+
+    const flatIds = flattenMapping(tree);
+    const flatPath = path.join(SCRIPTS_DIR, "json", "structure_ids.json");
+    writeJson(flatPath, flatIds);
+}
+
 export function batchDataRefs(): void {
     const data = readText("tools/data.ts").split("\n");
+    // 在开头写入命名空间
+    data.unshift(`export const NAME_SPACE = "${NAME_SPACE}"`);
     writeText(path.join(SCRIPTS_DIR, "data.ts"), data.join("\n"));
 }
 
@@ -338,7 +414,9 @@ export function batchDataRefs(): void {
 export async function main(): Promise<void> {
     itemIdRefs();
     entityIdRefs();
+    blockIdRefs();
     animationIdRefs();
+    mcstructureRefs();
     particleIdRefs();
     soundIdRefs();
     entityAnimationsRefs();

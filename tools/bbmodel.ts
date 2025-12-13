@@ -5,99 +5,12 @@ import {
     RESOURCE_PACK_DIR,
     SCRIPTS_DIR,
     NAME_SPACE,
+    rglob,
     writeJson,
     readJson,
     ensureDir,
     TOOLS_DIR
 } from './utils';
-
-// 部署状态文件路径
-const OUTPUTS_DIR = path.join(TOOLS_DIR, 'outputs');
-const DEPLOY_STATE_FILE = path.join(OUTPUTS_DIR, 'bbmodel_deploy_state.json');
-
-// 部署时间阈值（毫秒），默认 1 秒
-const DEPLOY_TIME_THRESHOLD = 1000;
-
-/**
- * 部署状态接口
- */
-interface DeployState {
-    [filePath: string]: {
-        lastDeployTime: number;  // 上次部署时间戳
-        lastModifyTime: number;  // 部署时文件的修改时间
-    };
-}
-
-/**
- * 读取部署状态
- */
-function loadDeployState(): DeployState {
-    try {
-        if (fs.existsSync(DEPLOY_STATE_FILE)) {
-            return readJson(DEPLOY_STATE_FILE);
-        }
-    } catch (error) {
-        console.log(`⚠️ 读取部署状态失败: ${error}`);
-    }
-    return {};
-}
-
-/**
- * 保存部署状态
- */
-function saveDeployState(state: DeployState): void {
-    try {
-        ensureDir(OUTPUTS_DIR);
-        writeJson(DEPLOY_STATE_FILE, state);
-    } catch (error) {
-        console.log(`⚠️ 保存部署状态失败: ${error}`);
-    }
-}
-
-/**
- * 检查文件是否需要部署
- */
-function needsDeploy(bbmodelFile: string, deployState: DeployState, force: boolean): boolean {
-    if (force) {
-        return true;
-    }
-
-    try {
-        const stats = fs.statSync(bbmodelFile);
-        const currentMtime = stats.mtimeMs;
-        const state = deployState[bbmodelFile];
-
-        if (!state) {
-            // 未记录过部署状态，需要部署
-            return true;
-        }
-
-        // 检查文件修改时间是否晚于上次部署时记录的修改时间
-        if (currentMtime > state.lastModifyTime + DEPLOY_TIME_THRESHOLD) {
-            return true;
-        }
-
-        return false;
-    } catch (error) {
-        // 文件不存在或读取失败，默认需要部署
-        return true;
-    }
-}
-
-/**
- * 更新部署状态
- */
-function updateDeployState(bbmodelFile: string, deployState: DeployState): void {
-    try {
-        const stats = fs.statSync(bbmodelFile);
-        deployState[bbmodelFile] = {
-            lastDeployTime: Date.now(),
-            lastModifyTime: stats.mtimeMs
-        };
-    } catch (error) {
-        console.log(`⚠️ 更新部署状态失败 ${bbmodelFile}: ${error}`);
-    }
-}
 
 /**
  * 列出所有bbmodel文件
@@ -1082,19 +995,16 @@ function deployBbmodel(bbmodelFile: string): void {
 
 /**
  * 设置所有bbmodel文件
- * @param force 是否强制部署所有文件（忽略部署状态）
  */
-export function setupBbmodels(force: boolean = false): void {
-    console.log(`开始处理bbmodel文件... ${force ? '（强制全部部署）' : '（增量部署）'}`);
+export function setupBbmodels(): void {
+    console.log('开始处理bbmodel文件...（全量部署）');
     console.log('='.repeat(60));
 
     const bbmodelFiles = listBbmodelFiles();
     const ignores: string[] = [];
-    const deployState = loadDeployState();
 
     let totalFiles = 0;
     let deployedFiles = 0;
-    let skippedFiles = 0;
 
     for (const bbmodelFile of bbmodelFiles) {
         totalFiles++;
@@ -1108,19 +1018,11 @@ export function setupBbmodels(force: boolean = false): void {
         // 先执行 setupBasic（这个总是需要执行以保证基本信息正确）
         setupBasic(bbmodelFile);
 
-        // 检查是否需要部署
-        if (needsDeploy(bbmodelFile, deployState, force)) {
-            console.log(`🚀 部署: ${basename}`);
-            deployBbmodel(bbmodelFile);
-            updateDeployState(bbmodelFile, deployState);
-            deployedFiles++;
-        } else {
-            skippedFiles++;
-        }
+        // 全量部署：所有文件每次都重新导出
+        console.log(`🚀 部署: ${basename}`);
+        deployBbmodel(bbmodelFile);
+        deployedFiles++;
     }
-
-    // 保存部署状态
-    saveDeployState(deployState);
 
     // 生成配置文件（总是需要）
     setupBbmodelJson();
@@ -1129,19 +1031,11 @@ export function setupBbmodels(force: boolean = false): void {
     console.log('处理完成！');
     console.log(`总计: ${totalFiles} 个文件`);
     console.log(`已部署: ${deployedFiles} 个文件`);
-    console.log(`已跳过: ${skippedFiles} 个文件`);
+    console.log('已跳过: 0 个文件（全量部署）');
     console.log('='.repeat(60));
 }
 
 // 如果直接运行此文件
 if (require.main === module) {
-    // 检查命令行参数
-    const args = process.argv.slice(2);
-    const force = args.includes('--force') || args.includes('-f');
-
-    if (force) {
-        console.log('💪 检测到 --force 参数，将强制部署所有文件\n');
-    }
-
-    setupBbmodels(force);
+    setupBbmodels();
 }

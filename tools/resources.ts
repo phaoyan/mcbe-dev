@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import {
     BEHAVIOR_PACK_DIR,
     RESOURCE_PACK_DIR,
@@ -104,6 +105,99 @@ export function setupItemTextureJson(): void {
     writeJson(itemTexturePath, itemTextureJson);
 }
 
+export function setupTerrainTextureJson(): void {
+    const terrainTexturePath = path.join(RESOURCE_PACK_DIR, "textures", "terrain_texture.json");
+
+    if (!fs.existsSync(terrainTexturePath)) {
+        console.warn(`地形纹理配置文件不存在: ${terrainTexturePath}`);
+        return;
+    }
+
+    const terrainTextureJson = readJson(terrainTexturePath);
+    if (!terrainTextureJson.texture_data) {
+        terrainTextureJson.texture_data = {};
+    }
+
+    const [teamName, projName] = NAME_SPACE.split('_', 2);
+    const blocksDir = path.join(BEHAVIOR_PACK_DIR, "blocks");
+    const texturesDir = path.join(RESOURCE_PACK_DIR, "textures");
+
+    // 收集所有方块文件中使用的纹理引用
+    const textureRefs = new Set<string>();
+
+    if (fs.existsSync(blocksDir)) {
+        const blockFiles = rglob('.*\\.block\\.json$', blocksDir);
+        for (const blockFile of blockFiles) {
+            try {
+                const blockData = readJson(blockFile);
+                const block = blockData["minecraft:block"];
+                const components = block && block.components;
+                const materialInstances = components && components["minecraft:material_instances"];
+
+                if (materialInstances && typeof materialInstances === 'object') {
+                    // 遍历所有材质实例（如 "*", "up", "down" 等）
+                    for (const key in materialInstances) {
+                        const instance = materialInstances[key];
+                        if (instance && typeof instance.texture === 'string') {
+                            textureRefs.add(instance.texture);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(`处理方块文件失败 ${blockFile}: ${error}`);
+            }
+        }
+    }
+
+    // 为每个纹理引用查找对应的PNG文件并添加到texture_data
+    for (const textureRef of textureRefs) {
+        // 解析纹理引用：格式为 "namespace:texture_name" 或 "namespace:path/to/texture"
+        let textureName = textureRef.trim();
+        const colonIndex = textureName.indexOf(':');
+        if (colonIndex >= 0) {
+            textureName = textureName.substring(colonIndex + 1);
+        }
+
+        // 尝试查找对应的PNG文件
+        const candidates: string[] = [];
+
+        // 如果textureName已经包含路径分隔符
+        if (textureName.includes('/')) {
+            candidates.push(path.join(texturesDir, `${textureName}.png`));
+            candidates.push(path.join(texturesDir, teamName, projName, `${textureName}.png`));
+        } else {
+            // 尝试多个可能的路径
+            candidates.push(path.join(texturesDir, `${textureName}.png`));
+            candidates.push(path.join(texturesDir, teamName, projName, `${textureName}.png`));
+            candidates.push(path.join(texturesDir, teamName, projName, "blocks", `${textureName}.png`));
+            candidates.push(path.join(texturesDir, teamName, projName, "common", `${textureName}.png`));
+        }
+
+        // 查找存在的PNG文件
+        let foundTexturePath: string | null = null;
+        for (const candidate of candidates) {
+            if (fs.existsSync(candidate)) {
+                foundTexturePath = candidate;
+                break;
+            }
+        }
+
+        if (foundTexturePath) {
+            // 计算相对于textures目录的路径（不含.png扩展名）
+            const relativePath = path.relative(texturesDir, foundTexturePath);
+            const texturePath = relativePath.replace(/\\/g, '/').replace(/\.png$/, '');
+
+            // 添加到texture_data，使用textureRef作为key
+            terrainTextureJson.texture_data[textureRef] = {
+                textures: [`textures/${texturePath}`]
+            };
+        } else {
+            console.warn(`未找到纹理文件: ${textureRef}，尝试的路径: ${candidates.join(', ')}`);
+        }
+    }
+
+    writeJson(terrainTexturePath, terrainTextureJson);
+}
 /**
  * 部署物品纹理
  */
@@ -173,17 +267,90 @@ export function setupSoundsDefinition(): void {
 }
 
 /**
+ * 将ID转换为可读的名称
+ * 例如: "armor_arata_suit_1" -> "Armor Arata Suit 1"
+ */
+function idToDisplayName(id: string): string {
+    // 移除命名空间前缀（如果有）
+    let name = id;
+    const colonIndex = name.indexOf(':');
+    if (colonIndex >= 0) {
+        name = name.substring(colonIndex + 1);
+    }
+
+    // 将下划线替换为空格，并将每个单词首字母大写
+    return name
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
+
+/**
+ * 生成语言文件（en_US.lang）
+ */
+export function generateLangFile(): void {
+    const itemIdsPath = path.join(SCRIPTS_DIR, "json", "item_ids.json");
+    const entityIdsPath = path.join(SCRIPTS_DIR, "json", "entity_ids.json");
+    const targetPath = path.join(TOOLS_DIR, "outputs", "en_US.lang");
+
+    ensureDir(path.dirname(targetPath));
+
+    const lines: string[] = [];
+
+    // 读取物品ID
+    if (fs.existsSync(itemIdsPath)) {
+        try {
+            const itemIds = readJson(itemIdsPath);
+            const itemKeys = Object.keys(itemIds).sort();
+
+            for (const itemId of itemKeys) {
+                const displayName = idToDisplayName(itemId);
+                lines.push(`item.${itemId}=${displayName}`);
+            }
+        } catch (error) {
+            console.error(`读取物品ID文件失败: ${error}`);
+        }
+    }
+
+    // 读取实体ID
+    if (fs.existsSync(entityIdsPath)) {
+        try {
+            const entityIds = readJson(entityIdsPath);
+            const entityKeys = Object.keys(entityIds).sort();
+
+            // 添加空行分隔
+            if (lines.length > 0) {
+                lines.push('');
+            }
+
+            for (const entityId of entityKeys) {
+                const displayName = idToDisplayName(entityId);
+                // 实体名称
+                lines.push(`entity.${entityId}.name=${displayName}`);
+                // spawn_egg名称
+                lines.push(`item.spawn_egg.entity.${entityId}.name=${displayName}`);
+            }
+        } catch (error) {
+            console.error(`读取实体ID文件失败: ${error}`);
+        }
+    }
+
+    // 写入文件
+    writeText(targetPath, lines.join('\n'));
+    console.log(`语言文件已生成: ${targetPath}`);
+}
+
+/**
  * 主函数
  */
 export async function main(): Promise<void> {
     generateItemTextureList();
     setupItemTextureJson();
+    setupTerrainTextureJson();
     deployItemTexture();
     setupSoundsDefinition();
+    generateLangFile();
 }
-
-// 添加fs导入
-import * as fs from 'fs';
 
 // 如果直接运行此文件
 if (require.main === module) {

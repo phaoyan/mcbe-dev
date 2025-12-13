@@ -1082,42 +1082,7 @@ async function checkSingleBbmodelAsync(
 }
 
 /**
- * 比较两个文件是否需要更新（异步版本）
- * @returns true 表示需要复制/更新，false 表示文件相同无需更新
- */
-async function shouldCopyFileAsync(sourcePath: string, targetPath: string): Promise<boolean> {
-    try {
-        const [sourceStats, targetStats] = await Promise.all([
-            fs.promises.stat(sourcePath),
-            fs.promises.stat(targetPath).catch(() => null)
-        ]);
-
-        // 如果目标文件不存在，需要复制
-        if (!targetStats) {
-            return true;
-        }
-
-        // 比较文件大小
-        if (sourceStats.size !== targetStats.size) {
-            return true;
-        }
-
-        // 比较修改时间（允许1秒的误差，因为文件系统时间戳精度问题）
-        const timeDiff = Math.abs(sourceStats.mtime.getTime() - targetStats.mtime.getTime());
-        if (timeDiff > 1000) {
-            return true;
-        }
-
-        // 文件大小和修改时间都相同，可以跳过
-        return false;
-    } catch (error) {
-        // 如果出错，为安全起见选择复制
-        return true;
-    }
-}
-
-/**
- * 复制bbpack文件（异步优化版本）
+ * 复制bbpack文件（异步版本，始终全量复制）
  */
 export async function copyBbpackFiles(): Promise<void> {
     const t0 = __prof.start();
@@ -1125,7 +1090,7 @@ export async function copyBbpackFiles(): Promise<void> {
     const particlesTargetDir = path.join(RESOURCE_PACK_DIR, "particles");
     ensureDir(particlesTargetDir);
 
-    console.log("开始智能复制 particles 目录中的 particle 文件...");
+    console.log("开始复制 particles 目录中的 particle 文件（全量部署）...");
     console.log("=".repeat(60));
 
     // 1. 获取 particles 目录中的所有粒子文件
@@ -1155,23 +1120,11 @@ export async function copyBbpackFiles(): Promise<void> {
         }
     }
 
-    // 4. 批量检查哪些文件需要复制（并行化 stat 调用）
-    const tCheck = __prof.start();
-    const filesToProcess = await Promise.all(
-        Array.from(sourceFiles.entries()).map(async ([basename, sourcePath]) => {
-            const targetPath = path.join(particlesTargetDir, basename);
-            const isNew = !existingTargetFiles.has(basename);
-            const needsCopy = await shouldCopyFileAsync(sourcePath, targetPath);
-            return { basename, sourcePath, targetPath, isNew, needsCopy };
-        })
-    );
-    __prof.end('copyBbpack_checkFiles', tCheck);
-
-    // 5. 并行复制文件（限制并发数避免文件句柄耗尽）
+    // 4. 全量复制所有源文件（限制并发数避免文件句柄耗尽）
+    const filesToProcess = Array.from(sourceFiles.entries());
     const BATCH_SIZE = 20;
     let copiedCount = 0;
     let updatedCount = 0;
-    let skippedCount = 0;
 
     console.log("\n📁 处理particle文件...");
 
@@ -1181,22 +1134,20 @@ export async function copyBbpackFiles(): Promise<void> {
     for (let i = 0; i < filesToProcess.length; i += BATCH_SIZE) {
         const batch = filesToProcess.slice(i, i + BATCH_SIZE);
         await Promise.all(
-            batch.map(async ({ basename, sourcePath, targetPath, isNew, needsCopy }) => {
-                if (needsCopy) {
-                    try {
-                        await fs.promises.copyFile(sourcePath, targetPath);
-                        if (isNew) {
-                            copyOperations.push({ type: '新增', file: basename });
-                            copiedCount++;
-                        } else {
-                            copyOperations.push({ type: '更新', file: basename });
-                            updatedCount++;
-                        }
-                    } catch (error) {
-                        copyOperations.push({ type: '失败', file: basename });
+            batch.map(async ([basename, sourcePath]) => {
+                const targetPath = path.join(particlesTargetDir, basename);
+                const isNew = !existingTargetFiles.has(basename);
+                try {
+                    await fs.promises.copyFile(sourcePath, targetPath);
+                    if (isNew) {
+                        copyOperations.push({ type: '新增', file: basename });
+                        copiedCount++;
+                    } else {
+                        copyOperations.push({ type: '更新', file: basename });
+                        updatedCount++;
                     }
-                } else {
-                    skippedCount++;
+                } catch (error) {
+                    copyOperations.push({ type: '失败', file: basename });
                 }
             })
         );
@@ -1238,11 +1189,11 @@ export async function copyBbpackFiles(): Promise<void> {
 
     // 7. 输出统计信息
     console.log("\n" + "=".repeat(60));
-    console.log("智能复制完成！");
+    console.log("复制完成！");
     console.log(`📊 处理统计:`);
     console.log(`  ➕ 新增文件: ${copiedCount} 个`);
     console.log(`  🔄 更新文件: ${updatedCount} 个`);
-    console.log(`  ⏭️  跳过文件: ${skippedCount} 个 (未修改)`);
+    console.log(`  ⏭️  跳过文件: 0 个（全量复制）`);
     console.log(`  🗑️  删除文件: ${deletedCount} 个 (已过期)`);
     console.log(`  📁 总共: ${sourceFiles.size} 个源文件`);
     console.log(`目标路径: ${particlesTargetDir}`);

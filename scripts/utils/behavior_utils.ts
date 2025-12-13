@@ -717,7 +717,7 @@ export class BehaviorTemplates {
                 name: `Skill_${skill.id}`,
                 action: (entity: Entity) => {
                     const canCD = actions.skill.checkCooldown(skill.id, skill.cooldown)(entity);
-                    const canFilter = skill.filter(entity);
+                    const canFilter = DPUtils.store().mob_skill_ignore_filter.curr(entity) ? true : skill.filter(entity);
                     if (!canCD || !canFilter) return NodeState.FAILURE;
                     return actions.skill.execute(skill)(entity);
                 }
@@ -758,10 +758,6 @@ export class BehaviorTemplates {
             .build();
     }
 
-    static pet() {
-
-    }
-
 }
 
 export class BehaviorTools {
@@ -769,14 +765,19 @@ export class BehaviorTools {
         const target = EntityQr.entities(entity, { dist: dist, types: [MinecraftEntityTypes.Player], ignoreUntargetable: ignoreUntargetable }).first()
         if (!target || (target as Player).getGameMode() === GameMode.Creative) return NodeState.FAILURE
         EntityOp.create().setTargetedBy(entity).run(target)
+        DPUtils.store().mob_target.set(entity, target.id);
         entity.triggerEvent(EntityEventIds.Fight)
         return NodeState.SUCCESS
     }
 
-    static findEntityTarget(entity: Entity, params: EntityQueryParams): NodeState {
+    static findEntityTarget(entity: Entity, params: EntityQueryParams | EntityQueryParams[]): NodeState {
+        if (!Array.isArray(params)) {
+            params = [params]
+        }
         const target = EntityQr.entities(entity, params).first()
         if (!target) return NodeState.FAILURE
         EntityOp.create().setTargetedBy(entity).run(target)
+        DPUtils.store().mob_target.set(entity, target.id);
         entity.triggerEvent(EntityEventIds.Fight)
         return NodeState.SUCCESS
     }
@@ -813,6 +814,10 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
         DPUtils.store().mob_target.set(entity, undefined);
     }
 };
+
+world.afterEvents.entityHitEntity.subscribe(({ hitEntity, damagingEntity }) => {
+    DPUtils.store().mob_hurt_by.set(hitEntity, damagingEntity.id);
+})
 
 world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
     eventHandlers[eventId]?.(entity);

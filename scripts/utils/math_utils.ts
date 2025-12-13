@@ -253,8 +253,10 @@ export class VecUtils {
         return VecUtils
     }
 
-    static moveFYR(entity: Entity, fyr: number[]){
-        return VecUtils.start(entity).moveF(fyr[0] ?? 0).moveY(fyr[1] ?? 0).moveR(fyr[2] ?? 0).end()
+    static moveFYR(entity: Entity, fyr: number[], moveYToBlock: boolean = false){
+        const res = VecUtils.start(entity).moveF(fyr[0] ?? 0).moveY(fyr[1] ?? 0).moveR(fyr[2] ?? 0).end()
+        if (moveYToBlock) return VecUtils.moveYToBlock().end()
+        return res
     }
 
     static moveView(dist: number) {

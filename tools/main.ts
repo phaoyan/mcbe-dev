@@ -89,9 +89,8 @@ async function main(): Promise<void> {
             }
 
             case 'bbmodel': {
-                const force = args.includes('--force') || args.includes('-f');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels(force);
+                setupBbmodels();
                 console.log('✅ BBModel 文件处理完成');
                 break;
             }
@@ -143,7 +142,6 @@ async function main(): Promise<void> {
 
             case 'all': {
                 console.log('🚀 开始执行完整的资源生成流程...');
-                const force = args.includes('--force') || args.includes('-f');
 
                 // 1. 处理bbpack文件
                 console.log('📁 处理bbpack文件...');
@@ -153,7 +151,7 @@ async function main(): Promise<void> {
                 // 2. 处理bbmodel文件
                 console.log('🎨 处理bbmodel文件...');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels(force);
+                setupBbmodels();
 
                 // 3. 生成behavior pack资源
                 console.log('⚙️  生成behavior pack资源...');
@@ -185,12 +183,10 @@ async function main(): Promise<void> {
             }
 
             case 'from-bbmodel': {
-                const force = args.includes('--force') || args.includes('-f');
-
                 // 2. 处理bbmodel文件
                 console.log('🎨 处理bbmodel文件...');
                 const { setupBbmodels } = await import('./bbmodel');
-                setupBbmodels(force);
+                setupBbmodels();
 
                 // 3. 生成behavior pack资源
                 console.log('⚙️  生成behavior pack资源...');

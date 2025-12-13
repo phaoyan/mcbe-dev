@@ -14,6 +14,7 @@ export const dpList = {
     player_animation_reverse: "minecraft_dev:player_animation_reverse",
     player_animation_slot: "minecraft_dev:player_animation_slot",
     player_prev_itembind: "minecraft_dev:player_prev_itembind",
+    player_prev_state: "minecraft_dev:player_prev_state",
     player_is_onground: "minecraft_dev:player_is_onground",
     player_is_jumping: "minecraft_dev:player_is_jumping",
     player_is_running: "minecraft_dev:player_is_running",
@@ -33,6 +34,8 @@ export const dpList = {
     world_dp_timeline: "minecraft_dev:world_dp_timeline",
     world_dp_activate: "minecraft_dev:world_dp_activate",
     world_behavior_map: "minecraft_dev:world_behavior_map",
+    world_show_damage: "minecraft_dev:world_show_damage",
+    world_disable_block_ticking: "minecraft_dev:world_disable_block_ticking",
 
 
     mob_spawning: "minecraft_dev:mob_spawning",
@@ -45,7 +48,9 @@ export const dpList = {
     mob_dead: "minecraft_dev:mob_dead",
     mob_hurt: "minecraft_dev:mob_hurt",
     mob_hurt_counter: "minecraft_dev:mob_hurt_counter",
+    mob_hurt_by: "minecraft_dev:mob_hurt_by",
     mob_blackboard: "minecraft_dev:mob_blackboard", // 行为树blackboard数据
+    mob_skill_ignore_filter: "minecraft_dev:mob_skill_ignore_filter",
 
     npc_initiator: "minecraft_dev:npc_initiator",
 
@@ -67,4 +72,6 @@ export const dpList = {
     effect_die: "minecraft_dev:effect_die",
     effect_damage_absorption: "minecraft_dev:effect_damage_absorption",
     effect_camera_set: "minecraft_dev:effect_camera_set",
+    effect_camera_tpp: "minecraft_dev:effect_camera_tpp",
+    effect_speed: "minecraft_dev:effect_speed",
 }

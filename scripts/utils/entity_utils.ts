@@ -3,13 +3,14 @@ import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, Telepo
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
-import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
+import { MinecraftCameraPresetsTypes, MinecraftEffectTypes, MinecraftEntityTypes } from "@minecraft/vanilla-data";
 import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
 import { BlackboardManager } from "./behavior_utils";
 import animationLength from "../json/animation_length.json"
 import { CameraMoveOptions } from "./effect_utils";
+import { ItemUtils } from "./item_utils";
 
 export type ComboData = {
     duration: number
@@ -158,21 +159,42 @@ export class EntityOp {
         })
     }
 
+    playParticle(particle: string, delay: number = 0, offset: number[] = [0, 0, 0]): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            TimeUtils.timeout(() => {
+                if (DPUtils.store().mob_dead.curr(entity, false)) return
+                entity.dimension.spawnParticle(particle, Vector3Utils.add(entity.location, { x: offset[0], y: offset[1], z: offset[2] }))
+            }, delay)
+        })
+    }
+
     playSound(soundId: string, location?: Vector3, delay: number = 3, volume: number = 1, pitch: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
-            TimeUtils.timeout(()=>{
+            TimeUtils.timeout(() => {
                 entity.dimension.playSound(soundId, location ?? entity.location, { volume, pitch })
             }, delay)
         })
     }
 
-    dead(animation: string, removeTicks?: number): EntityOp {
+    deadAnimation(animation: string, removeTicks?: number): EntityOp {
         removeTicks = removeTicks ?? (Math.floor((animationLength[animation as keyof typeof animationLength] ?? 1) * 20) - 1)
         return this._enqueue((entity: Entity) => {
             entity.clearVelocity()
             entity.addEffect(MinecraftEffectTypes.Slowness, 2000, { amplifier: 255, showParticles: false })
             entity.playAnimation(animation)
             EntityOp.create().dizzy(2).remove(removeTicks).run(entity)
+        })
+    }
+
+    dropItems(items: { item: ItemUtils, probability: number }[], delay: number = 0): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            TimeUtils.timeout(() => {
+                items.forEach(item => {
+                    if (Math.random() < item.probability) {
+                        entity.dimension.spawnItem(item.item.get(), entity.location)
+                    }
+                })
+            }, delay)
         })
     }
 
@@ -188,9 +210,9 @@ export class EntityOp {
         })
     }
 
-    effect(effect: string, ticks: number, options?: EntityEffectOptions): EntityOp {
+    eff(effect: string, ticks: number | null, amp: number, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
-            entity.addEffect(effect, ticks, options)
+            entity.addEffect(effect, ticks ?? 20000000, { amplifier: amp === 0 ? 1: amp, showParticles: showParticles })
         })
     }
 
@@ -317,6 +339,16 @@ export class EntityOp {
         })
     }
 
+    cameraTpp(ticks: number): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            if (entity instanceof Player) {
+                DPUtils.store().effect_camera_tpp.cancel(entity)
+                DPUtils.store().effect_camera_tpp.set(entity, true)
+                DPUtils.store().effect_camera_tpp.set(entity, false, false, ticks)
+            }
+        })
+    }
+
     cameraShake(ticks: number, intensity: number, mode: "positional" | "rotational"): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
@@ -372,7 +404,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 DPUtils.store().effect_camera_set.cancel(entity)
-                DPUtils.store().player_camera_reset.set(entity, true, false, ticks)
+                DPUtils.store().player_camera_reset.set(entity, (curr:boolean)=>!curr, false, ticks)
             }
         })
     }
@@ -426,7 +458,7 @@ export class EntityOp {
         })
     }
 
-    removeEffect(effect: string): EntityOp {
+    rmEff(effect: string): EntityOp {
         return this._enqueue((entity: Entity) => {
             if (
                 effect === "superarmor"
@@ -482,6 +514,18 @@ export class EntityOp {
         })
     }
 
+    warn(prompt: string, dist: number = 32){
+        return this._enqueue((entity: Entity) => {
+            entity.dimension.getEntities({
+                location: entity.location,
+                maxDistance: dist,
+                type: MinecraftEntityTypes.Player,
+            }).forEach(player=>{
+                (player as Player).onScreenDisplay.setActionBar(prompt)
+            })
+        })
+    }
+
     knockbackBaseView(viewEntity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOp {
         if (!viewEntity) return this
         return this._enqueue((entity: Entity) => {
@@ -517,11 +561,12 @@ export class EntityOp {
         y: number
         f?: number
         duration: number
-        delay?: number
+        delay?: number,
+        airf?: number
     }): EntityOp {
-        const { y, f = 0, duration, delay = 5 } = data
+        const { y, f = 0, duration, delay = 5, airf = 0.05 } = data
         return this._enqueue((entity: Entity) => {
-            EntityOp.create().knockbackBaseView(entity, f, y).at(delay).knockbackBaseView(entity, 0, 0.05, 0, duration - delay).run(entity)
+            EntityOp.create().knockbackBaseView(entity, f, y).at(delay).knockbackBaseView(entity, airf, 0.05, 0, duration - delay).run(entity)
         })
     }
 
@@ -730,6 +775,7 @@ export class EntityQr {
         const query = new EntityQr()
         query._target = entity
         query._query = (target: Entity) => {
+            if (!target.isValid) return []
             const res: Entity[] = []
             options.forEach((option) => {
                 const {
@@ -777,6 +823,7 @@ export class EntityQr {
                 entities = entities.filter(filter)
                     .filter(e => self ? true : e.id !== target.id)
                     .filter(e => ignoreUntargetable ? true : !DPUtils.store().effect_untargetable.curr(e, false))
+                    .filter(e => !e.hasComponent("minecraft:npc"))
                     .slice(0, limit)
                 if (!friendlyFire) {
                     entities = entities.filter(e => {

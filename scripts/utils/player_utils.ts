@@ -4,7 +4,6 @@ import { EntityQr } from "./entity_utils";
 import entityTree from "../json/entity_tree.json"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
-import { OpList } from "../lists/op_list";
 
 const INPUT_PATTERN_LENGTH = 3
 
@@ -36,14 +35,14 @@ export const InputLockTypes = {
 }
 
 export const DefaultPlayerOperationMap: PlayerOperationMap = {
-    lc: OpList.None,
-    rca: OpList.None,
-    rcr: OpList.None,
-    jump: OpList.None,
-    sneak: OpList.None,
-    stw: OpList.None,
-    run: OpList.None,
-    rtw: OpList.None,
+    lc: "None",
+    rca: "None",
+    rcr: "None",
+    jump: "None",
+    sneak: "None",
+    stw: "None",
+    run: "None",
+    rtw: "None",
 }
 
 const inputDetectionEnable = (player: Entity, type: keyof PlayerOperationMap) => {
@@ -162,7 +161,7 @@ DPUtils.store().player_input_pattern.register((target, curr, prev) => {
     if (inputLock && !inputLock.includes(currInput)) {
         return
     }
-    InputUtils.PlayerOperations[opMap[currInput] ?? OpList.None](target)
+    InputUtils.PlayerOperations[opMap[currInput] ?? "None"](target)
 })
 
 export class InputUtils {
@@ -330,7 +329,7 @@ export class CDUtils {
             skillId: string,
             duration?: number,
             filter?: (player: Player) => boolean,
-            action: (player: Player) => void,
+            action: (player: Player) => number | void,
         }) {
         const { cooldown, skillId, duration = 0, action, filter } = data
         if (filter && !filter(player)) return
@@ -341,7 +340,7 @@ export class CDUtils {
             return
         }
         const newCooldowns = Object.fromEntries(Object.entries(cooldowns).map(([key]) => [key, system.currentTick + duration]))
-        DPUtils.store().player_skill_cooldowns.set(player, { ...newCooldowns, [skillId]: system.currentTick + cooldown })
-        action(player)
+        const realCd = action(player)
+        DPUtils.store().player_skill_cooldowns.set(player, { ...newCooldowns, [skillId]: system.currentTick + (realCd ?? cooldown) })
     }
 }

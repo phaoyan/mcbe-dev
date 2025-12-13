@@ -94,19 +94,19 @@ export class VoidbindUtils {
             follow,
         } = options
         if (initRotation === "random") {
-            const rot = Math.random() * 360
+            const rot = Math.random()*360
             dimension.runCommand(`summon ${entityId} ${location.x} ${location.y} ${location.z} ${rot} ${rot}`)
         } else if (follow) {
             follow.host.runCommand(`summon ${entityId} ${location.x} ${location.y} ${location.z} ~ ~ `)
         } else {
             dimension.spawnEntity(entityId, location)
         }
-        TimeUtils.timeout(() => {
+        TimeUtils.timeout(()=>{
             const voidbind = dimension.getEntities({
                 location: location,
                 type: entityId,
                 maxDistance: 1,
-            }).filter(e => !DPUtils.store().voidbind_used.curr(e, false))[0]
+            }).filter(e=>!DPUtils.store().voidbind_used.curr(e, false))[0]
             if (!voidbind) return
             DPUtils.store().voidbind_used.set(voidbind, true)
             callback?.(voidbind)
@@ -114,8 +114,8 @@ export class VoidbindUtils {
             !invisible && TimeUtils.timeout(() => voidbind.addEffect(MinecraftEffectTypes.Invisibility, 1, { amplifier: 2 }), delay)
             animation && TimeUtils.timeout(() => voidbind.playAnimation(animation), delay)
             EntityOp.create().remove(duration).run(voidbind)
-            TimeUtils.timeout(() => {
-                try { voidbind.remove() } catch (e) { }
+            TimeUtils.timeout(()=>{
+                try {voidbind.remove()}catch (e) {}
             }, duration)
             if (follow) {
                 TimeUtils.timeseries(() => {

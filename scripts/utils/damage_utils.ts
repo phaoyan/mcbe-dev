@@ -46,27 +46,78 @@ export class DamageUtils {
         }, DEFAULT_ITEM_ATTRIBUTE)
     }
 
-    static tempAttribute(entity: Entity, attribute: DamageAttribute, ticks: number) {
-        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => {
-            return {
-                atk: curr.atk + attribute.atk,
-                def: curr.def + attribute.def,
-                critRate: curr.critRate + attribute.critRate,
-                critDmg: curr.critDmg + attribute.critDmg,
-                atkBonus: [...curr.atkBonus, ...attribute.atkBonus],
-                defBonus: [...curr.defBonus, ...attribute.defBonus]
-            }
-        }, DEFAULT_ENTITY_ATTRIBUTE)
-        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => {
-            return {
-                atk: curr.atk - attribute.atk,
-                def: curr.def - attribute.def,
-                critRate: curr.critRate - attribute.critRate,
-                critDmg: curr.critDmg - attribute.critDmg,
-                atkBonus: curr.atkBonus.filter(bonus => !attribute.atkBonus.some(b => b.id === bonus.id)),
-                defBonus: curr.defBonus.filter(bonus => !attribute.defBonus.some(b => b.id === bonus.id))
-            }
-        }, DEFAULT_ENTITY_ATTRIBUTE, ticks)
+    static setAttribute(entity: Entity, attribute: Partial<DamageAttribute>, ticks?: number) {
+        const attr = {
+            atk: attribute.atk ?? 0,
+            def: attribute.def ?? 0,
+            critRate: attribute.critRate ?? 0,
+            critDmg: attribute.critDmg ?? 0,
+            atkBonus: attribute.atkBonus ?? [],
+            defBonus: attribute.defBonus ?? []
+        }
+
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk + attr.atk,
+            def: curr.def + attr.def,
+            critRate: curr.critRate + attr.critRate,
+            critDmg: curr.critDmg + attr.critDmg,
+            atkBonus: [...curr.atkBonus, ...attr.atkBonus],
+            defBonus: [...curr.defBonus, ...attr.defBonus]
+        }), DEFAULT_ENTITY_ATTRIBUTE)
+        ticks && 
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk - attr.atk,
+            def: curr.def - attr.def,
+            critRate: curr.critRate - attr.critRate,
+            critDmg: curr.critDmg - attr.critDmg,
+            atkBonus: curr.atkBonus.filter(bonus => !attr.atkBonus.some(b => b.id === bonus.id)),
+            defBonus: curr.defBonus.filter(bonus => !attr.defBonus.some(b => b.id === bonus.id))
+        }), DEFAULT_ENTITY_ATTRIBUTE, ticks)
+    }
+
+    static addAtkBonus(entity: Entity, bonus: { id: string, tag: string, bonus: number }[]) {
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk,
+            def: curr.def,
+            critRate: curr.critRate,
+            critDmg: curr.critDmg,
+            atkBonus: [...curr.atkBonus, ...bonus],
+            defBonus: curr.defBonus
+        }), DEFAULT_ENTITY_ATTRIBUTE)
+    }
+
+    static removeAtkBonus(entity: Entity, id: string) {
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk,
+            def: curr.def,
+            critRate: curr.critRate,
+            critDmg: curr.critDmg,
+            atkBonus: curr.atkBonus.filter(b => b.id !== id),
+            defBonus: curr.defBonus
+        }), DEFAULT_ENTITY_ATTRIBUTE)
+    }   
+
+
+    static addDefBonus(entity: Entity, bonus: { id: string, tag: string, bonus: number }[]) {
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk,
+            def: curr.def,
+            critRate: curr.critRate,
+            critDmg: curr.critDmg,
+            atkBonus: curr.atkBonus,
+            defBonus: [...curr.defBonus, ...bonus]
+        }), DEFAULT_ENTITY_ATTRIBUTE)
+    }
+
+    static removeDefBonus(entity: Entity, id: string) {
+        DPUtils.store().damage_attribute.set(entity, (curr: DamageAttribute) => ({
+            atk: curr.atk,
+            def: curr.def,
+            critRate: curr.critRate,
+            critDmg: curr.critDmg,
+            atkBonus: curr.atkBonus,
+            defBonus: curr.defBonus.filter(b => b.id !== id)
+        }), DEFAULT_ENTITY_ATTRIBUTE)
     }
 
     static damageAttribute(entity: Entity) {
@@ -96,7 +147,7 @@ export class DamageUtils {
         const defenderAttribute = this.damageAttribute(defender)
         const attackerAttribute = attacker ? this.damageAttribute(attacker) : DEFAULT_ENTITY_ATTRIBUTE
 
-        // 1. 技能倍率（damageId）暂时假设为1，后续可扩展为根据damageId查表
+        // 1. 技能倍率
         const skillRatio = damageRate
 
         // 2. 攻击力
@@ -153,6 +204,8 @@ export class DamageUtils {
             // 兼容性处理
             defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT)
         }
+
+        DPUtils.store().mob_hurt_by.set(defender, attacker?.id)
 
     }
 }

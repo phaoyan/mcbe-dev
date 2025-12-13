@@ -23,7 +23,9 @@ export const EntityEventIds = {
 
 export const ScriptEventIds = {
     DPList: "event:dp_list",
-    DPListWorld: "event:dp_list_world",
     DPSet: "event:dp_set",
-    DPRest: "event:dp_reset"
+    DPRest: "event:dp_reset",
+    DPListWorld: "event:dp_list_world",
+    DPSetWorld: "event:dp_set_world",
+    DPResetWorld: "event:dp_reset_world",
 }

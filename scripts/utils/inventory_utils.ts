@@ -51,7 +51,7 @@ export class InventoryUtils {
         return items
     }
 
-    static count(target: Entity, typeId: string){
+    static count(target: Entity, typeId: string) {
         let count = 0
         const inventory = this.entity(target)
         if (!inventory) return 0
@@ -63,15 +63,16 @@ export class InventoryUtils {
         return count
     }
 
-    static consume(target: Entity, items: { typeId: string, amount: number }[]) {
+    static consume(target: Entity, items: { typeId: string, count: number }[], consume: boolean = true) {
         const inventory = this.entity(target)
         if (!inventory) return
         for (const item of items) {
             const count = this.count(target, item.typeId)
-            if (count < item.amount) return false
+            if (count < item.count) return false
         }
+        if (!consume) return true
         for (const item of items) {
-            this.remove(target, item.typeId, item.amount)
+            this.remove(target, item.typeId, item.count)
         }
         return true
     }
@@ -144,14 +145,14 @@ export class InventoryUtils {
         return itembinds[DPUtils.curr(target, dpId)]
     }
 
-    static itembinds(data: { 
+    static itembinds(data: {
         itembindId: string,
-        triggers: string | string[], 
-        mapping: (target: Player) => ItemBind 
+        triggers: string | string[],
+        mapping: (target: Player) => ItemBind
     }) {
         const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
         world.afterEvents.worldLoad.subscribe(() => {
-            triggers.forEach(trigger=>{
+            triggers.forEach(trigger => {
                 DPUtils.register(trigger, (target: Entity | ItemStack | World, curr, prev) => {
                     if (prev === curr) return
                     if (!(target instanceof Player)) return
@@ -174,11 +175,10 @@ export class InventoryUtils {
                     currItembind.mainhand?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.mainhand).get(), EquipmentSlot.Mainhand, { onlyOnce: true, override: true })
                     currItembind.offhand?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.offhand).get(), EquipmentSlot.Offhand, { onlyOnce: true, override: true })
 
-                    DPUtils.store().player_prev_itembind.set(target, (curr: any)=>({...curr, [data.itembindId]: currItembind}), {})
+                    DPUtils.store().player_prev_itembind.set(target, (curr: any) => ({ ...curr, [data.itembindId]: currItembind }), {})
                 })
             })
         })
         return InventoryUtils
     }
 }
-

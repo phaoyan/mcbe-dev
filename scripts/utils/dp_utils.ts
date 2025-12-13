@@ -49,15 +49,30 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) 
     sourceEntity.runCommand("say DP Reset Success")
 })
 
+system.afterEvents.scriptEventReceive.subscribe(({ id, message }) => {
+    if (id !== ScriptEventIds.DPSetWorld) return
+    if (message.includes("=")) {
+        const [key, value] = [message.split("=")[0], message.split("=")[1]]
+        DPUtils.set(world, key, value)
+    } else {
+        DPUtils.set(world, message, true)
+    }
+})
+
+system.afterEvents.scriptEventReceive.subscribe(({ id, message }) => {
+    if (id !== ScriptEventIds.DPResetWorld) return
+    DPUtils.set(world, message, undefined)
+})
+
 // Player DP Sync
-system.runInterval(()=>{
-    world.getAllPlayers().forEach(player=>{
+system.runInterval(() => {
+    world.getAllPlayers().forEach(player => {
         DPUtils.store().player_is_jumping.set(player, player.isJumping)
         DPUtils.store().player_is_running.set(player, player.isSprinting)
         DPUtils.store().player_is_sneaking.set(player, player.isSneaking)
         DPUtils.store().player_is_swimming.set(player, player.isSwimming)
         DPUtils.store().player_is_onground.set(player, player.isOnGround)
-        
+
         const equippables = InventoryUtils.equippables(player)
         DPUtils.store().player_offhand.set(player, equippables.getEquipment(EquipmentSlot.Offhand)?.typeId)
         DPUtils.store().player_mainhand.set(player, equippables.getEquipment(EquipmentSlot.Mainhand)?.typeId)
@@ -85,21 +100,6 @@ system.runInterval(() => {
     }, {})
 })
 
-// DP Activate
-system.runInterval(() => {
-    const activate = DPUtils.store().world_dp_activate.curr(world, {})
-    Object.values(activate).forEach((todo: any) => {
-        for (const item of todo) {
-            const entity = world.getEntity(item.e)
-            if (!entity) continue
-            DPUtils.set(entity, item.k, item.v)
-        }
-    })
-    DPUtils.store().world_dp_activate.set(world, (curr: any) => {
-        return Object.fromEntries(Object.entries(curr).filter(([k]) => parseInt(k) > system.currentTick))
-    }, {})
-})
-
 export class DPUtils {
 
     static STORE = { ...dpList, ...dpListV2 }
@@ -112,6 +112,19 @@ export class DPUtils {
         ) as Record<keyof T, U>;
     }
 
+    private static parseRaw(raw: any, placeHolder: any) {
+        if (raw === undefined) return placeHolder
+        if (typeof raw === "number" || typeof raw === "boolean") return raw
+        if (typeof raw === "string") {
+            try {
+                return JSON.parse(raw)
+            } catch {
+                return raw
+            }
+        }
+        return raw
+    }
+
     static store() {
         return this.mapValues(this.STORE, (v, k) => ({
             id: v,
@@ -121,23 +134,39 @@ export class DPUtils {
             set: (target: Entity | ItemStack | World, value: any, placeHolder?: any, delay?: number) => this.set(target, this.STORE[k as keyof typeof dpList], value, placeHolder, delay),
             cancel: (target: Entity | ItemStack | World, startTick?: number) => this.cancel(target, this.STORE[k as keyof typeof dpList], startTick),
             temp: (target: Entity | ItemStack | World, value: any, ticks: number, placeHolder?: any) => this.temp(target, this.STORE[k as keyof typeof dpList], value, ticks, placeHolder),
-            activate: (target: Entity | ItemStack | World, value: any, duration?: number, placeHolder?: any) => this.activate(target, this.STORE[k as keyof typeof dpList], value, duration, placeHolder),
-            deactivate: (target: Entity | ItemStack | World, placeHolder?: any) => this.deactivate(target, this.STORE[k as keyof typeof dpList], placeHolder),
             register: (callback: (target: Entity | ItemStack | World, curr: any, prev: any) => any) => this.register(this.STORE[k as keyof typeof dpList], callback),
         }))
     }
 
     static set(target: Entity | ItemStack | World, key: string, value: any, placeHolder?: any, delay?: number) {
         if (!target || (target instanceof Entity && !target.isValid)) return
-        if (typeof value === "function")
-            value = value(DPUtils.curr(target, key, placeHolder))
-        const prev = this.curr(target, key, placeHolder)  // 获取解析后的之前值，保持类型一致
+
+        if (typeof value === "function") {
+            const currentRaw = target.getDynamicProperty(key)
+            const currentParsed = this.parseRaw(currentRaw, placeHolder)
+            value = value(currentParsed)
+        }
+
         if (!delay) {
-            target.setDynamicProperty(`${key}_prev`, target.getDynamicProperty(key))  // 保存原始值用于prev方法
-            target.setDynamicProperty(key, JSON.stringify(value))
+            let newRaw: string | number | boolean | undefined
+            if (typeof value === "number" || typeof value === "boolean") {
+                newRaw = value
+            } else if (value === undefined) {
+                newRaw = undefined
+            } else {
+                newRaw = JSON.stringify(value)
+            }
+            // 优化：脏检查，值未变则不调用底层 API
+            const currentRaw = target.getDynamicProperty(key)
+            if (currentRaw === newRaw) return
+
+            // 优化：直接复用 currentRaw，避免二次序列化
+            target.setDynamicProperty(`${key}_prev`, currentRaw)
+            target.setDynamicProperty(key, newRaw)
 
             if (key in this.REGISTRATION) {
-                this.REGISTRATION[key].forEach(callback => callback(target, value, prev))
+                const prevParsed = this.parseRaw(currentRaw, placeHolder)
+                this.REGISTRATION[key].forEach(callback => callback(target, value, prevParsed))
             }
         } else {
             if (!(target instanceof Entity)) return
@@ -154,8 +183,8 @@ export class DPUtils {
         if (!(target instanceof Entity)) return
         DPUtils.store().world_dp_timeline.set(world, (curr: any) => {
             const newTimeline = { ...curr }
-            Object.keys(newTimeline).filter(t=>parseInt(t)>=(startTick??system.currentTick)).forEach(t=>{
-                newTimeline[t] = newTimeline[t].filter((item: any)=>!(item.e===target.id && item.k===key))
+            Object.keys(newTimeline).filter(t => parseInt(t) >= (startTick ?? system.currentTick)).forEach(t => {
+                newTimeline[t] = newTimeline[t].filter((item: any) => !(item.e === target.id && item.k === key))
             })
             return newTimeline
         }, {})
@@ -169,38 +198,10 @@ export class DPUtils {
         return DPUtils
     }
 
-    static activate(target: Entity | ItemStack | World, key: string, value: any, duration?: number, placeHolder?: any) {
-        if (!target || (target instanceof Entity && !target.isValid)) return
-        if (!(target instanceof Entity)) return
-        if (typeof value === "function")
-            value = value(DPUtils.curr(target, key, placeHolder))
-
-        DPUtils.store().world_dp_activate.set(world, (curr: any) => {
-            const newTimeline = { ...curr }
-            const newItem = { e: target.id, k: key, v: value }
-            newTimeline[system.currentTick + (duration ?? 99999999)] = [...(newTimeline[system.currentTick + (duration ?? 99999999)] ?? []), newItem]
-            return newTimeline
-        }, {})
-    }
-
-    static deactivate(target: Entity | ItemStack | World, key: string, placeHolder?: any) {
-        if (!target || (target instanceof Entity && !target.isValid)) return
-        if (!(target instanceof Entity)) return
-        DPUtils.store().world_dp_activate.set(world, (curr: any) => {
-            const newTimeline = { ...curr }
-            for (let t of Object.keys(newTimeline)) {
-                newTimeline[t] = newTimeline[t].filter((item: any) => item.e !== target.id || item.k !== key)
-            }
-            return newTimeline
-        }, {})
-        this.set(target, key, placeHolder)
-    }
-
     static curr(target: Entity | ItemStack | World, key: string, placeHolder: any = undefined) {
         if (!target || (target instanceof Entity && !target.isValid)) return placeHolder
         const raw = target.getDynamicProperty(key)
-        if (raw === undefined) return placeHolder
-        return JSON.parse(target.getDynamicProperty(key) as string)
+        return this.parseRaw(raw, placeHolder)
     }
 
     static prev(target: Entity | ItemStack | World, key: string, placeHolder: any) {

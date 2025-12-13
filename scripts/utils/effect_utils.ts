@@ -85,7 +85,6 @@ DPUtils.store().effect_blind.register((entity, curr, prev) => {
     if (!(entity instanceof Entity)) return
     try {
         if (curr) {
-            console.warn("blind on", entity.typeId)
             DPUtils.store().mob_target.set(entity, undefined)
             const target = EntityState.target(entity)
             if (!target) return
@@ -93,7 +92,6 @@ DPUtils.store().effect_blind.register((entity, curr, prev) => {
             DPUtils.store().mob_targeted_by.set(target, (curr: string[]) => (curr ?? []).filter(id => id !== target.id), [])
             entity.triggerEvent(EntityEventIds.BlindOn)
         } else {
-            console.warn("blind off", entity.typeId)
             entity.triggerEvent(EntityEventIds.BlindOff)
             entity.triggerEvent(EntityEventIds.TargetAcquired)
         }
@@ -160,9 +158,16 @@ DPUtils.store().effect_camera_set.register((player, curr, prev) => {
     }
 })
 
-DPUtils.store().player_camera_reset.register((player, curr, prev) => {
+DPUtils.store().player_camera_reset.register((player) => {
+    if (!(player instanceof Player)) return
+    player.camera.clear()
+})
+
+DPUtils.store().effect_camera_tpp.register((player, curr)=>{
     if (!(player instanceof Player)) return
     if (curr) {
+        player.camera.setCamera(MinecraftCameraPresetsTypes.ThirdPerson)
+    } else {
         player.camera.clear()
     }
 })
