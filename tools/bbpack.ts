@@ -1162,28 +1162,38 @@ export async function copyBbpackFiles(): Promise<void> {
         }
     }
 
-    // 6. 并行删除过期文件
-    const filesToDelete = Array.from(existingTargetFiles).filter(
-        basename => !sourceFiles.has(basename)
-    );
+    // 6. （可选）删除过期文件
+    // 默认不做“目标目录与 bbpack 完全镜像”的清理，以免误删用户手动维护的粒子文件。
+    // 如确实需要严格同步，可设置环境变量 BBPACK_PRUNE_PARTICLES=1 或在 tools/main.ts 里通过 --prune-particles 传入。
+    const pruneExpired =
+        (process.env.BBPACK_PRUNE_PARTICLES ?? '').toLowerCase() === '1' ||
+        (process.env.BBPACK_PRUNE_PARTICLES ?? '').toLowerCase() === 'true';
 
     let deletedCount = 0;
     const tDelete = __prof.start();
 
-    if (filesToDelete.length > 0) {
-        console.log("\n🧹 清理过期文件...");
-        await Promise.all(
-            filesToDelete.map(async (basename) => {
-                const targetPath = path.join(particlesTargetDir, basename);
-                try {
-                    await fs.promises.unlink(targetPath);
-                    console.log(`  🗑️  删除: ${basename}`);
-                    deletedCount++;
-                } catch (error) {
-                    console.log(`  ⚠️  删除失败 ${basename}: ${error}`);
-                }
-            })
+    if (pruneExpired) {
+        const filesToDelete = Array.from(existingTargetFiles).filter(
+            basename => !sourceFiles.has(basename)
         );
+
+        if (filesToDelete.length > 0) {
+            console.log("\n🧹 清理过期文件（prune已开启）...");
+            await Promise.all(
+                filesToDelete.map(async (basename) => {
+                    const targetPath = path.join(particlesTargetDir, basename);
+                    try {
+                        await fs.promises.unlink(targetPath);
+                        console.log(`  🗑️  删除: ${basename}`);
+                        deletedCount++;
+                    } catch (error) {
+                        console.log(`  ⚠️  删除失败 ${basename}: ${error}`);
+                    }
+                })
+            );
+        }
+    } else {
+        console.log("\n⏭️  跳过清理过期文件（默认关闭，避免误删手动维护的粒子）");
     }
     __prof.end('copyBbpack_deleteFiles', tDelete);
 
@@ -1359,7 +1369,7 @@ function generateValidAnimationName(name: string, bbmodelName: string): string {
 /**
  * 综合处理bbpack文件 - 包括检查和复制（异步优化版本）
  */
-export async function processBbpackFiles(): Promise<void> {
+export async function processBbpackFiles(options?: { pruneParticles?: boolean }): Promise<void> {
     __setupLogger();
     const t0 = __prof.start();
     console.log("🚀 开始处理bbpack文件...");
@@ -1391,6 +1401,10 @@ export async function processBbpackFiles(): Promise<void> {
 
     console.log("\n📦 第六步：复制bbpack文件");
     console.log("-".repeat(40));
+    // 让 main.ts 能显式控制是否 prune；不传则保持默认（false）
+    if (typeof options?.pruneParticles === 'boolean') {
+        process.env.BBPACK_PRUNE_PARTICLES = options.pruneParticles ? '1' : '0';
+    }
     await copyBbpackFiles();
 
     console.log("\n🧹 清理数据缓存");

@@ -24,12 +24,12 @@ export class StateUtils {
                 DPUtils.register(trigger, (target, curr, prev) => {
                     if (prev === curr) return
                     if (!(target instanceof Entity)) return
-                    const prevState = DPUtils.store().player_prev_state.curr(target)
+                    const prevState = DPUtils.store().player_prev_state.curr(target, {})[data.statebindId]
                     const currState = data.mapping(target)
                     if (prevState === currState) return
                     if (prevState) this.STATES[prevState]?.off(target)
                     if (currState) this.STATES[currState]?.on(target)
-                    DPUtils.store().player_prev_state.set(target, currState, prevState)
+                    DPUtils.store().player_prev_state.set(target, (curr: any) => ({ ...curr, [data.statebindId]: currState }), prevState)
                 })
             })
         })

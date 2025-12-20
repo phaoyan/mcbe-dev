@@ -39,6 +39,7 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
 
 选项:
   --force, -f         - 强制全部重新部署（用于 bbmodel, all, from-bbmodel 命令）
+  --prune-particles   - 开启“严格同步”：会删除 resource_packs/<项目名>/particles 里那些不在 bbpack/particles 中的 .particle.json（默认关闭，避免误删手动维护的粒子）
 
 示例:
   node main.ts setup my_project
@@ -47,6 +48,7 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
   node main.ts bbmodel --force      # 强制全部重新部署
   node main.ts bbpack-check
   node main.ts all -f               # 强制全部重新部署
+  node main.ts all --prune-particles
 `);
 }
 
@@ -60,6 +62,8 @@ async function main(): Promise<void> {
     }
 
     const command = args[0];
+    const pruneParticles = args.includes('--prune-particles') || args.includes('--prune');
+    const force = args.includes('--force') || args.includes('-f');
 
     try {
         switch (command) {
@@ -97,7 +101,7 @@ async function main(): Promise<void> {
 
             case 'bbpack': {
                 const { processBbpackFiles } = await import('./bbpack');
-                await processBbpackFiles();
+                await processBbpackFiles({ pruneParticles });
                 break;
             }
 
@@ -146,7 +150,9 @@ async function main(): Promise<void> {
                 // 1. 处理bbpack文件
                 console.log('📁 处理bbpack文件...');
                 const { processBbpackFiles } = await import('./bbpack');
-                await processBbpackFiles();
+                // force 当前版本未在 bbpack/bbmodel 内部透传使用，这里先解析保留，避免以后扩展 breaking
+                void force;
+                await processBbpackFiles({ pruneParticles });
 
                 // 2. 处理bbmodel文件
                 console.log('🎨 处理bbmodel文件...');

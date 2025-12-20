@@ -158,16 +158,15 @@ export class DPUtils {
             }
             // 优化：脏检查，值未变则不调用底层 API
             const currentRaw = target.getDynamicProperty(key)
-            if (currentRaw === newRaw) return
-
-            // 优化：直接复用 currentRaw，避免二次序列化
-            target.setDynamicProperty(`${key}_prev`, currentRaw)
-            target.setDynamicProperty(key, newRaw)
-
             if (key in this.REGISTRATION) {
                 const prevParsed = this.parseRaw(currentRaw, placeHolder)
                 this.REGISTRATION[key].forEach(callback => callback(target, value, prevParsed))
             }
+
+            if (currentRaw === newRaw) return
+            // 优化：直接复用 currentRaw，避免二次序列化
+            target.setDynamicProperty(`${key}_prev`, currentRaw)
+            target.setDynamicProperty(key, newRaw)
         } else {
             if (!(target instanceof Entity)) return
             DPUtils.store().world_dp_timeline.set(world, (curr: any) => {

@@ -25,8 +25,8 @@ system.beforeEvents.startup.subscribe(({blockComponentRegistry})=>{
 })
 
 Object.values(blockIds.dummy.spawner)
-.filter((typeId)=>typeId.startsWith(`${NAME_SPACE}:spawner_`))
-.forEach((typeId)=>{
+.filter((typeId: any)=>typeId.startsWith(`${NAME_SPACE}:spawner_`))
+.forEach((typeId: any)=>{
     const entityId = typeId.replace(`${NAME_SPACE}:spawner_`, "").replace("__", ":")
     BlockUtils.onTick(typeId, (event)=>{
         event.dimension.runCommand(`summon ${entityId} ${event.block.location.x} ${event.block.location.y} ${event.block.location.z}`)
