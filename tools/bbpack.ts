@@ -215,6 +215,69 @@ interface BbmodelParticleReferences {
 }
 
 /**
+ * 复制 bbpack/textures 到 资源包 textures（保留原目录结构，默认不做镜像删除）
+ */
+async function copyBbpackTextures(): Promise<void> {
+    const t0 = __prof.start();
+
+    const srcDir = path.join(BBPACK_DIR, 'textures');
+    if (!fs.existsSync(srcDir)) {
+        console.log('⏭️  跳过复制 bbpack/textures（源目录不存在）');
+        __prof.end('copyBbpackTextures_total', t0);
+        return;
+    }
+
+    const dstDir = path.join(RESOURCE_PACK_DIR, 'textures');
+    ensureDir(dstDir);
+
+    // rglob 仅匹配文件名，这里用 .* 取到所有文件
+    const srcFiles = rglob('.*', srcDir);
+    if (srcFiles.length === 0) {
+        console.log('⏭️  跳过复制 bbpack/textures（目录为空）');
+        __prof.end('copyBbpackTextures_total', t0);
+        return;
+    }
+
+    // 收集目标目录已有文件，用于打印“新增/更新”统计
+    const existingDst = new Set<string>();
+    const dstFiles = rglob('.*', dstDir);
+    for (const f of dstFiles) {
+        existingDst.add(path.relative(dstDir, f).replace(/\\/g, '/'));
+    }
+
+    const BATCH_SIZE = 50;
+    let copiedCount = 0;
+    let updatedCount = 0;
+    let failedCount = 0;
+
+    console.log(`开始复制 bbpack/textures（共 ${srcFiles.length} 个文件）...`);
+
+    for (let i = 0; i < srcFiles.length; i += BATCH_SIZE) {
+        const batch = srcFiles.slice(i, i + BATCH_SIZE);
+        await Promise.all(batch.map(async (srcFile) => {
+            const rel = path.relative(srcDir, srcFile).replace(/\\/g, '/');
+            const dstFile = path.join(dstDir, rel);
+            try {
+                ensureDir(path.dirname(dstFile));
+                await fs.promises.copyFile(srcFile, dstFile);
+                if (existingDst.has(rel)) {
+                    updatedCount++;
+                } else {
+                    copiedCount++;
+                }
+            } catch (e) {
+                failedCount++;
+                console.log(`  ❌ 复制失败: ${rel} (${e})`);
+            }
+        }));
+    }
+
+    console.log(`✅ bbpack/textures 复制完成：➕新增 ${copiedCount} / 🔄更新 ${updatedCount} / ❌失败 ${failedCount}`);
+    console.log(`目标路径: ${dstDir}`);
+    __prof.end('copyBbpackTextures_total', t0);
+}
+
+/**
  * 检查粒子引用关系（异步优化版本）
  */
 export async function checkParticleReferences(): Promise<void> {
@@ -1391,15 +1454,19 @@ export async function processBbpackFiles(options?: { pruneParticles?: boolean })
     console.log("-".repeat(40));
     await checkParticleIds();
 
-    console.log("\n🧩 第四步：修复粒子材质纹理路径");
+    console.log("\n🧵 第四步：复制bbpack/textures到资源包textures（保持原结构）");
+    console.log("-".repeat(40));
+    await copyBbpackTextures();
+
+    console.log("\n🧩 第五步：修复粒子材质纹理路径");
     console.log("-".repeat(40));
     fixParticleTexturePaths();
 
-    console.log("\n📋 第五步：修复flipbook UV");
+    console.log("\n📋 第六步：修复flipbook UV");
     console.log("-".repeat(40));
     await fixFlipbookUVs();
 
-    console.log("\n📦 第六步：复制bbpack文件");
+    console.log("\n📦 第七步：复制bbpack文件");
     console.log("-".repeat(40));
     // 让 main.ts 能显式控制是否 prune；不传则保持默认（false）
     if (typeof options?.pruneParticles === 'boolean') {

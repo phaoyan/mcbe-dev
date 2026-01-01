@@ -4,7 +4,7 @@ import { EntityEventIds } from "../lists/event_list";
 import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { EntityOp, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
-import animationTree from "../json/animation_tree.json";
+import { animationTree } from "../refs/ref";
 
 DPUtils.store().effect_superarmor.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return

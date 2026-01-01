@@ -57,6 +57,7 @@
         main {
             flex: 1;
             position: relative;
+            min-width: 0;
         }
 
         svg {
@@ -127,16 +128,7 @@
             white-space: normal;
         }
 
-        /* JSON 预览模态框 */
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(15, 23, 42, 0.85);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 40;
-        }
+        /* JSON 预览模态框：已改为右侧侧边栏（保留旧样式块为空，避免误引用） */
 
         .modal {
             background: #020617;
@@ -288,22 +280,6 @@
             box-sizing: border-box;
         }
 
-        #templateJsonTextarea {
-            flex: 1;
-            width: 100%;
-            min-height: 260px;
-            resize: vertical;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 11px;
-            line-height: 1.4;
-            background: #020617;
-            color: #e5e7eb;
-            border-radius: 4px;
-            border: 1px solid #1f2937;
-            padding: 6px 8px;
-            box-sizing: border-box;
-        }
-
         .hidden {
             display: none !important;
         }
@@ -315,132 +291,99 @@
             margin-top: 6px;
         }
 
-        /* Molang 模板侧栏样式 */
-        .molang-sidebar {
-            flex: 0 0 260px;
-            max-width: 260px;
-            border-left: 1px solid #111827;
-            padding-left: 8px;
-            display: flex;
+        /* 右侧侧边栏编辑器（替代 Modal） */
+        .sidebar-editor {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            width: min(840px, 92vw);
+            background: rgba(2, 6, 23, 0.98);
+            border-left: 1px solid #1f2937;
+            box-shadow: -18px 0 50px rgba(0, 0, 0, 0.55);
+            z-index: 30;
+            display: none;
             flex-direction: column;
-            gap: 4px;
-            font-size: 11px;
+            overflow: hidden;
         }
 
-        .molang-sidebar-header {
+        .sidebar-editor--open {
+            display: flex;
+        }
+
+        .sidebar-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid #111827;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 6px;
+            gap: 10px;
         }
 
-        .molang-sidebar-title {
-            font-weight: 600;
-            font-size: 11px;
-            color: #e5e7eb;
-        }
-
-        .molang-search-input {
-            font-size: 11px;
-        }
-
-        .molang-template-list {
-            flex: 1 1 auto;
-            min-height: 80px;
-            max-height: 260px;
-            overflow: auto;
-            border-radius: 4px;
-            border: 1px solid #111827;
-            padding: 4px;
-            background: #020617;
-        }
-
-        .molang-template-item {
-            padding: 4px 6px;
-            border-radius: 4px;
-            border: 1px solid transparent;
-            margin-bottom: 3px;
-            cursor: pointer;
-            background: #020617;
-        }
-
-        .molang-template-item:hover {
-            border-color: #374151;
-            background: #030712;
-        }
-
-        .molang-template-item.molang-template-item-active {
-            border-color: #22c55e;
-            background: #022c22;
-        }
-
-        .molang-template-item-name {
-            font-size: 11px;
-            font-weight: 500;
-            color: #e5e7eb;
-        }
-
-        .molang-template-item-meta {
-            font-size: 10px;
-            color: #9ca3af;
-            margin-top: 1px;
-        }
-
-        .molang-template-item-code {
-            font-size: 10px;
-            color: #9ca3af;
-            margin-top: 2px;
-            word-break: break-all;
-            white-space: pre-line;
-        }
-
-        .molang-template-editor {
-            margin-top: 4px;
-            padding-top: 4px;
-            border-top: 1px solid #111827;
+        .sidebar-header-main {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: 2px;
+            min-width: 0;
         }
 
-        .molang-template-editor-title {
+        .sidebar-title {
+            font-weight: 600;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-sub {
+            font-size: 11px;
+            color: #9ca3af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-close {
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            font-size: 16px;
+            padding: 0 4px;
+        }
+
+        .sidebar-close:hover {
+            color: #e5e7eb;
+        }
+
+        .sidebar-body {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow: auto;
+        }
+
+        .sidebar-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
             font-size: 10px;
             color: #9ca3af;
         }
 
-        .molang-template-code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            font-size: 11px;
-            resize: vertical;
+        /* 侧边栏中 textarea 适当收缩，避免占满屏 */
+        #jsonModalTextarea {
+            min-height: 360px;
         }
 
-        .molang-template-footer {
+        .sidebar-footer {
+            padding: 10px 12px;
+            border-top: 1px solid #111827;
+            display: flex;
             justify-content: flex-end;
-            margin-top: 2px;
-        }
-
-        .molang-sidebar-hint {
-            margin-top: 2px;
-            font-size: 10px;
-            color: #6b7280;
-        }
-
-        .molang-sidebar-collapsed {
-            display: none;
-        }
-
-        @media (max-width: 960px) {
-            .modal-editor-layout {
-                flex-direction: column;
-            }
-
-            .molang-sidebar {
-                max-width: none;
-                border-left: none;
-                border-top: 1px solid #111827;
-                padding-left: 0;
-                padding-top: 4px;
-            }
+            gap: 8px;
         }
 
         .legend {
@@ -524,18 +467,15 @@
 <header>
     <h1>Feature 树图浏览器</h1>
     <div id="controls">
-        <input id="searchNodeInput" type="text" placeholder="搜索 identifier..." class="modal-form-input" style="width: 120px;" />
-        <button class="btn" id="searchNodeBtn">搜索</button>
         <button class="btn" id="openRootBtn">选择</button>
         <button class="btn" id="saveRootBtn">保存</button>
         <input id="fileInput" type="file" accept=".json" style="display:none" />
+        <button class="btn" id="syncMolangsBtn" title="将 tools-feature/molangs/*.molang 批量同步到对应节点的 distribution.iterations">Sync</button>
         <button class="btn" id="undoBtn" title="撤销 (Ctrl+Z)" disabled>↶</button>
         <button class="btn" id="redoBtn" title="重做 (Ctrl+Y)" disabled>↷</button>
         <button class="btn" id="newRootBtn">新建</button>
         <button class="btn" id="exportTreeBtn">另存</button>
         <button class="btn" id="exportFeaturesBtn">导出</button>
-        <button class="btn" id="manageTemplatesBtn">管理模板</button>
-        <button class="btn" id="exportEntryBtn">导出规则</button>
         <!-- 路径管理区域 -->
         <div style="display:flex; gap:4px; align-items:center; border-left:1px solid #374151; padding-left:6px; margin-left:6px;">
              <select id="workDirSelect" class="modal-form-input" style="width:100px; height:26px; padding:2px;" title="选择默认工作路径"></select>
@@ -548,118 +488,36 @@
 <main>
     <svg id="treeSvg"></svg>
     <div class="tooltip" id="tooltip"></div>
-    <div class="modal-backdrop" id="jsonModalBackdrop">
-        <div class="modal" id="jsonModal">
-            <div class="modal-header">
-                <div class="modal-header-main">
-                    <div class="modal-title" id="jsonModalTitle"></div>
-                    <div class="modal-sub" id="jsonModalMeta"></div>
-                </div>
-                <button class="modal-close" id="jsonModalClose" title="关闭 (Esc)">
-                    ×
-                </button>
+    <!-- 右侧侧边栏编辑器（替代 Modal） -->
+    <aside class="sidebar-editor" id="jsonSidebarEditor" aria-label="节点编辑器">
+        <div class="sidebar-header">
+            <div class="sidebar-header-main">
+                <div class="sidebar-title" id="jsonModalTitle"></div>
+                <div class="sidebar-sub" id="jsonModalMeta"></div>
             </div>
-            <div class="modal-body">
-                <div class="modal-editor-layout">
-                    <div class="modal-editor">
-                        <div class="modal-editor-header">
-                            <span id="jsonModalModeText">字段表单编辑（顶层简单属性）</span>
-                            <div class="modal-mode-buttons">
-                                <button class="btn btn-toggle-active" id="switchFormModeBtn" type="button">表单模式</button>
-                                <button class="btn" id="switchJsonModeBtn" type="button">JSON 模式</button>
-                            </div>
-                            <span class="modal-error" id="jsonModalError"></span>
-                        </div>
-                        <div id="jsonModalFormContainer"></div>
-                        <textarea id="jsonModalTextarea" spellcheck="false"></textarea>
-                    </div>
-                    <aside class="molang-sidebar" id="molangSidebar">
-                        <div class="molang-sidebar-header">
-                            <span class="molang-sidebar-title">Molang 模板</span>
-                        </div>
-                        <input
-                            class="modal-form-input molang-search-input"
-                            id="molangSearchInput"
-                            type="text"
-                            placeholder="搜索模板名称或内容..."
-                        />
-                        <div class="molang-template-list" id="molangTemplateList"></div>
-                        <div class="molang-template-editor">
-                            <div class="molang-template-editor-title">模板编辑（保存在本机浏览器）</div>
-                            <input
-                                class="modal-form-input"
-                                id="molangTemplateNameInput"
-                                type="text"
-                                placeholder="模板名称"
-                            />
-                            <textarea
-                                class="modal-form-input molang-template-code"
-                                id="molangTemplateCodeTextarea"
-                                rows="4"
-                                spellcheck="false"
-                                placeholder="在此编写或粘贴 Molang 表达式"
-                            ></textarea>
-                            <div class="modal-footer molang-template-footer">
-                                <button class="btn" id="molangTemplateAddBtn" type="button">新增</button>
-                                <button class="btn" id="molangTemplateDeleteBtn" type="button">删除</button>
-                                <button class="btn" id="molangTemplateSaveBtn" type="button">保存</button>
-                                <button class="btn" id="molangTemplateCopyToEditorBtn" type="button">复制</button>
-                            </div>
-                        </div>
-                        <div class="molang-sidebar-hint">
-                            提示：单击列表中的模板可以在下方编辑，双击可直接复制到剪贴板。
-                        </div>
-                    </aside>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn" id="jsonModalDelete">删除</button>
-                    <button class="btn" id="jsonModalCancel">取消</button>
-                    <button class="btn" id="jsonModalApply">确定</button>
-                </div>
-            </div>
+            <button class="btn" id="nodeSyncBtn" type="button" title="节点 sync：首次导出到 tools-feature/features；再次点击从文件同步回节点（支持新增子节点）。">sync</button>
+            <button class="sidebar-close" id="jsonModalClose" title="关闭 (Esc)">×</button>
         </div>
-    </div>
-    <div class="modal-backdrop" id="templateModalBackdrop">
-        <div class="modal" id="templateModal">
-            <div class="modal-header">
-                <div class="modal-header-main">
-                    <div class="modal-title">模板管理</div>
-                    <div class="modal-sub" id="templateModalMeta">在此修改或删除已保存的模板（仅影响本机浏览器本地存储）</div>
+
+        <div class="sidebar-body">
+            <div class="sidebar-editor-header">
+                <span id="jsonModalModeText">字段表单编辑（顶层简单属性）</span>
+                <div class="modal-mode-buttons">
+                    <button class="btn btn-toggle-active" id="switchFormModeBtn" type="button">表单模式</button>
+                    <button class="btn" id="switchJsonModeBtn" type="button">JSON 模式</button>
                 </div>
-                <button class="modal-close" id="templateModalClose" title="关闭">
-                    ×
-                </button>
+                <span class="modal-error" id="jsonModalError"></span>
             </div>
-            <div class="modal-body">
-                <div class="modal-editor">
-                    <div class="modal-editor-header">
-                        <div class="modal-form-row" style="margin-bottom:0">
-                            <div class="modal-form-label">模板类型</div>
-                            <select class="modal-form-input" id="templateTypeSelect"></select>
-                        </div>
-                        <div class="modal-form-row" style="margin-bottom:0">
-                            <div class="modal-form-label">模板列表</div>
-                            <select class="modal-form-input" id="templateListSelect"></select>
-                        </div>
-                    </div>
-                    <div class="modal-form-row">
-                        <div class="modal-form-label">模板名称</div>
-                        <input class="modal-form-input" id="templateNameInput" type="text" />
-                    </div>
-                    <div class="modal-form-row" style="grid-template-columns:1fr">
-                        <textarea id="templateJsonTextarea" spellcheck="false"></textarea>
-                    </div>
-                    <span class="modal-error" id="templateModalError"></span>
-                    <div class="modal-footer">
-                        <button class="btn" id="templateModalAdd">新增模板</button>
-                        <button class="btn" id="templateModalDelete">删除模板</button>
-                        <button class="btn" id="templateModalCancel">关闭</button>
-                        <button class="btn" id="templateModalSave">保存修改</button>
-                    </div>
-                </div>
-            </div>
+            <div id="jsonModalFormContainer"></div>
+            <textarea id="jsonModalTextarea" spellcheck="false"></textarea>
         </div>
-    </div>
+
+        <div class="sidebar-footer">
+            <button class="btn" id="jsonModalDelete">删除</button>
+            <button class="btn" id="jsonModalCancel">取消</button>
+            <button class="btn" id="jsonModalApply">确定</button>
+        </div>
+    </aside>
     <div class="legend">
         <div class="legend-row">
             <div class="legend-dot" style="background:#0ea5e9;border:1px solid #38bdf8;"></div>
@@ -684,19 +542,16 @@
     const svg = d3.select("#treeSvg");
     const statusEl = document.getElementById("status");
     const tooltip = document.getElementById("tooltip");
-    const searchNodeInput = document.getElementById("searchNodeInput");
-    const searchNodeBtn = document.getElementById("searchNodeBtn");
     const fileInput = document.getElementById("fileInput");
     const openRootBtn = document.getElementById("openRootBtn");
     const newRootBtn = document.getElementById("newRootBtn");
     const exportTreeBtn = document.getElementById("exportTreeBtn");
     const exportFeaturesBtn = document.getElementById("exportFeaturesBtn");
     const saveRootBtn = document.getElementById("saveRootBtn");
+    const syncMolangsBtn = document.getElementById("syncMolangsBtn");
     const undoBtn = document.getElementById("undoBtn");
     const redoBtn = document.getElementById("redoBtn");
-    const manageTemplatesBtn = document.getElementById("manageTemplatesBtn");
-    const exportEntryBtn = document.getElementById("exportEntryBtn");
-    const jsonModalBackdrop = document.getElementById("jsonModalBackdrop");
+    const jsonSidebarEditor = document.getElementById("jsonSidebarEditor");
     const jsonModalTitle = document.getElementById("jsonModalTitle");
     const jsonModalMeta = document.getElementById("jsonModalMeta");
     const jsonModalModeText = document.getElementById("jsonModalModeText");
@@ -704,31 +559,12 @@
     const jsonModalTextarea = document.getElementById("jsonModalTextarea");
     const jsonModalError = document.getElementById("jsonModalError");
     const jsonModalClose = document.getElementById("jsonModalClose");
+    const nodeSyncBtn = document.getElementById("nodeSyncBtn");
     const jsonModalApply = document.getElementById("jsonModalApply");
     const jsonModalCancel = document.getElementById("jsonModalCancel");
     const jsonModalDelete = document.getElementById("jsonModalDelete");
     const switchFormModeBtn = document.getElementById("switchFormModeBtn");
     const switchJsonModeBtn = document.getElementById("switchJsonModeBtn");
-    const templateModalBackdrop = document.getElementById("templateModalBackdrop");
-    const templateModalClose = document.getElementById("templateModalClose");
-    const templateModalError = document.getElementById("templateModalError");
-    const templateTypeSelect = document.getElementById("templateTypeSelect");
-    const templateListSelect = document.getElementById("templateListSelect");
-    const templateNameInput = document.getElementById("templateNameInput");
-    const templateJsonTextarea = document.getElementById("templateJsonTextarea");
-    const templateModalSave = document.getElementById("templateModalSave");
-    const templateModalDelete = document.getElementById("templateModalDelete");
-    const templateModalCancel = document.getElementById("templateModalCancel");
-    const templateModalAdd = document.getElementById("templateModalAdd");
-    const molangSidebar = document.getElementById("molangSidebar");
-    const molangSearchInput = document.getElementById("molangSearchInput");
-    const molangTemplateList = document.getElementById("molangTemplateList");
-    const molangTemplateNameInput = document.getElementById("molangTemplateNameInput");
-    const molangTemplateCodeTextarea = document.getElementById("molangTemplateCodeTextarea");
-    const molangTemplateSaveBtn = document.getElementById("molangTemplateSaveBtn");
-    const molangTemplateDeleteBtn = document.getElementById("molangTemplateDeleteBtn");
-    const molangTemplateAddBtn = document.getElementById("molangTemplateAddBtn");
-    const molangTemplateCopyToEditorBtn = document.getElementById("molangTemplateCopyToEditorBtn");
 
     let root;      // d3.hierarchy
     let g;         // main group
@@ -740,13 +576,7 @@
     let currentEditorMode = "form"; // "form" | "json"
     let currentPreviewCopy = null;
     const DEFAULT_FEATURE_FORMAT_VERSION = "1.21.40";
-    const TEMPLATE_STORAGE_KEY = "eternal_end_feature_templates_v1";
-    let templateStore = {};
-    let currentTemplateType = null;
-    let currentTemplateIndex = -1;
-    const MOLANG_TEMPLATE_STORAGE_KEY = "eternal_end_molang_templates_v1";
-    let molangTemplates = [];
-    let currentMolangTemplateIndex = -1;
+    // 已移除：模板功能 / Molang 模板功能
     // 独立跟踪 Shift 是否按下，避免依赖 event.shiftKey 导致后续普通点击被误判为 Shift+点击
     let isShiftPressed = false;
 
@@ -903,351 +733,10 @@
         return await getSettingsValue(DB_KEYS.ACTIVE_PATH_ID);
     }
 
-    function loadTemplatesFromStorage() {
-        if (typeof window === "undefined" || !window.localStorage) return {};
-        try {
-            const raw = window.localStorage.getItem(TEMPLATE_STORAGE_KEY);
-            if (!raw) return {};
-            const parsed = JSON.parse(raw);
-            return parsed && typeof parsed === "object" ? parsed : {};
-        } catch (e) {
-            console.warn("从本地存储加载模板失败：", e);
-            return {};
-        }
-    }
+    // 已移除：模板功能 / Molang 模板功能
 
-    function saveTemplatesToStorage() {
-        if (typeof window === "undefined" || !window.localStorage) return;
-        try {
-            window.localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templateStore || {}));
-        } catch (e) {
-            console.warn("保存模板到本地存储失败：", e);
-        }
-    }
-
-    // ---------- Molang 模板：本地存储 & 辅助函数 ----------
-    function loadMolangTemplatesFromStorage() {
-        if (typeof window === "undefined" || !window.localStorage) return [];
-        try {
-            const raw = window.localStorage.getItem(MOLANG_TEMPLATE_STORAGE_KEY);
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch (e) {
-            console.warn("从本地存储加载 Molang 模板失败：", e);
-            return [];
-        }
-    }
-
-    function saveMolangTemplatesToStorage() {
-        if (typeof window === "undefined" || !window.localStorage) return;
-        try {
-            const data = Array.isArray(molangTemplates) ? molangTemplates : [];
-            window.localStorage.setItem(MOLANG_TEMPLATE_STORAGE_KEY, JSON.stringify(data));
-        } catch (e) {
-            console.warn("保存 Molang 模板到本地存储失败：", e);
-        }
-    }
-
-    function ensureMolangTemplatesInitialized() {
-        if (!Array.isArray(molangTemplates) || !molangTemplates.length) {
-            const now = () => new Date().toISOString();
-            molangTemplates = [
-                {
-                    name: "0-1 随机浮点数",
-                    category: "random",
-                    code: "math.random(0.0, 1.0)",
-                    createdAt: now(),
-                },
-                {
-                    name: "整数随机（含上界）",
-                    category: "random",
-                    code: "query.random_int(0, 10)",
-                    createdAt: now(),
-                },
-                {
-                    name: "循环索引（0..n-1）",
-                    category: "loop",
-                    code: "query.floor(variable.timer) % 10",
-                    createdAt: now(),
-                },
-                {
-                    name: "限制到 0..1",
-                    category: "math",
-                    code: "math.clamp(variable.value, 0.0, 1.0)",
-                    createdAt: now(),
-                },
-            ];
-            saveMolangTemplatesToStorage();
-        }
-    }
-
-    function resetMolangEditor() {
-        currentMolangTemplateIndex = -1;
-        if (molangTemplateNameInput) molangTemplateNameInput.value = "";
-        if (molangTemplateCodeTextarea) molangTemplateCodeTextarea.value = "";
-    }
-
-    function copyTextToClipboard(text) {
-        if (!text) return;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(
-                () => {
-                    statusEl.textContent = "已复制 Molang 模板到剪贴板。";
-                },
-                () => {
-                    statusEl.textContent = "复制到剪贴板失败，请手动复制。";
-                }
-            );
-        } else {
-            try {
-                const helper = document.createElement("textarea");
-                helper.style.position = "fixed";
-                helper.style.opacity = "0";
-                helper.value = text;
-                document.body.appendChild(helper);
-                helper.select();
-                document.execCommand("copy");
-                document.body.removeChild(helper);
-                statusEl.textContent = "已复制 Molang 模板到剪贴板。";
-            } catch (e) {
-                statusEl.textContent = "复制到剪贴板失败，请手动复制。";
-            }
-        }
-    }
-
-    function refreshMolangTemplateList(filterText) {
-        if (!molangTemplateList) return;
-        molangTemplateList.innerHTML = "";
-        const keyword = (filterText || "").trim().toLowerCase();
-
-        const data = Array.isArray(molangTemplates) ? molangTemplates : [];
-        data.forEach((tpl, index) => {
-            const name = tpl.name || "";
-            const category = tpl.category || "";
-            const code = tpl.code || "";
-            const combined = (name + " " + category + " " + code).toLowerCase();
-            if (keyword && !combined.includes(keyword)) return;
-
-            const item = document.createElement("div");
-            item.className = "molang-template-item";
-            if (index === currentMolangTemplateIndex) {
-                item.classList.add("molang-template-item-active");
-            }
-            item.dataset.index = String(index);
-
-            const title = document.createElement("div");
-            title.className = "molang-template-item-name";
-            title.textContent = name || "(未命名模板)";
-            item.appendChild(title);
-
-            if (category) {
-                const meta = document.createElement("div");
-                meta.className = "molang-template-item-meta";
-                meta.textContent = category;
-                item.appendChild(meta);
-            }
-
-            if (code) {
-                const codeDiv = document.createElement("div");
-                codeDiv.className = "molang-template-item-code";
-                const preview = code.length > 80 ? code.slice(0, 77) + "..." : code;
-                codeDiv.textContent = preview;
-                item.appendChild(codeDiv);
-            }
-
-            item.addEventListener("click", () => {
-                const idx = Number(item.dataset.index);
-                if (!Number.isNaN(idx)) {
-                    selectMolangTemplate(idx);
-                }
-            });
-
-            item.addEventListener("dblclick", () => {
-                const idx = Number(item.dataset.index);
-                if (!Number.isNaN(idx) && molangTemplates[idx] && molangTemplates[idx].code) {
-                    copyTextToClipboard(molangTemplates[idx].code);
-                }
-            });
-
-            molangTemplateList.appendChild(item);
-        });
-
-        if (!molangTemplateList.childElementCount) {
-            const empty = document.createElement("div");
-            empty.style.fontSize = "10px";
-            empty.style.color = "#6b7280";
-            empty.textContent = keyword ? "没有匹配的 Molang 模板" : "当前还没有 Molang 模板，可以在下方新建。";
-            molangTemplateList.appendChild(empty);
-        }
-    }
-
-    function selectMolangTemplate(index) {
-        if (!Array.isArray(molangTemplates) || index < 0 || index >= molangTemplates.length) {
-            resetMolangEditor();
-            refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
-            return;
-        }
-        currentMolangTemplateIndex = index;
-        const tpl = molangTemplates[index];
-        if (molangTemplateNameInput) molangTemplateNameInput.value = tpl.name || "";
-        if (molangTemplateCodeTextarea) molangTemplateCodeTextarea.value = tpl.code || "";
-        refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
-    }
-
-    function getTemplatesForType(type) {
-        if (!type) return [];
-        const list = templateStore[type];
-        return Array.isArray(list) ? list : [];
-    }
-
-    function addTemplateForType(type, preview, name, meta) {
-        if (!type || !preview || typeof preview !== "object") return;
-        if (!templateStore || typeof templateStore !== "object") {
-            templateStore = {};
-        }
-        const list = getTemplatesForType(type).slice();
-        const entry = {
-            name: name || `模板_${list.length + 1}`,
-            type,
-            preview: deepClone(preview),
-            meta: meta || {},
-            createdAt: new Date().toISOString(),
-        };
-        const existIndex = list.findIndex(t => t.name === entry.name);
-        if (existIndex >= 0) {
-            list[existIndex] = entry;
-        } else {
-            list.push(entry);
-        }
-        templateStore[type] = list;
-        saveTemplatesToStorage();
-    }
-
-    function getAllTemplateTypes() {
-        if (!templateStore || typeof templateStore !== "object") return [];
-        return Object.keys(templateStore)
-            .filter((key) => Array.isArray(templateStore[key]) && templateStore[key].length)
-            .sort();
-    }
-
-    function resetTemplateEditor() {
-        currentTemplateType = null;
-        currentTemplateIndex = -1;
-        if (templateNameInput) templateNameInput.value = "";
-        if (templateJsonTextarea) templateJsonTextarea.value = "";
-        if (templateModalError) templateModalError.textContent = "";
-    }
-
-    function loadTemplateIntoEditor(type, index) {
-        resetTemplateEditor();
-        if (!type || !templateStore[type] || !Array.isArray(templateStore[type])) return;
-        const list = templateStore[type];
-        if (index < 0 || index >= list.length) return;
-        const tpl = list[index];
-        currentTemplateType = type;
-        currentTemplateIndex = index;
-        if (templateNameInput) {
-            templateNameInput.value = tpl.name || "";
-        }
-        if (templateJsonTextarea) {
-            try {
-                templateJsonTextarea.value = JSON.stringify(tpl.preview || {}, null, 2);
-            } catch (e) {
-                templateJsonTextarea.value = String(tpl.preview);
-            }
-        }
-    }
-
-    function refreshTemplateListSelect(type, selectedIndex) {
-        if (!templateListSelect) return;
-        templateListSelect.innerHTML = "";
-
-        const types = getAllTemplateTypes();
-        if (!type) {
-            type = types[0] || "";
-        }
-
-        if (!type || !templateStore[type] || !Array.isArray(templateStore[type]) || !templateStore[type].length) {
-            const opt = document.createElement("option");
-            opt.value = "";
-            opt.textContent = type ? "该类型下暂无模板" : "当前没有任何模板";
-            opt.disabled = true;
-            opt.selected = true;
-            templateListSelect.appendChild(opt);
-            resetTemplateEditor();
-            return;
-        }
-
-        const list = templateStore[type];
-        list.forEach((tpl, idx) => {
-            const opt = document.createElement("option");
-            opt.value = String(idx);
-            opt.textContent = tpl.name || `模板_${idx + 1}`;
-            templateListSelect.appendChild(opt);
-        });
-
-        const idxToSelect =
-            typeof selectedIndex === "number" &&
-            selectedIndex >= 0 &&
-            selectedIndex < list.length
-                ? selectedIndex
-                : 0;
-
-        templateListSelect.value = String(idxToSelect);
-        loadTemplateIntoEditor(type, idxToSelect);
-    }
-
-    function refreshTemplateTypeSelect() {
-        if (!templateTypeSelect) return;
-        templateTypeSelect.innerHTML = "";
-
-        const types = getAllTemplateTypes();
-        if (!types.length) {
-            const opt = document.createElement("option");
-            opt.value = "";
-            opt.textContent = "当前没有任何模板";
-            opt.disabled = true;
-            opt.selected = true;
-            templateTypeSelect.appendChild(opt);
-            resetTemplateEditor();
-            if (templateListSelect) {
-                templateListSelect.innerHTML = "";
-                const opt2 = document.createElement("option");
-                opt2.value = "";
-                opt2.textContent = "无模板";
-                opt2.disabled = true;
-                opt2.selected = true;
-                templateListSelect.appendChild(opt2);
-            }
-            return;
-        }
-
-        types.forEach((t) => {
-            const opt = document.createElement("option");
-            opt.value = t;
-            opt.textContent = t;
-            templateTypeSelect.appendChild(opt);
-        });
-
-        const firstType = types[0];
-        templateTypeSelect.value = firstType;
-        refreshTemplateListSelect(firstType);
-    }
-
-    function showTemplateModal() {
-        if (!templateModalBackdrop) return;
-        refreshTemplateTypeSelect();
-        templateModalBackdrop.style.display = "flex";
-        if (templateModalError) {
-            templateModalError.textContent = "";
-        }
-    }
-
-    function hideTemplateModal() {
-        if (!templateModalBackdrop) return;
-        templateModalBackdrop.style.display = "none";
-        resetTemplateEditor();
+    function isNumericKey(k) {
+        return typeof k === "string" && /^[0-9]+$/.test(k);
     }
 
     function setByPath(obj, path, value) {
@@ -1256,12 +745,51 @@
         let cur = obj;
         for (let i = 0; i < parts.length - 1; i++) {
             const key = parts[i];
+            const nextKey = parts[i + 1];
+            const nextShouldBeArray = isNumericKey(nextKey);
+
+            // 当前 key 是数组下标
+            if (isNumericKey(key)) {
+                const idx = Number(key);
+                if (!Array.isArray(cur)) {
+                    // 尽量把当前节点变成数组（如果之前是对象，会被覆盖；但这是表单写入时的预期行为）
+                    cur = [];
+                }
+                if (typeof cur[idx] !== "object" || cur[idx] === null) {
+                    cur[idx] = nextShouldBeArray ? [] : {};
+                }
+                cur = cur[idx];
+                continue;
+            }
+
+            // 当前 key 是普通对象字段
             if (typeof cur[key] !== "object" || cur[key] === null) {
-                cur[key] = {};
+                cur[key] = nextShouldBeArray ? [] : {};
+            } else {
+                // 如果已有类型不符合下一段需求，做一次纠正
+                if (nextShouldBeArray && !Array.isArray(cur[key])) {
+                    cur[key] = [];
+                }
+                if (!nextShouldBeArray && Array.isArray(cur[key])) {
+                    cur[key] = {};
+                }
             }
             cur = cur[key];
         }
-        cur[parts[parts.length - 1]] = value;
+
+        const lastKey = parts[parts.length - 1];
+        if (isNumericKey(lastKey)) {
+            const idx = Number(lastKey);
+            if (!Array.isArray(cur)) {
+                // 目标应该是数组
+                // 这里无法“回写”到父对象，只能就地覆盖为数组并写入
+                // 对于本工具的表单写入场景已经足够（extent 通常就是数组）
+                cur = [];
+            }
+            cur[idx] = value;
+            return;
+        }
+        cur[lastKey] = value;
     }
 
     function identifierExistsInData(node, identifier) {
@@ -1296,7 +824,6 @@
                 places_block: "minecraft:stone",
                 enforce_placement_rules: false,
                 enforce_survivability_rules: false,
-                may_replace: ["minecraft:air"],
             };
         }
         if (type === "minecraft:structure_template_feature") {
@@ -1316,9 +843,7 @@
         if (type === "minecraft:weighted_random_feature") {
             return {
                 ...desc,
-                features: [
-                    ["namespace:replace_me_feature", 1],
-                ],
+                features: [],
             };
         }
         if (type === "minecraft:snap_to_surface_feature") {
@@ -1333,34 +858,7 @@
         return desc;
     }
 
-    // 根据 preview 内容更新用于展示的 label（名称）
-    function updateLabelFromPreview(nodeData) {
-        if (!nodeData || !nodeData.preview || typeof nodeData.preview !== "object") return;
-        const preview = nodeData.preview;
-        const type = nodeData.type || "";
-        let label = "";
-
-        // single_block_feature：优先使用 places_block 作为名称
-        if (type === "minecraft:single_block_feature" && typeof preview.places_block === "string") {
-            label = preview.places_block;
-        }
-        // structure_template_feature：优先使用 structure_name 作为名称
-        else if (type === "minecraft:structure_template_feature" && typeof preview.structure_name === "string") {
-            label = preview.structure_name;
-        }
-        // 其他情况：退回到 description.identifier
-        else if (
-            preview.description &&
-            typeof preview.description === "object" &&
-            typeof preview.description.identifier === "string"
-        ) {
-            label = preview.description.identifier;
-        }
-
-        if (label) {
-            nodeData.label = label;
-        }
-    }
+    // root_feature.json 已精简结构：不再使用/写出 label 字段（节点文本也仅显示 type）。
 
     function replaceIdentifierInPreview(obj, oldId, newId) {
         if (!obj || typeof obj !== "object") return;
@@ -1393,8 +891,8 @@
             if (node.identifier === oldId) {
                 node.identifier = newId;
             }
-            if (node.preview && typeof node.preview === "object") {
-                replaceIdentifierInPreview(node.preview, oldId, newId);
+            if (node.data && typeof node.data === "object") {
+                replaceIdentifierInPreview(node.data, oldId, newId);
             }
             if (Array.isArray(node.children)) {
                 node.children.forEach(walk);
@@ -1483,14 +981,33 @@
         }
     };
 
-    function generateChildIdentifier(parentId) {
+    function getChildIdSuffixByType(childType) {
+        const t = typeof childType === "string" ? childType : "";
+        if (t === "minecraft:aggregate_feature") return "_agg";
+        if (t === "minecraft:single_block_feature") return "_block";
+        if (t === "minecraft:structure_template_feature") return "_structure";
+        if (t === "minecraft:weighted_random_feature") return "_random";
+        if (t === "minecraft:scatter_feature") return "_scatter";
+        // 默认回退：保持旧语义（child）
+        return "_child";
+    }
+
+    function generateChildIdentifier(parentId, childType) {
         const baseParentId = parentId || "namespace:feature";
-        const baseId = baseParentId.replace(/[^a-zA-Z0-9_:]/g, "_") + "_child_";
-        let idx = 1;
-        let childId = baseId + idx;
+        const suffix = getChildIdSuffixByType(childType);
+        const baseId = baseParentId.replace(/[^a-zA-Z0-9_:]/g, "_") + suffix; // 先不带编号
+
+        // 默认不编号：如果不存在重名，直接返回 xxx_agg / xxx_block ...
+        if (!root || !identifierExistsInData(root.data, baseId)) {
+            return baseId;
+        }
+
+        // 发生重名才开始编号：xxx_agg_2, xxx_agg_3 ...
+        let idx = 2;
+        let childId = `${baseId}_${idx}`;
         while (root && identifierExistsInData(root.data, childId)) {
             idx += 1;
-            childId = baseId + idx;
+            childId = `${baseId}_${idx}`;
         }
         return childId;
     }
@@ -1537,99 +1054,6 @@
         }
     }
 
-    function handleSaveNodeAsTemplate(d) {
-        if (!d || !d.data) return;
-        const type = d.data.type;
-        if (!type) {
-            statusEl.textContent = "当前节点没有 type，无法保存为模板。";
-            return;
-        }
-        const preview = d.data.preview;
-        if (!preview || typeof preview !== "object") {
-            statusEl.textContent = "当前节点没有可保存的 preview 数据。";
-            return;
-        }
-
-        const identifier = d.data.identifier || "";
-        const name =
-            identifier ||
-            d.data.label ||
-            `模板_${getTemplatesForType(type).length + 1}`;
-
-        addTemplateForType(type, preview, name, {
-            identifier: d.data.identifier || "",
-            file: d.data.file || "",
-        });
-        statusEl.textContent = `已将当前节点保存为模板「${name}」（类型 ${type}）。`;
-    }
-
-    function searchAndFocusNode(keyword) {
-        if (!root || !keyword) return;
-        const lowerKw = keyword.toLowerCase();
-        let targetNode = null;
-
-        // 广度优先搜索
-        root.each(node => {
-            if (targetNode) return;
-            const id = node.data.identifier || "";
-            if (id.toLowerCase().includes(lowerKw)) {
-                targetNode = node;
-            }
-        });
-
-        if (targetNode) {
-            // 1. 展开通往该节点的所有父节点
-            let parent = targetNode.parent;
-            while (parent) {
-                if (parent._children) {
-                    parent.children = parent._children;
-                    parent._children = null;
-                }
-                parent = parent.parent;
-            }
-            // 刷新视图以显示展开状态
-            update(root);
-
-            // 2. 高亮显示 (临时添加 CSS class 或直接修改样式)
-            // 先清除旧的高亮
-            g.selectAll("g.node circle")
-                .style("stroke", null)
-                .style("stroke-width", null)
-                .style("fill", null); // 恢复默认填充
-
-            // 找到对应的 DOM 节点并高亮
-            // 注意：update(root) 后 DOM 可能已重建，需要重新 select
-            // 我们使用绑定的 data 来匹配
-            g.selectAll("g.node")
-                .filter(d => d === targetNode)
-                .select("circle")
-                .transition().duration(500)
-                .style("stroke", "#ffff00")
-                .style("stroke-width", "4px");
-
-            // 3. 移动视图中心到该节点
-            const svgNode = svg.node();
-            if (svgNode) {
-                const width = svgNode.clientWidth || 800;
-                const height = svgNode.clientHeight || 600;
-                // D3 Tree 布局中，x 是垂直方向，y 是水平方向
-                // 我们希望将 targetNode (y, x) 移动到屏幕中心 (width/2, height/2)
-                // transform(k, tx, ty) -> [kx + tx, ky + ty]
-                // 这里的 zoomIdentity.translate 是 (tx, ty)
-                const t = d3.zoomIdentity
-                    .translate(width / 2 - targetNode.y, height / 2 - targetNode.x)
-                    .scale(1);
-
-                svg.transition().duration(750).call(d3.zoom().on("zoom", (event) => {
-                   g.attr("transform", event.transform);
-                }).transform, t);
-            }
-
-            statusEl.textContent = `已定位到: ${targetNode.data.identifier}`;
-        } else {
-            statusEl.textContent = `未找到包含 "${keyword}" 的节点`;
-        }
-    }
 
     function stepPath(d) {
         // 正交线路径生成器：从 source 到 target
@@ -1705,7 +1129,6 @@
     function showTooltip(event, d) {
         const id = d.data.identifier || "(无 identifier)";
         const type = d.data.type || "(无 type)";
-        const file = d.data.file || "(未知文件)";
         const flags = [];
         if (d.data.missing) flags.push("missing");
         if (d.data.cycle) flags.push("cycle");
@@ -1714,7 +1137,6 @@
         tooltip.innerHTML =
             `<div><strong>identifier:</strong> ${id}</div>` +
             `<div><strong>type:</strong> ${type}</div>` +
-            `<div><strong>file:</strong> ${file}</div>` +
             (flags.length ? `<div><strong>标记:</strong> ${flags.join(", ")}</div>` : "");
 
         const rect = svg.node().getBoundingClientRect();
@@ -1748,105 +1170,6 @@
         }
     }
 
-    // 原样导出 feature_rules/panascais/end/entry.json 模板文件
-    const ENTRY_JSON_RAW = `{
-    "format_version": "1.13.0",
-    "minecraft:feature_rules": {
-        "description": {
-            "identifier": "",
-            "places_feature": ""
-        },
-        "conditions": {
-            "placement_pass": "first_pass",
-            "minecraft:biome_filter": [
-                {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "the_end"
-                        }
-                    ]
-                }
-            ]
-        },
-        "distribution": {
-            "iterations": 256,
-            "x": {
-                "distribution": "fixed_grid",
-                "extent": [
-                    0,
-                    15
-                ]
-            },
-            "y": "t.HEIGHT_MAP = q.heightmap(v.worldx, v.worldz); return t.HEIGHT_MAP;",
-            "z": {
-                "distribution": "fixed_grid",
-                "extent": [
-                    0,
-                    15
-                ]
-            }
-        }
-    }
-}
-`;
-
-    async function exportEntryJsonRaw() {
-        // 优先使用 File System Access API，将 entry.json 直接写入用户选择的目录
-        if (window.showDirectoryPicker) {
-            try {
-                statusEl.textContent = "请选择要导出 entry.json 的目标目录……";
-                const startIn = await getDefaultDirHandle();
-                const dirHandle = await window.showDirectoryPicker({
-                    mode: "readwrite",
-                    startIn
-                });
-
-                // 创建必要的子目录结构：feature_rules/panascais/end/
-                const parts = [];
-                let currentDir = dirHandle;
-                
-                for (const part of parts) {
-                    currentDir = await currentDir.getDirectoryHandle(part, { create: true });
-                }
-
-                // 在最终目录中创建 entry.json 文件
-                const fileHandle = await currentDir.getFileHandle("entry.json", { create: true });
-                const writable = await fileHandle.createWritable();
-                await writable.write(ENTRY_JSON_RAW);
-                await writable.close();
-
-                statusEl.textContent = `已导出 entry.json 到您选择的目录下的 feature_rules/panascais/end/ 目录中。`;
-                return;
-            } catch (err) {
-                if (err && err.name === "AbortError") {
-                    statusEl.textContent = "已取消选择导出目录。";
-                    return;
-                }
-                console.error(err);
-                statusEl.textContent = "导出到目录失败，将尝试以下载形式导出。";
-                // 继续向下执行，回退为下载导出
-            }
-        }
-
-        // 回退：如果浏览器不支持目录选择器或写入失败，则使用下载方式
-        try {
-            const blob = new Blob([ENTRY_JSON_RAW], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "entry.json";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            statusEl.textContent = "已导出 entry.json（请手动移动到 feature_rules/panascais/end/ 目录下并修改）。";
-        } catch (e) {
-            console.error(e);
-            statusEl.textContent = "导出 entry.json 失败，请查看控制台错误。";
-        }
-    }
 
     function buildSafeFeatureFileName(data, index) {
         // 优先使用节点的 identifier（或 preview.description.identifier），并去掉命名空间部分
@@ -1855,14 +1178,14 @@
             if (typeof data.identifier === "string" && data.identifier) {
                 identifier = data.identifier;
             } else if (
-                data.preview &&
-                typeof data.preview === "object" &&
-                data.preview.description &&
-                typeof data.preview.description === "object" &&
-                typeof data.preview.description.identifier === "string" &&
-                data.preview.description.identifier
+                data.data &&
+                typeof data.data === "object" &&
+                data.data.description &&
+                typeof data.data.description === "object" &&
+                typeof data.data.description.identifier === "string" &&
+                data.data.description.identifier
             ) {
-                identifier = data.preview.description.identifier;
+                identifier = data.data.description.identifier;
             }
         }
 
@@ -1910,14 +1233,24 @@
         }
     }
 
-    function appendSimpleFieldRow(labelText, path, value, valueType) {
+    function appendSimpleFieldRow(labelText, path, value, valueType, options) {
         if (!jsonModalFormContainer) return;
         const row = document.createElement("div");
         row.className = "modal-form-row";
 
         const label = document.createElement("div");
         label.className = "modal-form-label";
-        label.textContent = labelText;
+        if (options && options.labelSuffixEl) {
+            label.style.display = "flex";
+            label.style.alignItems = "center";
+            label.style.gap = "6px";
+            const textSpan = document.createElement("span");
+            textSpan.textContent = labelText;
+            label.appendChild(textSpan);
+            label.appendChild(options.labelSuffixEl);
+        } else {
+            label.textContent = labelText;
+        }
         row.appendChild(label);
 
         const input = document.createElement("input");
@@ -1932,9 +1265,170 @@
         input.value = value !== undefined && value !== null ? String(value) : "";
         input.dataset.path = path;
         input.dataset.type = valueType;
-        row.appendChild(input);
+        if (options && options.fieldSuffixEl) {
+            const wrap = document.createElement("div");
+            wrap.style.display = "flex";
+            wrap.style.alignItems = "center";
+            wrap.style.gap = "6px";
+            wrap.style.minWidth = "0";
+            input.style.flex = "1 1 auto";
+            input.style.minWidth = "0";
+            input.style.width = "auto";
+            wrap.appendChild(input);
+            wrap.appendChild(options.fieldSuffixEl);
+            row.appendChild(wrap);
+        } else {
+            row.appendChild(input);
+        }
 
         jsonModalFormContainer.appendChild(row);
+    }
+
+    function appendCheckboxPresenceObjectRow(labelText, path, checked, options) {
+        if (!jsonModalFormContainer) return;
+        const row = document.createElement("div");
+        row.className = "modal-form-row";
+
+        const label = document.createElement("div");
+        label.className = "modal-form-label";
+        label.textContent = labelText;
+        row.appendChild(label);
+
+        const wrap = document.createElement("div");
+        wrap.style.display = "flex";
+        wrap.style.alignItems = "center";
+        wrap.style.gap = "8px";
+        wrap.style.minWidth = "0";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !!checked;
+        checkbox.dataset.path = path;
+        checkbox.dataset.type = "presenceObject";
+
+        const hint = document.createElement("div");
+        hint.style.fontSize = "10px";
+        hint.style.color = "#9ca3af";
+        hint.style.whiteSpace = "nowrap";
+        hint.style.overflow = "hidden";
+        hint.style.textOverflow = "ellipsis";
+        hint.textContent = (options && options.hint) ? options.hint : "勾选表示该字段存在（值为 {}）";
+
+        wrap.appendChild(checkbox);
+        wrap.appendChild(hint);
+        row.appendChild(wrap);
+
+        jsonModalFormContainer.appendChild(row);
+        return { row, checkbox };
+    }
+
+    function appendStringListEditorRow(labelText, basePath, values, options) {
+        if (!jsonModalFormContainer) return;
+        const row = document.createElement("div");
+        row.className = "modal-form-row";
+
+        const label = document.createElement("div");
+        label.className = "modal-form-label";
+        label.textContent = labelText;
+        row.appendChild(label);
+
+        const outer = document.createElement("div");
+        outer.style.display = "flex";
+        outer.style.flexDirection = "column";
+        outer.style.gap = "6px";
+        outer.style.minWidth = "0";
+
+        // 隐藏字段：真正写回时读这个（避免每个 item 都用 setByPath 造成稀疏数组）
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.dataset.path = basePath;
+        hidden.dataset.type = "stringArray";
+
+        const list = document.createElement("div");
+        list.style.display = "flex";
+        list.style.flexDirection = "column";
+        list.style.gap = "6px";
+
+        const controls = document.createElement("div");
+        controls.style.display = "flex";
+        controls.style.alignItems = "center";
+        controls.style.gap = "6px";
+
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "btn";
+        addBtn.textContent = (options && options.addText) ? options.addText : "添加一行";
+
+        const hint = document.createElement("div");
+        hint.style.fontSize = "10px";
+        hint.style.color = "#9ca3af";
+        hint.style.lineHeight = "1.3";
+        hint.textContent = (options && options.hint) ? options.hint : "每行一个方块 ID，如 minecraft:stone";
+
+        controls.appendChild(addBtn);
+        controls.appendChild(hint);
+
+        function readValuesFromUI() {
+            const inputs = Array.from(list.querySelectorAll("input[data-role='list-item']"));
+            const out = [];
+            for (const ipt of inputs) {
+                const v = (ipt.value || "").trim();
+                if (!v) continue;
+                out.push(v);
+            }
+            return out;
+        }
+
+        function syncHidden() {
+            const arr = readValuesFromUI();
+            hidden.value = JSON.stringify(arr);
+        }
+
+        function addItem(value) {
+            const itemRow = document.createElement("div");
+            itemRow.style.display = "flex";
+            itemRow.style.alignItems = "center";
+            itemRow.style.gap = "6px";
+
+            const ipt = document.createElement("input");
+            ipt.className = "modal-form-input";
+            ipt.type = "text";
+            ipt.value = value !== undefined && value !== null ? String(value) : "";
+            ipt.dataset.role = "list-item";
+            ipt.addEventListener("input", () => syncHidden());
+
+            const delBtn = document.createElement("button");
+            delBtn.type = "button";
+            delBtn.className = "btn";
+            delBtn.textContent = "删除";
+            delBtn.addEventListener("click", () => {
+                itemRow.remove();
+                syncHidden();
+            });
+
+            itemRow.appendChild(ipt);
+            itemRow.appendChild(delBtn);
+            list.appendChild(itemRow);
+            syncHidden();
+        }
+
+        addBtn.addEventListener("click", () => addItem(""));
+
+        // 初始化
+        if (Array.isArray(values) && values.length) {
+            values.forEach(v => addItem(v));
+        } else {
+            // 空列表也要能写回空数组
+            hidden.value = "[]";
+        }
+
+        outer.appendChild(list);
+        outer.appendChild(controls);
+        outer.appendChild(hidden);
+        row.appendChild(outer);
+
+        jsonModalFormContainer.appendChild(row);
+        return { row, hidden, list, addItem, syncHidden };
     }
 
     // 为 textarea 启用根据内容自动调整高度，并设置一个合理的最小高度
@@ -1951,15 +1445,889 @@
         resize();
     }
 
+    // ---------- Molang 文件同步（scatter_feature.iterations）----------
+    const MOLANG_SYNC_DIR_PARTS = ["tools-feature", "molangs"];
+    const MOLANG_FILE_EXT = ".molang";
+    const MOLANG_AUTO_WRITE_DEBOUNCE_MS = 250;
+    const molangAutoWriteTimers = new Map(); // baseName -> timerId
+
+    // ---------- 节点 Feature 文件同步（整个节点子树 -> tools-feature/features/*.json）----------
+    const FEATURE_SYNC_DIR_PARTS = ["tools-feature", "features"];
+    const FEATURE_FILE_EXT = ".json";
+    const FEATURE_AUTO_WRITE_DEBOUNCE_MS = 250;
+    const featureAutoWriteTimers = new Map(); // fileName -> timerId
+
+    function encodeIdentifierToFeatureFileName(identifier) {
+        // 需求：文件名不需要命名空间
+        // 例：ns:foo_bar -> foo_bar.json
+        const raw = typeof identifier === "string" ? identifier.trim() : "";
+        if (!raw) return "";
+        const base = stripNamespaceFromIdentifier(raw);
+        if (!base) return "";
+        // 文件名只做一层安全化（避免特殊字符）
+        const safe = base.replace(/[^a-zA-Z0-9_\-]/g, "_");
+        if (!safe) return "";
+        return `${safe}${FEATURE_FILE_EXT}`;
+    }
+
+    function sanitizeDataNodeForExport(node) {
+        // 导出格式：和 root_feature.json 的节点结构一致：
+        // { identifier, type, data, children }
+        const cloned = deepClone(node);
+        if (!cloned || typeof cloned !== "object") return cloned;
+        // 去掉工具运行时产生的标记（不属于原始结构）
+        delete cloned.missing;
+        delete cloned.cycle;
+        return cloned;
+    }
+
+    function collectIdentifiersInDataTree(rootData) {
+        const set = new Set();
+        function walk(n) {
+            if (!n || typeof n !== "object") return;
+            if (typeof n.identifier === "string" && n.identifier) set.add(n.identifier);
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        }
+        walk(rootData);
+        return set;
+    }
+
+    function collectIdentifiersInSubtree(dataNode) {
+        const set = new Set();
+        function walk(n) {
+            if (!n || typeof n !== "object") return;
+            const id = n.identifier;
+            if (typeof id === "string" && id) set.add(id);
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        }
+        walk(dataNode);
+        return set;
+    }
+
+    function findDataNodeByIdentifier(rootData, identifier) {
+        const target = typeof identifier === "string" ? identifier : "";
+        if (!target) return null;
+        let found = null;
+        function walk(n) {
+            if (!n || typeof n !== "object" || found) return;
+            if (n.identifier === target) {
+                found = n;
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        }
+        walk(rootData);
+        return found;
+    }
+
+    function validateImportedDataNodeShape(obj) {
+        if (!obj || typeof obj !== "object") return { ok: false, reason: "文件不是 JSON 对象" };
+        const id = obj.identifier;
+        const type = obj.type;
+        if (typeof id !== "string" || !id.trim()) return { ok: false, reason: "缺少 identifier（必须是非空字符串）" };
+        if (typeof type !== "string" || !type.trim()) return { ok: false, reason: "缺少 type（必须是非空字符串）" };
+        // data 允许为空对象，但必须是对象（避免写成字符串/数字）
+        if (obj.data !== undefined && (obj.data === null || typeof obj.data !== "object" || Array.isArray(obj.data))) {
+            return { ok: false, reason: "data 必须是对象（例如 {}）" };
+        }
+        if (obj.children !== undefined && !Array.isArray(obj.children)) {
+            return { ok: false, reason: "children 必须是数组（例如 []）" };
+        }
+        return { ok: true };
+    }
+
+    async function tryWriteNodeToFeatureFileIfExists(identifier, dataNode) {
+        try {
+            if (!window.showDirectoryPicker) return { ok: false, reason: "no-fs-api" };
+            const fileName = encodeIdentifierToFeatureFileName(identifier);
+            if (!fileName) return { ok: false, reason: "bad-id" };
+
+            const workDir = await getDefaultDirHandle();
+            if (!workDir) return { ok: false, reason: "no-workdir" };
+            // 自动回写不主动弹权限窗：仅在已授权时写
+            const perm = await hasHandlePermissionNoPrompt(workDir, "readwrite");
+            if (!perm) return { ok: false, reason: "no-permission" };
+
+            const featureDir = await getSubDirIfExists(workDir, FEATURE_SYNC_DIR_PARTS);
+            if (!featureDir) return { ok: false, reason: "no-feature-dir" };
+
+            let fileHandle;
+            try {
+                fileHandle = await featureDir.getFileHandle(fileName, { create: false });
+            } catch (e) {
+                // 文件不存在 => 不自动创建（避免污染目录）
+                return { ok: false, reason: "no-file" };
+            }
+
+            const exportObj = sanitizeDataNodeForExport(dataNode);
+            const jsonStr = JSON.stringify(exportObj, null, 2);
+            const writable = await fileHandle.createWritable();
+            await writable.write(jsonStr);
+            await writable.close();
+            return { ok: true, fileName };
+        } catch (e) {
+            console.warn("自动写回 feature 节点文件失败：", e);
+            return { ok: false, reason: "write-failed" };
+        }
+    }
+
+    function scheduleAutoWriteNodeFeatureFile(identifier, dataNode) {
+        const fileName = encodeIdentifierToFeatureFileName(identifier);
+        if (!fileName) return;
+        const prevTimer = featureAutoWriteTimers.get(fileName);
+        if (prevTimer) clearTimeout(prevTimer);
+        const t = setTimeout(async () => {
+            featureAutoWriteTimers.delete(fileName);
+            const r = await tryWriteNodeToFeatureFileIfExists(identifier, dataNode);
+            if (r && r.ok) {
+                if (statusEl) statusEl.textContent = `已同步节点 -> ${FEATURE_SYNC_DIR_PARTS.join("/")}/${r.fileName}`;
+            } else {
+                // 避免刷屏：只在真正写失败时提示
+                if (r && r.reason === "write-failed") {
+                    if (statusEl) statusEl.textContent = "节点已保存，但自动同步到 features 文件失败（请查看控制台）。";
+                }
+            }
+        }, FEATURE_AUTO_WRITE_DEBOUNCE_MS);
+        featureAutoWriteTimers.set(fileName, t);
+    }
+
+    function findHierarchyNodeByIdentifier(hierarchyRoot, identifier) {
+        if (!hierarchyRoot || !identifier) return null;
+        let found = null;
+        hierarchyRoot.eachBefore(nd => {
+            if (found) return;
+            if (nd && nd.data && nd.data.identifier === identifier) found = nd;
+        });
+        return found;
+    }
+
+    async function syncAllExistingFeatureFilesFromMemory() {
+        try {
+            if (!root || !root.data) return;
+            if (!window.showDirectoryPicker) return;
+
+            // 这是用户主动点击“保存”触发的同步：允许弹一次权限（若需要）
+            const workDir = await ensureWritableWorkDirHandle();
+            if (!workDir) return;
+            const okPerm = await ensureHandlePermission(workDir, "readwrite");
+            if (!okPerm) return;
+
+            // features 目录：不存在则创建（后续可手动 node sync 创建文件）
+            const featureDir = await getOrCreateSubDir(workDir, FEATURE_SYNC_DIR_PARTS);
+
+            // 扫描现有文件名，反解出 identifier，然后把内存中的节点写回去
+            let scanned = 0;
+            let updated = 0;
+            let missing = 0;
+            let parseFailed = 0;
+
+            for await (const [name, handle] of featureDir.entries()) {
+                if (!name || typeof name !== "string") continue;
+                if (!name.toLowerCase().endsWith(FEATURE_FILE_EXT)) continue;
+                if (!handle || handle.kind !== "file") continue;
+                scanned++;
+
+                // 文件名不含命名空间：不能靠文件名唯一定位节点
+                // 为保证一致性，这里读取文件内部的 identifier 来定位内存节点
+                let fileObj = null;
+                try {
+                    const file = await handle.getFile();
+                    const text = await file.text();
+                    fileObj = JSON.parse(text);
+                } catch (e) {
+                    parseFailed++;
+                    continue;
+                }
+
+                const id = fileObj && typeof fileObj === "object" ? fileObj.identifier : "";
+                if (typeof id !== "string" || !id) {
+                    parseFailed++;
+                    continue;
+                }
+
+                const dataNode = findDataNodeByIdentifier(root.data, id);
+                if (!dataNode) {
+                    missing++;
+                    continue;
+                }
+
+                const exportObj = sanitizeDataNodeForExport(dataNode);
+                const jsonStr = JSON.stringify(exportObj, null, 2);
+                const fileHandle = await featureDir.getFileHandle(name, { create: false });
+                const writable = await fileHandle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                updated++;
+            }
+
+            if (statusEl) {
+                const parts = [];
+                parts.push(`features 同步：已扫描 ${scanned} 个文件，回写 ${updated} 个`);
+                if (missing) parts.push(`未找到对应节点 ${missing} 个（已跳过）`);
+                if (parseFailed) parts.push(`解析失败/缺少 identifier ${parseFailed} 个（已跳过）`);
+                statusEl.textContent = parts.join(" | ");
+            }
+        } catch (e) {
+            console.error(e);
+            if (statusEl) statusEl.textContent = "features 同步失败：请查看控制台错误信息。";
+        }
+    }
+
+    async function syncCurrentNodeFeatureFile() {
+        try {
+            if (!currentEditNode || !root || !root.data) return;
+            const currentId = currentEditNode.data && currentEditNode.data.identifier;
+            if (!currentId) {
+                if (statusEl) statusEl.textContent = "节点 sync 失败：当前节点没有有效的 identifier。";
+                return;
+            }
+
+            if (!window.showDirectoryPicker) {
+                if (statusEl) statusEl.textContent = "节点 sync 失败：当前浏览器不支持目录访问 API。";
+                return;
+            }
+
+            const workDir = await ensureWritableWorkDirHandle();
+            if (!workDir) return;
+            const okPerm = await ensureHandlePermission(workDir, "readwrite");
+            if (!okPerm) {
+                if (statusEl) statusEl.textContent = "节点 sync 失败：没有目录写入权限。";
+                return;
+            }
+
+            const featureDir = await getOrCreateSubDir(workDir, FEATURE_SYNC_DIR_PARTS);
+            const fileName = encodeIdentifierToFeatureFileName(currentId);
+            if (!fileName) {
+                if (statusEl) statusEl.textContent = "节点 sync 失败：无法生成 feature 文件名。";
+                return;
+            }
+
+            let existed = true;
+            let fileHandle;
+            try {
+                fileHandle = await featureDir.getFileHandle(fileName, { create: false });
+            } catch (e) {
+                existed = false;
+                fileHandle = await featureDir.getFileHandle(fileName, { create: true });
+            }
+
+            if (!existed) {
+                // 首次：导出当前节点（含子树）
+                const exportObj = sanitizeDataNodeForExport(currentEditNode.data);
+                const jsonStr = JSON.stringify(exportObj, null, 2);
+                const writable = await fileHandle.createWritable();
+                await writable.write(jsonStr);
+                await writable.close();
+                if (statusEl) statusEl.textContent = `已创建：${FEATURE_SYNC_DIR_PARTS.join("/")}/${fileName}（请编辑该文件后再次点 sync 导入）。`;
+                return;
+            }
+
+            // 已存在：读取文件并同步回节点（支持新增子节点）
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            let imported;
+            try {
+                imported = JSON.parse(text);
+            } catch (e) {
+                if (statusEl) statusEl.textContent = `节点 sync 失败：JSON 语法错误：${e.message}`;
+                return;
+            }
+
+            const v = validateImportedDataNodeShape(imported);
+            if (!v.ok) {
+                if (statusEl) statusEl.textContent = `节点 sync 失败：${v.reason}`;
+                return;
+            }
+
+            // 冲突检测：导入子树的所有 identifier 不得与“当前子树以外”的节点冲突
+            const oldSubtreeIds = collectIdentifiersInSubtree(currentEditNode.data);
+            const allIds = collectIdentifiersInDataTree(root.data);
+            oldSubtreeIds.forEach(id => allIds.delete(id));
+
+            const newSubtreeIds = collectIdentifiersInSubtree(imported);
+            if (newSubtreeIds.size === 0) {
+                if (statusEl) statusEl.textContent = "节点 sync 失败：导入内容没有任何 identifier。";
+                return;
+            }
+            // 子树内部重复（理论上 Set 已去重，但我们需要检测是否存在空/重复结构；这里检查“遍历数量”更复杂，先做外部冲突即可）
+            const conflicts = [];
+            newSubtreeIds.forEach(id => {
+                if (allIds.has(id)) conflicts.push(id);
+            });
+            if (conflicts.length) {
+                if (statusEl) statusEl.textContent = `节点 sync 失败：identifier 冲突（与树中其他节点重名）：${conflicts.slice(0, 8).join(", ")}${conflicts.length > 8 ? ` ...（共 ${conflicts.length} 个）` : ""}`;
+                return;
+            }
+
+            // 记录历史（一次）
+            HistoryManager.pushState(root.data);
+
+            const oldId = currentEditNode.data.identifier;
+            const newId = imported.identifier;
+
+            // 如果根 identifier 被改名：全局重命名（并禁止重名）
+            if (oldId && newId && newId !== oldId) {
+                if (identifierExistsInData(root.data, newId)) {
+                    if (statusEl) statusEl.textContent = `节点 sync 失败：identifier 重名：${newId} 已存在。`;
+                    return;
+                }
+                renameIdentifierEverywhere(oldId, newId);
+            }
+
+            // 把导入对象写回当前节点（整棵子树替换）
+            // 注意：这里是数据层对象（root.data 里的同一引用），直接覆盖字段即可
+            currentEditNode.data.identifier = imported.identifier;
+            currentEditNode.data.type = imported.type;
+            currentEditNode.data.data = imported.data || {};
+            currentEditNode.data.children = Array.isArray(imported.children) ? imported.children : [];
+
+            // 重建树（展示新子节点），并把 currentEditNode 指回新 hierarchy 节点
+            const keepId = imported.identifier;
+            rebuildHierarchyPreserveExpanded();
+            const newHierarchyNode = findHierarchyNodeByIdentifier(root, keepId);
+            if (newHierarchyNode) {
+                currentEditNode = newHierarchyNode;
+            }
+
+            // 刷新右侧编辑器内容（保持打开）
+            if (currentEditNode && currentEditNode.data) {
+                const nodeType = currentEditNode.data.type;
+                const preview = currentEditNode.data.data && typeof currentEditNode.data.data === "object" ? currentEditNode.data.data : {};
+                currentPreviewCopy = deepClone(preview);
+                if (jsonModalTitle) jsonModalTitle.textContent = currentEditNode.data.identifier || "(无 identifier)";
+                if (jsonModalMeta) jsonModalMeta.textContent = `${nodeType || "(无 type)"}`;
+                buildFormForPreview(currentPreviewCopy, nodeType);
+                if (jsonModalTextarea) {
+                    try {
+                        jsonModalTextarea.value = JSON.stringify(currentPreviewCopy, null, 2);
+                    } catch (e) {
+                        jsonModalTextarea.value = String(currentPreviewCopy);
+                    }
+                }
+                setEditorMode("form");
+            }
+
+            if (statusEl) statusEl.textContent = `已从 ${FEATURE_SYNC_DIR_PARTS.join("/")}/${fileName} 同步到当前节点（含子树）。`;
+        } catch (e) {
+            console.error(e);
+            if (statusEl) statusEl.textContent = "节点 sync 失败：请查看控制台错误信息。";
+        }
+    }
+
+    function stripNamespaceFromIdentifier(id) {
+        const raw = typeof id === "string" ? id.trim() : "";
+        if (!raw) return "";
+        if (raw.includes(":")) {
+            const parts = raw.split(":").filter(Boolean);
+            return parts.length ? parts[parts.length - 1] : raw;
+        }
+        return raw;
+    }
+
+    function normalizeLineEndingsToLF(text) {
+        return String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    }
+
+    async function hasHandlePermissionNoPrompt(handle, mode) {
+        try {
+            if (handle && typeof handle.queryPermission === "function") {
+                const q = await handle.queryPermission({ mode });
+                return q === "granted";
+            }
+        } catch (e) {
+            console.warn("权限查询失败，将继续尝试操作。", e);
+        }
+        // 某些环境没有权限 API：只能尝试执行
+        return true;
+    }
+
+    async function getSubDirIfExists(baseDirHandle, parts) {
+        try {
+            let cur = baseDirHandle;
+            for (const p of parts) {
+                cur = await cur.getDirectoryHandle(p, { create: false });
+            }
+            return cur;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function formatIterationsForMolangFile(iterationsVal) {
+        // 保留用户输入的多行/表达式；数字则写成纯数字字符串
+        if (iterationsVal === undefined || iterationsVal === null) return "";
+        return normalizeLineEndingsToLF(String(iterationsVal));
+    }
+
+    // 当 molang 文件已存在（意味着“已通过 sync 机制关联”）时，自动写回 iterations，避免节点与文件不一致
+    async function tryWriteIterationsToMolangFileIfExists(fullIdentifier, iterationsVal) {
+        try {
+            if (!window.showDirectoryPicker) {
+                return { ok: false, reason: "no-fs-api" };
+            }
+            const baseName = stripNamespaceFromIdentifier(fullIdentifier);
+            if (!baseName) return { ok: false, reason: "bad-id" };
+
+            const workDir = await getDefaultDirHandle();
+            if (!workDir) return { ok: false, reason: "no-workdir" };
+
+            // 自动保存时不主动弹权限窗：仅在已授权时写回
+            const perm = await hasHandlePermissionNoPrompt(workDir, "readwrite");
+            if (!perm) return { ok: false, reason: "no-permission" };
+
+            const molangDir = await getSubDirIfExists(workDir, MOLANG_SYNC_DIR_PARTS);
+            if (!molangDir) return { ok: false, reason: "no-molang-dir" };
+
+            const fileName = `${baseName}${MOLANG_FILE_EXT}`;
+            let fileHandle;
+            try {
+                fileHandle = await molangDir.getFileHandle(fileName, { create: false });
+            } catch (e) {
+                // 未存在 => 说明尚未通过 sync 关联，不自动创建，避免污染目录
+                return { ok: false, reason: "no-file" };
+            }
+
+            const content = formatIterationsForMolangFile(iterationsVal);
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            return { ok: true, fileName };
+        } catch (e) {
+            console.warn("自动写回 molang 失败：", e);
+            return { ok: false, reason: "write-failed" };
+        }
+    }
+
+    function scheduleAutoWriteIterationsMolang(fullIdentifier, iterationsVal) {
+        const baseName = stripNamespaceFromIdentifier(fullIdentifier);
+        if (!baseName) return;
+        const prevTimer = molangAutoWriteTimers.get(baseName);
+        if (prevTimer) clearTimeout(prevTimer);
+        const t = setTimeout(async () => {
+            molangAutoWriteTimers.delete(baseName);
+            const r = await tryWriteIterationsToMolangFileIfExists(fullIdentifier, iterationsVal);
+            if (r && r.ok) {
+                if (statusEl) statusEl.textContent = `已同步 iterations -> ${MOLANG_SYNC_DIR_PARTS.join("/")}/${r.fileName}`;
+            } else {
+                // 不刷屏：只在“看起来应该能写但没写成”时提示一句
+                // no-file 代表未关联，不提示；no-permission/no-workdir 也不强制提示，避免干扰
+                if (r && (r.reason === "write-failed")) {
+                    if (statusEl) statusEl.textContent = "iterations 已修改，但自动同步 molang 失败（请查看控制台）。";
+                }
+            }
+        }, MOLANG_AUTO_WRITE_DEBOUNCE_MS);
+        molangAutoWriteTimers.set(baseName, t);
+    }
+
+    // 移除 Molang 里的 // 行注释与行内注释（尽量不破坏引号内的 //）
+    function stripDoubleSlashComments(text) {
+        const src = normalizeLineEndingsToLF(text);
+        const lines = src.split("\n");
+        const out = [];
+
+        for (const line of lines) {
+            let inSingle = false;
+            let inDouble = false;
+            let escape = false;
+            let cutAt = -1;
+
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+
+                if (escape) {
+                    escape = false;
+                    continue;
+                }
+
+                if (ch === "\\") {
+                    // 仅在引号内才需要处理转义语义；这里统一处理也无妨
+                    escape = true;
+                    continue;
+                }
+
+                if (!inDouble && ch === "'") {
+                    inSingle = !inSingle;
+                    continue;
+                }
+                if (!inSingle && ch === '"') {
+                    inDouble = !inDouble;
+                    continue;
+                }
+
+                // 非引号内出现 //：视为注释起点
+                if (!inSingle && !inDouble && ch === "/" && i + 1 < line.length && line[i + 1] === "/") {
+                    cutAt = i;
+                    break;
+                }
+            }
+
+            const kept = cutAt === -1 ? line : line.slice(0, cutAt);
+            // 整行注释会变成空串，直接丢弃；其他行保留原缩进/内容（仅去掉末尾空白）
+            const trimmedEnd = kept.replace(/\s+$/g, "");
+            if (!trimmedEnd.trim()) {
+                // 空行/注释行：忽略
+                continue;
+            }
+            out.push(trimmedEnd);
+        }
+
+        return out.join("\n").trim();
+    }
+
+    function parseMolangMaybeNumber(text) {
+        const s = stripDoubleSlashComments(text);
+        if (!s) return "";
+        // 纯数字（含小数/科学计数）才转 number，其它都保留为 string（Molang 常包含符号/变量）
+        if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(s)) {
+            const n = Number(s);
+            return Number.isNaN(n) ? s : n;
+        }
+        return s;
+    }
+
+    function buildBaseNameToDataNodesMap(rootData) {
+        const map = new Map(); // baseName -> dataNode[]
+        function walk(node) {
+            if (!node || typeof node !== "object") return;
+            const id = node.identifier;
+            if (typeof id === "string" && id) {
+                const base = stripNamespaceFromIdentifier(id);
+                if (base) {
+                    const arr = map.get(base) || [];
+                    arr.push(node);
+                    map.set(base, arr);
+                }
+            }
+            if (Array.isArray(node.children)) {
+                node.children.forEach(walk);
+            }
+        }
+        walk(rootData);
+        return map;
+    }
+
+    function trySetScatterIterationsOnDataNode(dataNode, nextVal) {
+        if (!dataNode || typeof dataNode !== "object") return { ok: false, reason: "bad-node" };
+        if (dataNode.type !== "minecraft:scatter_feature") return { ok: false, reason: "not-scatter" };
+        if (!dataNode.data || typeof dataNode.data !== "object") dataNode.data = {};
+        if (!dataNode.data.distribution || typeof dataNode.data.distribution !== "object") {
+            dataNode.data.distribution = {};
+        }
+        const dist = dataNode.data.distribution;
+        const prev = dist.iterations;
+        if (prev === nextVal) return { ok: false, reason: "no-change" };
+        dist.iterations = nextVal;
+        return { ok: true };
+    }
+
+    // 批量同步 tools-feature/molangs/*.molang -> 对应节点 data.distribution.iterations
+    async function syncAllMolangsToNodes() {
+        try {
+            if (!root || !root.data) {
+                if (statusEl) statusEl.textContent = "Sync 失败：当前还没有加载 root_feature.json。";
+                return;
+            }
+            if (!window.showDirectoryPicker) {
+                if (statusEl) statusEl.textContent = "Sync 失败：当前浏览器不支持目录访问 API，无法读取本地 .molang 文件。";
+                return;
+            }
+
+            const workDir = await ensureWritableWorkDirHandle();
+            if (!workDir) return;
+            const ok = await ensureHandlePermission(workDir, "read");
+            if (!ok) {
+                if (statusEl) statusEl.textContent = "Sync 失败：没有目录读取权限。";
+                return;
+            }
+
+            const molangDir = await getOrCreateSubDir(workDir, MOLANG_SYNC_DIR_PARTS);
+            const baseMap = buildBaseNameToDataNodesMap(root.data);
+
+            const fileEntries = [];
+            for await (const [name, handle] of molangDir.entries()) {
+                if (!name || typeof name !== "string") continue;
+                if (!name.toLowerCase().endsWith(MOLANG_FILE_EXT)) continue;
+                if (!handle || handle.kind !== "file") continue;
+                fileEntries.push({ name, handle });
+            }
+
+            if (fileEntries.length === 0) {
+                if (statusEl) statusEl.textContent = `Sync 完成：未找到 ${MOLANG_SYNC_DIR_PARTS.join("/")}/ 目录下的 *.molang 文件。`;
+                return;
+            }
+
+            // 先读完并计算“将要修改”的列表，保证只入一次历史栈
+            const planned = []; // { base, fileName, nodes[], nextVal }
+            // 记录“文件 -> 节点”匹配问题，便于 Sync 后直接定位到具体文件
+            const missingFiles = [];        // 未匹配到任何节点的 molang 文件名
+            const unmatchedTypeFiles = [];  // 匹配到节点但都不是 scatter_feature 的 molang 文件名
+
+            for (let i = 0; i < fileEntries.length; i++) {
+                const { name, handle } = fileEntries[i];
+                if (statusEl) statusEl.textContent = `Sync：读取 ${i + 1}/${fileEntries.length} - ${name} ...`;
+
+                const base = name.slice(0, -MOLANG_FILE_EXT.length);
+                if (!base) continue;
+
+                const nodes = baseMap.get(base) || [];
+                if (!nodes.length) {
+                    missingFiles.push(name);
+                    continue;
+                }
+
+                const file = await handle.getFile();
+                const text = normalizeLineEndingsToLF(await file.text());
+                const nextVal = parseMolangMaybeNumber(text);
+
+                // 只对 scatter_feature 生效；如果全都不是 scatter，记一下
+                const hasScatter = nodes.some(n => n && n.type === "minecraft:scatter_feature");
+                if (!hasScatter) {
+                    unmatchedTypeFiles.push(name);
+                    continue;
+                }
+
+                planned.push({ base, fileName: name, nodes, nextVal });
+            }
+
+            // 统计实际会变更的节点数
+            let willChangeCount = 0;
+            for (const item of planned) {
+                for (const n of item.nodes) {
+                    if (!n || n.type !== "minecraft:scatter_feature") continue;
+                    const dist = n.data && n.data.distribution;
+                    const prev = dist && typeof dist === "object" ? dist.iterations : undefined;
+                    if (prev !== item.nextVal) willChangeCount++;
+                }
+            }
+
+            function formatFileListForStatus(files, maxShow) {
+                const arr = Array.isArray(files) ? files.filter(Boolean) : [];
+                if (!arr.length) return "";
+                const max = typeof maxShow === "number" && maxShow > 0 ? maxShow : 6;
+                if (arr.length <= max) return arr.join(", ");
+                return arr.slice(0, max).join(", ") + ` ...（共 ${arr.length} 个）`;
+            }
+
+            if (willChangeCount === 0) {
+                if (statusEl) {
+                    const parts = [];
+                    parts.push(`Sync 完成：没有需要更新的节点（已与文件一致）。`);
+                    if (missingFiles.length) parts.push(`未匹配到节点：${missingFiles.length} 个（${formatFileListForStatus(missingFiles)}）`);
+                    if (unmatchedTypeFiles.length) parts.push(`匹配到但非 scatter_feature：${unmatchedTypeFiles.length} 个（${formatFileListForStatus(unmatchedTypeFiles)}）`);
+                    statusEl.textContent = parts.join(" | ");
+                }
+                // 控制台输出完整列表，避免 status 区域太长被截断
+                if (missingFiles.length) console.warn("Sync：未匹配到节点的 molang 文件：", missingFiles);
+                if (unmatchedTypeFiles.length) console.warn("Sync：匹配到节点但非 scatter_feature 的 molang 文件：", unmatchedTypeFiles);
+                return;
+            }
+
+            // 入一次历史栈（撤销一键回退整个批量同步）
+            HistoryManager.pushState(root.data);
+
+            let changed = 0;
+            let touchedFiles = 0;
+
+            for (const item of planned) {
+                let fileChangedAny = false;
+                for (const n of item.nodes) {
+                    const r = trySetScatterIterationsOnDataNode(n, item.nextVal);
+                    if (r.ok) {
+                        changed++;
+                        fileChangedAny = true;
+                    }
+
+                    // 如果当前侧边栏正在编辑这个节点，同步刷新 UI 草稿
+                    if (
+                        currentEditNode &&
+                        currentEditNode.data &&
+                        currentEditNode.data.identifier &&
+                        stripNamespaceFromIdentifier(currentEditNode.data.identifier) === item.base
+                    ) {
+                        const nodeType = currentEditNode.data.type;
+                        if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
+                            if (!currentPreviewCopy.distribution || typeof currentPreviewCopy.distribution !== "object") {
+                                currentPreviewCopy.distribution = {};
+                            }
+                            currentPreviewCopy.distribution.iterations = item.nextVal;
+                            refreshFormAndTextareaForCurrentPreview(nodeType);
+                        }
+                    }
+                }
+                if (fileChangedAny) touchedFiles++;
+            }
+
+            if (statusEl) {
+                const parts = [];
+                parts.push(`Sync 完成：更新节点 ${changed} 个（来自 ${touchedFiles} 个 molang 文件）`);
+                if (missingFiles.length) parts.push(`未匹配到节点：${missingFiles.length} 个（${formatFileListForStatus(missingFiles)}）`);
+                if (unmatchedTypeFiles.length) parts.push(`匹配到但非 scatter_feature：${unmatchedTypeFiles.length} 个（${formatFileListForStatus(unmatchedTypeFiles)}）`);
+                statusEl.textContent = parts.join(" | ");
+            }
+            if (missingFiles.length) console.warn("Sync：未匹配到节点的 molang 文件：", missingFiles);
+            if (unmatchedTypeFiles.length) console.warn("Sync：匹配到节点但非 scatter_feature 的 molang 文件：", unmatchedTypeFiles);
+        } catch (e) {
+            console.error(e);
+            if (statusEl) statusEl.textContent = "Sync 失败：请查看控制台错误信息。";
+        }
+    }
+
+    async function ensureHandlePermission(handle, mode) {
+        try {
+            if (handle && typeof handle.queryPermission === "function") {
+                const q = await handle.queryPermission({ mode });
+                if (q === "granted") return true;
+                if (typeof handle.requestPermission === "function") {
+                    const r = await handle.requestPermission({ mode });
+                    return r === "granted";
+                }
+                return false;
+            }
+        } catch (e) {
+            console.warn("权限检查失败，将继续尝试操作。", e);
+        }
+        // 某些环境没有权限 API，直接继续尝试
+        return true;
+    }
+
+    async function getOrCreateSubDir(baseDirHandle, parts) {
+        let cur = baseDirHandle;
+        for (const p of parts) {
+            cur = await cur.getDirectoryHandle(p, { create: true });
+        }
+        return cur;
+    }
+
+    async function ensureWritableWorkDirHandle() {
+        // 优先用已保存的默认路径；如果没有/无写权限，则引导用户选择一个目录（建议项目根目录）
+        if (!window.showDirectoryPicker) {
+            if (statusEl) statusEl.textContent = "当前浏览器不支持目录访问 API，无法 sync 到本地 .molang 文件。";
+            return null;
+        }
+
+        let baseHandle = await getDefaultDirHandle();
+        if (baseHandle) {
+            const ok = await ensureHandlePermission(baseHandle, "readwrite");
+            if (ok) return baseHandle;
+        }
+
+        try {
+            if (statusEl) statusEl.textContent = "请先选择项目根目录（用于写入 tools-feature/molangs/*.molang）…";
+            const picked = await window.showDirectoryPicker({ mode: "readwrite" });
+            if (picked) {
+                // 记住到路径列表，后续不用重复选
+                await addNewPath(picked);
+                await refreshWorkDirSelect();
+                return picked;
+            }
+        } catch (e) {
+            if (e && e.name === "AbortError") {
+                if (statusEl) statusEl.textContent = "已取消选择目录。";
+                return null;
+            }
+            console.error(e);
+            if (statusEl) statusEl.textContent = "选择目录失败，请查看控制台。";
+            return null;
+        }
+        return null;
+    }
+
+    // 点击 sync：首次创建并写入 iterations；后续读取文件内容并同步回节点
+    async function syncScatterIterationsMolangFile() {
+        try {
+            if (!currentEditNode || !root) return;
+            const nodeType = currentEditNode.data && currentEditNode.data.type;
+            if (nodeType !== "minecraft:scatter_feature") return;
+
+            const fullId = currentEditNode.data && currentEditNode.data.identifier;
+            const baseName = stripNamespaceFromIdentifier(fullId);
+            if (!baseName) {
+                if (statusEl) statusEl.textContent = "sync 失败：当前 scatter 节点没有有效的 identifier。";
+                return;
+            }
+
+            const workDir = await ensureWritableWorkDirHandle();
+            if (!workDir) return;
+            const ok = await ensureHandlePermission(workDir, "readwrite");
+            if (!ok) {
+                if (statusEl) statusEl.textContent = "sync 失败：没有目录写入权限。";
+                return;
+            }
+
+            const molangDir = await getOrCreateSubDir(workDir, MOLANG_SYNC_DIR_PARTS);
+            const fileName = `${baseName}${MOLANG_FILE_EXT}`;
+
+            // 检查是否已存在
+            let existed = true;
+            let fileHandle;
+            try {
+                fileHandle = await molangDir.getFileHandle(fileName, { create: false });
+            } catch (e) {
+                existed = false;
+                fileHandle = await molangDir.getFileHandle(fileName, { create: true });
+            }
+
+            if (!existed) {
+                // 首次：创建并写入当前 iterations（便于在编辑器里直接改）
+                const dist = (currentPreviewCopy && currentPreviewCopy.distribution && typeof currentPreviewCopy.distribution === "object")
+                    ? currentPreviewCopy.distribution
+                    : null;
+                const currentVal = dist ? dist.iterations : "";
+                const content = normalizeLineEndingsToLF(currentVal === undefined || currentVal === null ? "" : String(currentVal));
+
+                const writable = await fileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                if (statusEl) statusEl.textContent = `已创建：${MOLANG_SYNC_DIR_PARTS.join("/")}/${fileName}（已写入当前 iterations），请编辑该文件后再次点 sync 导入。`;
+                return;
+            }
+
+            // 已存在：读取并同步回 iterations
+            const file = await fileHandle.getFile();
+            const text = normalizeLineEndingsToLF(await file.text());
+            const nextVal = parseMolangMaybeNumber(text);
+
+            // 更新编辑器草稿
+            if (!currentPreviewCopy || typeof currentPreviewCopy !== "object") {
+                currentPreviewCopy = {};
+            }
+            if (!currentPreviewCopy.distribution || typeof currentPreviewCopy.distribution !== "object") {
+                currentPreviewCopy.distribution = {};
+            }
+            currentPreviewCopy.distribution.iterations = nextVal;
+
+            // 刷新 UI，让表单/textarea 展示最新值
+            refreshFormAndTextareaForCurrentPreview(nodeType);
+
+            // 提交到节点（进入撤销栈）
+            applyJsonEdit({ closeOnSuccess: false });
+            if (statusEl) statusEl.textContent = `已从 ${MOLANG_SYNC_DIR_PARTS.join("/")}/${fileName} 同步到当前 scatter 节点的 iterations。`;
+        } catch (e) {
+            console.error(e);
+            if (statusEl) statusEl.textContent = "sync 失败：请查看控制台错误信息。";
+        }
+    }
+
     // 适用于需要多行编辑的字段（如 scatter_feature.distribution.iterations）
-    function appendTextareaFieldRow(labelText, path, value, valueType) {
+    function appendTextareaFieldRow(labelText, path, value, valueType, options) {
         if (!jsonModalFormContainer) return;
         const row = document.createElement("div");
         row.className = "modal-form-row";
 
         const label = document.createElement("div");
         label.className = "modal-form-label";
-        label.textContent = labelText;
+        if (options && options.labelSuffixEl) {
+            label.style.display = "flex";
+            label.style.alignItems = "center";
+            label.style.gap = "6px";
+            const textSpan = document.createElement("span");
+            textSpan.textContent = labelText;
+            label.appendChild(textSpan);
+            label.appendChild(options.labelSuffixEl);
+        } else {
+            label.textContent = labelText;
+        }
         row.appendChild(label);
 
         const textarea = document.createElement("textarea");
@@ -1968,7 +2336,21 @@
         textarea.value = value !== undefined && value !== null ? String(value) : "";
         textarea.dataset.path = path;
         textarea.dataset.type = valueType;
-        row.appendChild(textarea);
+        if (options && options.fieldSuffixEl) {
+            const wrap = document.createElement("div");
+            wrap.style.display = "flex";
+            wrap.style.alignItems = "flex-start";
+            wrap.style.gap = "6px";
+            wrap.style.minWidth = "0";
+            textarea.style.flex = "1 1 auto";
+            textarea.style.minWidth = "0";
+            textarea.style.width = "auto";
+            wrap.appendChild(textarea);
+            wrap.appendChild(options.fieldSuffixEl);
+            row.appendChild(wrap);
+        } else {
+            row.appendChild(textarea);
+        }
 
         // 启用自适应高度
         enableAutoHeightTextarea(textarea);
@@ -2005,17 +2387,66 @@
         jsonModalFormContainer.appendChild(row);
     }
 
+    function deleteByPath(obj, path) {
+        if (!obj || typeof obj !== "object" || !path) return;
+        const parts = path.split(".");
+        if (!parts.length) return;
+        let cur = obj;
+        for (let i = 0; i < parts.length - 1; i++) {
+            const key = parts[i];
+            if (cur == null) return;
+            if (isNumericKey(key)) {
+                const idx = Number(key);
+                if (!Array.isArray(cur) || idx < 0 || idx >= cur.length) return;
+                cur = cur[idx];
+            } else {
+                if (typeof cur !== "object") return;
+                cur = cur[key];
+            }
+        }
+        const lastKey = parts[parts.length - 1];
+        if (isNumericKey(lastKey)) {
+            const idx = Number(lastKey);
+            if (Array.isArray(cur) && idx >= 0 && idx < cur.length) {
+                cur.splice(idx, 1);
+            }
+            return;
+        }
+        if (cur && typeof cur === "object") {
+            delete cur[lastKey];
+        }
+    }
+
     // 将当前表单中的 input 值应用到目标对象（按 data-path / data-key 写回）
     function applyFormInputsToObject(target) {
         if (!jsonModalFormContainer) return;
         if (!target || typeof target !== "object") return;
 
-        const controls = jsonModalFormContainer.querySelectorAll(
-            "input[data-path], input[data-key], textarea[data-path], textarea[data-key]"
-        );
+        const controls = jsonModalFormContainer.querySelectorAll("[data-path], [data-key]");
         controls.forEach((control) => {
+            if (control.disabled) return;
             const path = control.dataset.path || control.dataset.key;
             const type = control.dataset.type;
+
+            // checkbox：两类
+            // 1) presenceObject: 勾选 => 写入 {}；不勾选 => 删除该字段
+            // 2) boolean: 勾选 => true；不勾选 => false
+            if (control.tagName === "INPUT" && control.type === "checkbox") {
+                const checked = !!control.checked;
+                if (type === "presenceObject") {
+                    if (checked) setByPath(target, path, {});
+                    else deleteByPath(target, path);
+                    return;
+                }
+                if (type === "boolean") {
+                    setByPath(target, path, checked);
+                    return;
+                }
+                // 其他 checkbox 默认当 boolean
+                setByPath(target, path, checked);
+                return;
+            }
+
             let value = control.value;
             if (type === "number") {
                 const n = Number(value);
@@ -2030,6 +2461,14 @@
                 }
             } else if (type === "boolean") {
                 value = value === "true";
+            } else if (type === "stringArray") {
+                // hidden input：存的是 JSON 数组字符串
+                try {
+                    const parsed = JSON.parse(value || "[]");
+                    value = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    value = [];
+                }
             }
             if (path) {
                 setByPath(target, path, value);
@@ -2114,7 +2553,7 @@
         }
     }
 
-    function buildScatterSection(preview) {
+    function buildScatterSection(preview, nodeType) {
         if (!preview || typeof preview !== "object") return;
         const dist = preview.distribution;
         if (!dist || typeof dist !== "object") return;
@@ -2129,7 +2568,21 @@
         const iterationsVal = dist.iterations;
         if (typeof iterationsVal === "number" || typeof iterationsVal === "string") {
             // scatter_feature：iterations 允许字符串或数字，这里改为 textarea 以支持多行表达式 / 配置
-            appendTextareaFieldRow("distribution.iterations", "distribution.iterations", iterationsVal, "autoNumber");
+            const syncBtn = document.createElement("button");
+            syncBtn.type = "button";
+            syncBtn.className = "btn";
+            syncBtn.textContent = "sync";
+            syncBtn.title = "首次点击：导出 iterations 到 tools-feature/molangs/<id>.molang；后续点击：从该文件同步回 iterations";
+            syncBtn.addEventListener("click", async () => {
+                await syncScatterIterationsMolangFile();
+            });
+            appendTextareaFieldRow(
+                "iterations",
+                "distribution.iterations",
+                iterationsVal,
+                "autoNumber",
+                { labelSuffixEl: syncBtn }
+            );
         }
 
         const chanceVal = dist.scatter_chance;
@@ -2137,20 +2590,95 @@
             appendSimpleFieldRow("distribution.scatter_chance", "distribution.scatter_chance", chanceVal, "autoNumber");
         }
 
-        const xVal = dist.x;
-        if (typeof xVal === "number" || typeof xVal === "string") {
-            appendSimpleFieldRow("distribution.x", "distribution.x", xVal, "autoNumber");
+        function buildAxisField(axisKey) {
+            const axisVal = dist[axisKey];
+            const axisPath = `distribution.${axisKey}`;
+
+            // 兼容 1) number/string（旧用法）
+            if (typeof axisVal === "number" || typeof axisVal === "string") {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = "btn";
+                btn.textContent = "grid";
+                btn.title = "切换为 fixed_grid + extent 对象";
+                btn.addEventListener("click", () => {
+                    // 仅修改当前弹窗草稿：需要用户点“确定”才会写回
+                    const defaultExtent = axisKey === "y" ? [1, 160] : [0, 0];
+                    dist[axisKey] = {
+                        distribution: "fixed_grid",
+                        extent: defaultExtent,
+                    };
+                    refreshFormAndTextareaForCurrentPreview(nodeType);
+                });
+                appendSimpleFieldRow(axisPath, axisPath, axisVal, "autoNumber", { labelSuffixEl: btn });
+                return;
+            }
+
+            // 兼容 2) 类似：
+            // "y": { "distribution": "fixed_grid", "extent": [1, 160] }
+            if (axisVal && typeof axisVal === "object" && !Array.isArray(axisVal)) {
+                const title2 = document.createElement("div");
+                title2.style.fontSize = "10px";
+                title2.style.color = "#9ca3af";
+                title2.style.margin = "6px 0 2px 0";
+                title2.style.display = "flex";
+                title2.style.alignItems = "center";
+                title2.style.gap = "6px";
+                const title2Text = document.createElement("span");
+                title2Text.textContent = `${axisPath}（对象结构）`;
+                title2.appendChild(title2Text);
+
+                const backBtn = document.createElement("button");
+                backBtn.type = "button";
+                backBtn.className = "btn";
+                backBtn.textContent = "value";
+                backBtn.title = "切换回数值（使用 extent[1]）";
+                backBtn.addEventListener("click", () => {
+                    let fallback = 0;
+                    const ex = axisVal.extent;
+                    if (Array.isArray(ex) && ex.length >= 2) {
+                        const n = Number(ex[1]);
+                        fallback = Number.isNaN(n) ? 0 : n;
+                    }
+                    dist[axisKey] = fallback;
+                    refreshFormAndTextareaForCurrentPreview(nodeType);
+                });
+                title2.appendChild(backBtn);
+                jsonModalFormContainer.appendChild(title2);
+
+                const distType = axisVal.distribution;
+                if (typeof distType === "string" || typeof distType === "number" || typeof distType === "boolean") {
+                    appendSimpleFieldRow(`${axisPath}.distribution`, `${axisPath}.distribution`, distType, typeof distType);
+                } else {
+                    appendSimpleFieldRow(`${axisPath}.distribution`, `${axisPath}.distribution`, "", "string");
+                }
+
+                const extent = axisVal.extent;
+                if (Array.isArray(extent)) {
+                    const a = extent.length > 0 ? extent[0] : 0;
+                    const b = extent.length > 1 ? extent[1] : 0;
+                    // extent 允许字符串（例如 Molang / 表达式），因此用 autoNumber：
+                    // - 纯数字自动转 number
+                    // - 其他内容保留 string
+                    appendSimpleFieldRow(`${axisPath}.extent[0]`, `${axisPath}.extent.0`, a, "autoNumber");
+                    appendSimpleFieldRow(`${axisPath}.extent[1]`, `${axisPath}.extent.1`, b, "autoNumber");
+                } else {
+                    // 给个默认占位，方便直接填
+                    appendSimpleFieldRow(`${axisPath}.extent[0]`, `${axisPath}.extent.0`, 0, "autoNumber");
+                    appendSimpleFieldRow(`${axisPath}.extent[1]`, `${axisPath}.extent.1`, 0, "autoNumber");
+                }
+
+                // 如果 axisVal 里还有别的复杂字段，提示去 JSON 模式
+                const extraKeys = Object.keys(axisVal).filter(k => k !== "distribution" && k !== "extent");
+                if (extraKeys.length) {
+                    appendJsonFieldButton(`${axisPath}（更多字段）`, `在 JSON 中编辑 ${axisPath}（包含：${extraKeys.join(", ")}）`);
+                }
+            }
         }
 
-        const yVal = dist.y;
-        if (typeof yVal === "number" || typeof yVal === "string") {
-            appendSimpleFieldRow("distribution.y", "distribution.y", yVal, "autoNumber");
-        }
-
-        const zVal = dist.z;
-        if (typeof zVal === "number" || typeof zVal === "string") {
-            appendSimpleFieldRow("distribution.z", "distribution.z", zVal, "autoNumber");
-        }
+        buildAxisField("x");
+        buildAxisField("y");
+        buildAxisField("z");
 
         // 对于非数值的复杂 distribution 结构，提供整体 JSON 编辑入口
         if (
@@ -2198,14 +2726,13 @@
                     }
 
                     const parentId = currentEditNode.data.identifier || "namespace:feature";
-                    const childId = generateChildIdentifier(parentId);
+                    const childId = generateChildIdentifier(parentId, childType);
 
                     const childPreview = createTemplatePreviewForType(childType, childId);
                     const childDataNode = {
                         identifier: childId,
                         type: childType,
-                        file: currentEditNode.data.file || "",
-                        preview: childPreview,
+                        data: childPreview,
                     };
 
                     if (!Array.isArray(currentEditNode.data.children)) {
@@ -2216,14 +2743,14 @@
                     // 更新当前 scatter_feature 的 places_feature 指向新建子节点
                     const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
                         ? currentPreviewCopy
-                        : (currentEditNode.data.preview || {});
+                        : (currentEditNode.data.data || {});
 
                     targetPreview.places_feature = childId;
 
                     if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
                         currentPreviewCopy = targetPreview;
                     }
-                    currentEditNode.data.preview = targetPreview;
+                    currentEditNode.data.data = targetPreview;
 
                     // 重新渲染表单与 JSON 文本
                     refreshFormAndTextareaForCurrentPreview(nodeType);
@@ -2266,7 +2793,7 @@
 
                     // 1. 准备新节点数据
                     const parentId = currentEditNode.data.identifier || "namespace:feature";
-                    const newChildId = generateChildIdentifier(parentId + "_wrapper");
+                    const newChildId = generateChildIdentifier(parentId + "_wrapper", childType);
                     const newChildPreview = createTemplatePreviewForType(childType, newChildId);
                     
                     // 2. 找到旧节点数据并从当前节点移除
@@ -2292,8 +2819,7 @@
                     const newChildData = {
                         identifier: newChildId,
                         type: childType,
-                        file: currentEditNode.data.file || "",
-                        preview: newChildPreview,
+                        data: newChildPreview,
                         children: [oldChildData] // 移动过去
                     };
 
@@ -2310,14 +2836,14 @@
                     // 6. 更新当前父节点的 preview 指向新节点
                     const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
                         ? currentPreviewCopy
-                        : (currentEditNode.data.preview || {});
+                        : (currentEditNode.data.data || {});
 
                     targetPreview.places_feature = newChildId;
                     
                     if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
                         currentPreviewCopy = targetPreview;
                     }
-                    currentEditNode.data.preview = targetPreview;
+                    currentEditNode.data.data = targetPreview;
 
                     // 刷新
                     refreshFormAndTextareaForCurrentPreview(nodeType);
@@ -2327,6 +2853,92 @@
                 INSERT_OPTIONS
             );
             jsonModalFormContainer.appendChild(row);
+        }
+    }
+
+    function buildStructureTemplateSection(preview, nodeType) {
+        if (nodeType !== "minecraft:structure_template_feature") return;
+        if (!jsonModalFormContainer) return;
+        if (!preview || typeof preview !== "object") return;
+
+        const title = document.createElement("div");
+        title.style.fontSize = "10px";
+        title.style.color = "#9ca3af";
+        title.style.margin = "6px 0 2px 0";
+        title.textContent = "structure_template_feature 常用字段：";
+        jsonModalFormContainer.appendChild(title);
+
+        // adjustment_radius: number
+        const radiusVal = preview.adjustment_radius;
+        if (typeof radiusVal === "number" || typeof radiusVal === "string") {
+            appendSimpleFieldRow("adjustment_radius", "adjustment_radius", radiusVal, "number");
+        } else {
+            appendSimpleFieldRow("adjustment_radius", "adjustment_radius", 0, "number");
+        }
+
+        // constraints: object
+        const cons = (preview.constraints && typeof preview.constraints === "object" && !Array.isArray(preview.constraints))
+            ? preview.constraints
+            : {};
+
+        const title2 = document.createElement("div");
+        title2.style.fontSize = "10px";
+        title2.style.color = "#9ca3af";
+        title2.style.margin = "10px 0 2px 0";
+        title2.textContent = "constraints（可选字段）：";
+        jsonModalFormContainer.appendChild(title2);
+
+        // unburied / grounded：用 presenceObject（存在即 {}）
+        const hasUnburied = !!(cons.unburied && typeof cons.unburied === "object");
+        const hasGrounded = !!(cons.grounded && typeof cons.grounded === "object");
+        appendCheckboxPresenceObjectRow("constraints.unburied", "constraints.unburied", hasUnburied, { hint: "勾选后写入 unburied: {}" });
+        appendCheckboxPresenceObjectRow("constraints.grounded", "constraints.grounded", hasGrounded, { hint: "勾选后写入 grounded: {}" });
+
+        // block_intersection（可选）：内部 block_whitelist 列表
+        const bi = (cons.block_intersection && typeof cons.block_intersection === "object" && !Array.isArray(cons.block_intersection))
+            ? cons.block_intersection
+            : null;
+        const hasBlockIntersection = !!bi;
+
+        const biRow = appendCheckboxPresenceObjectRow(
+            "constraints.block_intersection",
+            "constraints.block_intersection",
+            hasBlockIntersection,
+            { hint: "勾选后启用 block_intersection" }
+        );
+
+        const whitelist = bi && Array.isArray(bi.block_whitelist) ? bi.block_whitelist : [];
+        const listEditor = appendStringListEditorRow(
+            "block_whitelist",
+            "constraints.block_intersection.block_whitelist",
+            whitelist,
+            { hint: "每行一个方块 ID（例如 minecraft:sand）", addText: "添加白名单方块" }
+        );
+
+        // 根据 block_intersection 是否启用，控制 listEditor 是否参与写回
+        function setWhitelistEnabled(enabled) {
+            if (!listEditor || !listEditor.hidden) return;
+            listEditor.hidden.disabled = !enabled;
+            if (listEditor.row) {
+                listEditor.row.style.opacity = enabled ? "1" : "0.45";
+                listEditor.row.style.pointerEvents = enabled ? "auto" : "none";
+            }
+        }
+        setWhitelistEnabled(hasBlockIntersection);
+        if (biRow && biRow.checkbox) {
+            biRow.checkbox.addEventListener("change", () => {
+                setWhitelistEnabled(!!biRow.checkbox.checked);
+            });
+        }
+
+        // 复杂 constraints（比如更多字段）提示走 JSON 模式
+        const extraKeys = Object.keys(cons).filter(k => k !== "unburied" && k !== "grounded" && k !== "block_intersection");
+        const biExtraKeys = bi ? Object.keys(bi).filter(k => k !== "block_whitelist") : [];
+        if (extraKeys.length || biExtraKeys.length) {
+            appendJsonFieldButton(
+                "constraints（更多字段）",
+                `在 JSON 中编辑 constraints（包含额外字段：${[...extraKeys.map(k => `constraints.${k}`), ...biExtraKeys.map(k => `constraints.block_intersection.${k}`)].join(", ")}）`
+            );
         }
     }
 
@@ -2353,14 +2965,13 @@
                 }
 
                 const parentId = currentEditNode.data.identifier || "namespace:feature";
-                const childId = generateChildIdentifier(parentId);
+                const childId = generateChildIdentifier(parentId, childType);
 
                 const childPreview = createTemplatePreviewForType(childType, childId);
                 const childDataNode = {
                     identifier: childId,
                     type: childType,
-                    file: currentEditNode.data.file || "",
-                    preview: childPreview,
+                    data: childPreview,
                 };
 
                 if (!Array.isArray(currentEditNode.data.children)) {
@@ -2371,7 +2982,7 @@
                 // 同步到当前预览副本和节点 preview 的 features 列表（aggregate 直接存子节点 id）
                 const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
                     ? currentPreviewCopy
-                    : (currentEditNode.data.preview || {});
+                    : (currentEditNode.data.data || {});
 
                 if (!Array.isArray(targetPreview.features)) {
                     targetPreview.features = [];
@@ -2381,10 +2992,10 @@
                 if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
                     currentPreviewCopy = targetPreview;
                 }
-                if (currentEditNode.data.preview && typeof currentEditNode.data.preview === "object") {
-                    currentEditNode.data.preview.features = targetPreview.features;
+                if (currentEditNode.data.data && typeof currentEditNode.data.data === "object") {
+                    currentEditNode.data.data.features = targetPreview.features;
                 } else {
-                    currentEditNode.data.preview = targetPreview;
+                    currentEditNode.data.data = targetPreview;
                 }
 
                 // 重新渲染表单与 JSON 文本
@@ -2399,6 +3010,200 @@
         );
 
         jsonModalFormContainer.appendChild(row);
+
+        // ------------------------------
+        // 批量添加子节点：只填 ID + 总类型
+        // ------------------------------
+        const batchTitle = document.createElement("div");
+        batchTitle.style.fontSize = "10px";
+        batchTitle.style.color = "#9ca3af";
+        batchTitle.style.margin = "10px 0 2px 0";
+        batchTitle.textContent = "批量添加子节点（只填 ID + 统一类型）：";
+        jsonModalFormContainer.appendChild(batchTitle);
+
+        function normalizeChildIdentifier(inputId, parentIdentifier) {
+            const raw = (inputId || "").trim();
+            if (!raw) return "";
+            if (raw.includes(":")) return raw;
+            const parent = typeof parentIdentifier === "string" ? parentIdentifier : "";
+            if (parent.includes(":")) {
+                const ns = parent.split(":")[0];
+                if (ns) return `${ns}:${raw}`;
+            }
+            return raw;
+        }
+
+        function parseIdentifiersFromText(text) {
+            const src = typeof text === "string" ? text : "";
+            // 支持：换行、逗号、分号、空格、Tab 分隔
+            const parts = src.split(/[\r\n,; \t]+/g).map(s => s.trim()).filter(Boolean);
+            const out = [];
+            const seen = new Set();
+            for (const p of parts) {
+                if (seen.has(p)) continue;
+                seen.add(p);
+                out.push(p);
+            }
+            return out;
+        }
+
+        // 类型下拉（总类型）
+        const batchTypeRow = document.createElement("div");
+        batchTypeRow.className = "modal-form-row";
+        const batchTypeLabel = document.createElement("div");
+        batchTypeLabel.className = "modal-form-label";
+        batchTypeLabel.textContent = "统一子节点类型";
+        batchTypeRow.appendChild(batchTypeLabel);
+
+        const batchTypeSelect = document.createElement("select");
+        batchTypeSelect.className = "modal-form-input";
+        const batchTypePlaceholder = document.createElement("option");
+        batchTypePlaceholder.value = "";
+        batchTypePlaceholder.textContent = "选择类型…";
+        batchTypePlaceholder.selected = true;
+        batchTypeSelect.appendChild(batchTypePlaceholder);
+
+        const BATCH_CHILD_TYPE_OPTIONS = [
+            ["minecraft:single_block_feature", "single_block_feature"],
+            ["minecraft:structure_template_feature", "structure_template_feature"],
+            ["minecraft:aggregate_feature", "aggregate_feature"],
+            ["minecraft:scatter_feature", "scatter_feature"],
+            ["minecraft:weighted_random_feature", "weighted_random_feature"],
+            ["minecraft:snap_to_surface_feature", "snap_to_surface_feature"],
+        ];
+        BATCH_CHILD_TYPE_OPTIONS.forEach(([value, text]) => {
+            const opt = document.createElement("option");
+            opt.value = value;
+            opt.textContent = text;
+            batchTypeSelect.appendChild(opt);
+        });
+        batchTypeRow.appendChild(batchTypeSelect);
+        jsonModalFormContainer.appendChild(batchTypeRow);
+
+        // ID 输入（多行）
+        const batchIdsRow = document.createElement("div");
+        batchIdsRow.className = "modal-form-row";
+        const batchIdsLabel = document.createElement("div");
+        batchIdsLabel.className = "modal-form-label";
+        batchIdsLabel.textContent = "子节点 ID（多行/可粘贴）";
+        batchIdsRow.appendChild(batchIdsLabel);
+
+        const batchIdsTextarea = document.createElement("textarea");
+        batchIdsTextarea.className = "modal-form-input";
+        batchIdsTextarea.placeholder = "示例：\nmy_feature_a\nmy_feature_b\nns:my_feature_c\n（支持用换行/逗号/空格分隔）";
+        batchIdsRow.appendChild(batchIdsTextarea);
+        enableAutoHeightTextarea(batchIdsTextarea);
+        jsonModalFormContainer.appendChild(batchIdsRow);
+
+        // 执行按钮
+        const batchBtnRow = document.createElement("div");
+        batchBtnRow.className = "modal-form-row";
+        const batchBtnLabel = document.createElement("div");
+        batchBtnLabel.className = "modal-form-label";
+        batchBtnLabel.textContent = "操作";
+        batchBtnRow.appendChild(batchBtnLabel);
+
+        const batchBtnWrap = document.createElement("div");
+        batchBtnWrap.style.display = "flex";
+        batchBtnWrap.style.alignItems = "center";
+        batchBtnWrap.style.gap = "6px";
+        batchBtnWrap.style.minWidth = "0";
+
+        const batchAddBtn = document.createElement("button");
+        batchAddBtn.type = "button";
+        batchAddBtn.className = "btn";
+        batchAddBtn.textContent = "批量创建子节点";
+        batchAddBtn.addEventListener("click", () => {
+            if (!currentEditNode || !root) return;
+
+            const childType = batchTypeSelect.value;
+            if (!childType) {
+                if (jsonModalError) jsonModalError.textContent = "请先选择“统一子节点类型”。";
+                return;
+            }
+
+            const rawIds = parseIdentifiersFromText(batchIdsTextarea.value);
+            if (!rawIds.length) {
+                if (jsonModalError) jsonModalError.textContent = "请在“子节点 ID”里输入至少 1 个 ID。";
+                return;
+            }
+
+            const parentId = currentEditNode.data.identifier || "namespace:feature";
+
+            const normalized = rawIds.map(id => normalizeChildIdentifier(id, parentId)).filter(Boolean);
+            // 检查批内重复（normalize 后）
+            const seen = new Set();
+            const dupInBatch = [];
+            for (const id of normalized) {
+                if (seen.has(id)) dupInBatch.push(id);
+                else seen.add(id);
+            }
+            if (dupInBatch.length) {
+                if (jsonModalError) jsonModalError.textContent = `批量输入中存在重复 ID：${Array.from(new Set(dupInBatch)).join(", ")}`;
+                return;
+            }
+
+            // 检查全局已存在
+            const conflicts = normalized.filter(id => identifierExistsInData(root.data, id));
+            if (conflicts.length) {
+                if (jsonModalError) jsonModalError.textContent = `以下 ID 已存在，无法创建：${conflicts.join(", ")}`;
+                return;
+            }
+
+            // 记录历史（一次）
+            if (root && root.data) {
+                HistoryManager.pushState(root.data);
+            }
+
+            if (!Array.isArray(currentEditNode.data.children)) {
+                currentEditNode.data.children = [];
+            }
+
+            const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
+                ? currentPreviewCopy
+                : (currentEditNode.data.data || {});
+
+            if (!Array.isArray(targetPreview.features)) {
+                targetPreview.features = [];
+            }
+
+            // 批量创建
+            for (const childId of normalized) {
+                const childPreview = createTemplatePreviewForType(childType, childId);
+                const childDataNode = {
+                    identifier: childId,
+                    type: childType,
+                    data: childPreview,
+                };
+                currentEditNode.data.children.push(childDataNode);
+                targetPreview.features.push(childId);
+            }
+
+            // 同步到当前预览副本与节点 preview
+            if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
+                currentPreviewCopy = targetPreview;
+            }
+            if (currentEditNode.data.data && typeof currentEditNode.data.data === "object") {
+                currentEditNode.data.data.features = targetPreview.features;
+            } else {
+                currentEditNode.data.data = targetPreview;
+            }
+
+            refreshFormAndTextareaForCurrentPreview(nodeType);
+            rebuildHierarchyPreserveExpanded();
+            hideJsonModal();
+        });
+
+        const batchHint = document.createElement("div");
+        batchHint.style.fontSize = "10px";
+        batchHint.style.color = "#6b7280";
+        batchHint.style.lineHeight = "1.4";
+        batchHint.textContent = "提示：如果 ID 不包含命名空间（如 my_feature），将自动继承父节点的命名空间（如 ns:my_feature）。";
+
+        batchBtnWrap.appendChild(batchAddBtn);
+        batchBtnWrap.appendChild(batchHint);
+        batchBtnRow.appendChild(batchBtnWrap);
+        jsonModalFormContainer.appendChild(batchBtnRow);
     }
 
     function buildWeightedRandomChildSection(preview, nodeType) {
@@ -2424,14 +3229,13 @@
                 }
 
                 const parentId = currentEditNode.data.identifier || "namespace:feature";
-                const childId = generateChildIdentifier(parentId);
+                const childId = generateChildIdentifier(parentId, childType);
 
                 const childPreview = createTemplatePreviewForType(childType, childId);
                 const childDataNode = {
                     identifier: childId,
                     type: childType,
-                    file: currentEditNode.data.file || "",
-                    preview: childPreview,
+                    data: childPreview,
                 };
 
                 if (!Array.isArray(currentEditNode.data.children)) {
@@ -2442,7 +3246,7 @@
                 // weighted_random_feature: features 为 [identifier, weight] 数组的数组
                 const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
                     ? currentPreviewCopy
-                    : (currentEditNode.data.preview || {});
+                    : (currentEditNode.data.data || {});
 
                 if (!Array.isArray(targetPreview.features)) {
                     targetPreview.features = [];
@@ -2452,10 +3256,10 @@
                 if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
                     currentPreviewCopy = targetPreview;
                 }
-                if (currentEditNode.data.preview && typeof currentEditNode.data.preview === "object") {
-                    currentEditNode.data.preview.features = targetPreview.features;
+                if (currentEditNode.data.data && typeof currentEditNode.data.data === "object") {
+                    currentEditNode.data.data.features = targetPreview.features;
                 } else {
-                    currentEditNode.data.preview = targetPreview;
+                    currentEditNode.data.data = targetPreview;
                 }
 
                 // 重新渲染表单与 JSON 文本
@@ -2504,14 +3308,13 @@
                 }
 
                 const parentId = currentEditNode.data.identifier || "namespace:feature";
-                const childId = generateChildIdentifier(parentId);
+                const childId = generateChildIdentifier(parentId, childType);
 
                 const childPreview = createTemplatePreviewForType(childType, childId);
                 const childDataNode = {
                     identifier: childId,
                     type: childType,
-                    file: currentEditNode.data.file || "",
-                    preview: childPreview,
+                    data: childPreview,
                 };
 
                 if (!Array.isArray(currentEditNode.data.children)) {
@@ -2522,14 +3325,14 @@
                 // 更新当前 snap_to_surface_feature 的 feature_to_snap 指向新建子节点
                 const targetPreview = currentPreviewCopy && typeof currentPreviewCopy === "object"
                     ? currentPreviewCopy
-                    : (currentEditNode.data.preview || {});
+                    : (currentEditNode.data.data || {});
 
                 targetPreview.feature_to_snap = childId;
 
                 if (currentPreviewCopy && typeof currentPreviewCopy === "object") {
                     currentPreviewCopy = targetPreview;
                 }
-                currentEditNode.data.preview = targetPreview;
+                currentEditNode.data.data = targetPreview;
 
                 // 重新渲染表单与 JSON 文本
                 refreshFormAndTextareaForCurrentPreview(nodeType);
@@ -2544,7 +3347,7 @@
         jsonModalFormContainer.appendChild(row);
     }
 
-    function buildGenericTopLevelFields(preview) {
+    function buildGenericTopLevelFields(preview, nodeType) {
         if (!preview || typeof preview !== "object") return;
 
         const keys = Object.keys(preview);
@@ -2569,8 +3372,12 @@
         jsonModalFormContainer.appendChild(title);
 
         keys.forEach((key) => {
+            // 特殊对象结构在专用表单里做（避免重复）
             if (key === "description" || key === "distribution") {
                 return;
+            }
+            if (nodeType === "minecraft:structure_template_feature") {
+                if (key === "constraints" || key === "adjustment_radius") return;
             }
             const value = preview[key];
             if (
@@ -2581,114 +3388,6 @@
                 appendSimpleFieldRow(key, key, value, typeof value);
             }
         });
-    }
-
-    function buildTemplateSection(preview, nodeType) {
-        if (!jsonModalFormContainer) return;
-        if (!nodeType) return;
-
-        const templates = getTemplatesForType(nodeType);
-
-        const row = document.createElement("div");
-        row.className = "modal-form-row";
-
-        const label = document.createElement("div");
-        label.className = "modal-form-label";
-        label.textContent = "模板";
-        row.appendChild(label);
-
-        const right = document.createElement("div");
-
-        // 保存当前节点为模板的按钮（名称直接使用 identifier）
-        const saveBtnWrapper = document.createElement("div");
-        saveBtnWrapper.style.display = "flex";
-        saveBtnWrapper.style.gap = "4px";
-        saveBtnWrapper.style.marginBottom = "4px";
-
-        const saveBtn = document.createElement("button");
-        saveBtn.type = "button";
-        saveBtn.className = "btn";
-        saveBtn.textContent = "保存当前为模板";
-        saveBtn.addEventListener("click", () => {
-            if (!currentEditNode) {
-                statusEl.textContent = "当前没有正在编辑的节点，无法保存模板。";
-                return;
-            }
-            handleSaveNodeAsTemplate(currentEditNode);
-        });
-
-        saveBtnWrapper.appendChild(saveBtn);
-        right.appendChild(saveBtnWrapper);
-
-        if (!templates || !templates.length) {
-            const hint = document.createElement("div");
-            hint.style.fontSize = "10px";
-            hint.style.color = "#6b7280";
-            hint.textContent = "当前类型暂无模板。点击“保存当前为模板”按钮可将当前节点保存为模板。";
-            right.appendChild(hint);
-        } else {
-            const select = document.createElement("select");
-            select.className = "modal-form-input";
-
-            const placeholderOpt = document.createElement("option");
-            placeholderOpt.value = "";
-            placeholderOpt.textContent = `选择模板（共 ${templates.length} 个）`;
-            placeholderOpt.selected = true;
-            select.appendChild(placeholderOpt);
-
-            templates.forEach((tpl, index) => {
-                const opt = document.createElement("option");
-                opt.value = String(index);
-                opt.textContent = tpl.name || `模板_${index + 1}`;
-                select.appendChild(opt);
-            });
-
-            select.addEventListener("change", () => {
-                const idx = Number(select.value);
-                if (Number.isNaN(idx) || idx < 0 || idx >= templates.length) return;
-                const tpl = templates[idx];
-                if (!tpl || !tpl.preview) return;
-
-                const originalId =
-                    (currentPreviewCopy &&
-                        currentPreviewCopy.description &&
-                        currentPreviewCopy.description.identifier) ||
-                    (currentEditNode &&
-                        currentEditNode.data &&
-                        currentEditNode.data.identifier) ||
-                    "";
-
-                const newPreview = deepClone(tpl.preview || {});
-                if (originalId) {
-                    if (!newPreview.description || typeof newPreview.description !== "object") {
-                        newPreview.description = {};
-                    }
-                    newPreview.description.identifier = originalId;
-                }
-
-                currentPreviewCopy = newPreview;
-                buildFormForPreview(currentPreviewCopy, nodeType);
-                if (jsonModalTextarea) {
-                    try {
-                        jsonModalTextarea.value = JSON.stringify(currentPreviewCopy, null, 2);
-                    } catch (e) {
-                        jsonModalTextarea.value = String(currentPreviewCopy);
-                    }
-                }
-            });
-
-            right.appendChild(select);
-        }
-
-        row.appendChild(right);
-        jsonModalFormContainer.appendChild(row);
-
-        const divider = document.createElement("div");
-        divider.style.height = "1px";
-        divider.style.background = "#1f2937";
-        divider.style.margin = "4px 0 4px 0";
-        divider.style.opacity = "0.6";
-        jsonModalFormContainer.appendChild(divider);
     }
 
     function buildFormForPreview(preview, nodeType) {
@@ -2704,19 +3403,18 @@
             return;
         }
 
-        // 顶部模板选择区域
-        buildTemplateSection(preview, nodeType);
-
         buildDescriptionSection(preview);
 
         if (nodeType === "minecraft:scatter_feature") {
-            buildScatterSection(preview);
+            buildScatterSection(preview, nodeType);
             buildScatterChildSection(preview, nodeType);
         } else if (nodeType === "minecraft:snap_to_surface_feature") {
             buildSnapToSurfaceMissingChildSection(preview, nodeType);
+        } else if (nodeType === "minecraft:structure_template_feature") {
+            buildStructureTemplateSection(preview, nodeType);
         }
 
-        buildGenericTopLevelFields(preview);
+        buildGenericTopLevelFields(preview, nodeType);
 
         // aggregate_feature / weighted_random_feature 专用：添加“新增子节点”下拉
         buildAggregateChildSection(preview, nodeType);
@@ -2747,7 +3445,7 @@
         const featureMap = new Map();
 
         nodes.forEach((node, index) => {
-            const preview = node.preview;
+            const preview = node.data;
             if (!preview) return;
 
             // 根据节点类型包装成真正的 feature.json 结构：
@@ -2764,19 +3462,9 @@
                 exportObject[nodeType] = preview;
             }
 
-            // 文件名一律基于 identifier（去掉命名空间），可选地加上原 file 的目录前缀
+            // 文件名一律基于 identifier（去掉命名空间）
             const fileName = buildSafeFeatureFileName(node, index); // e.g. "root.json"
-            let dirPrefix = "";
-            if (node.file && typeof node.file === "string") {
-                const normalized = node.file.replace(/\\/g, "/");
-                const parts = normalized.split("/");
-                if (parts.length > 1) {
-                    parts.pop(); // 去掉原始文件名，只保留目录
-                    dirPrefix = parts.join("/");
-                }
-            }
-
-            let path = dirPrefix ? `${dirPrefix}/${fileName}` : fileName;
+            let path = fileName;
 
             // 避免同名覆盖：重复时自动加后缀
             let finalPath = path;
@@ -2793,7 +3481,7 @@
         });
 
         if (featureMap.size === 0) {
-            statusEl.textContent = "没有可导出的 feature（preview 为空）。";
+            statusEl.textContent = "没有可导出的 feature（data 为空）。";
             return;
         }
 
@@ -2891,12 +3579,31 @@
             });
     }
 
-    function applyJsonEdit() {
+    function safeStableStringify(obj) {
+        try {
+            return JSON.stringify(obj);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function applyJsonEdit(options) {
         if (!currentEditNode || !jsonModalTextarea) return;
+        if (!root || !root.data) return;
+        const closeOnSuccess = options && options.closeOnSuccess === false ? false : true;
         if (jsonModalError) {
             jsonModalError.textContent = "";
         }
         let updated = null;
+        const nodeTypeForAutoSync = currentEditNode && currentEditNode.data && currentEditNode.data.type;
+        const prevIterationsForAutoSync =
+            currentEditNode &&
+            currentEditNode.data &&
+            currentEditNode.data.data &&
+            currentEditNode.data.data.distribution &&
+            typeof currentEditNode.data.data.distribution === "object"
+                ? currentEditNode.data.data.distribution.iterations
+                : undefined;
 
         if (currentEditorMode === "json") {
             const text = jsonModalTextarea.value.trim();
@@ -2922,9 +3629,14 @@
             applyFormInputsToObject(updated);
         }
 
-        // 记录历史状态
-        if (root && root.data) {
-            HistoryManager.pushState(root.data);
+        // 未发生变化则不入历史栈（避免失焦自动保存刷爆撤销栈）
+        const prevStr = safeStableStringify(currentEditNode.data && currentEditNode.data.data);
+        const nextStr = safeStableStringify(updated);
+        if (prevStr !== null && nextStr !== null && prevStr === nextStr) {
+            if (closeOnSuccess) {
+                hideJsonModal();
+            }
+            return;
         }
 
         // 如有需要，执行 identifier 重命名并同步所有引用
@@ -2937,14 +3649,76 @@
             }
         }
         if (oldId && newId && newId !== oldId) {
+            // 不允许重名：新 identifier 已存在则拒绝保存（避免出现两份相同 identifier）
+            if (identifierExistsInData(root.data, newId)) {
+                if (jsonModalError) {
+                    jsonModalError.textContent = `identifier 重名：${newId} 已存在，请换一个。`;
+                }
+                return;
+            }
+        }
+
+        // 记录历史状态（确认校验通过后再入栈）
+        HistoryManager.pushState(root.data);
+
+        // 执行重命名并同步所有引用
+        if (oldId && newId && newId !== oldId) {
             renameIdentifierEverywhere(oldId, newId);
         }
 
-        currentEditNode.data.preview = updated;
-        // 同步更新名称 label，并立即重绘树节点，让名称在图上立刻生效
-        updateLabelFromPreview(currentEditNode.data);
+        currentEditNode.data.data = updated;
         update(currentEditNode);
-        hideJsonModal();
+
+        // 如果是 scatter_feature 且 iterations 发生变化：自动写回已存在的 molang 文件
+        // （前提：用户之前通过 sync 机制创建/关联过对应文件）
+        try {
+            const nextIterationsForAutoSync =
+                updated &&
+                updated.distribution &&
+                typeof updated.distribution === "object"
+                    ? updated.distribution.iterations
+                    : undefined;
+            if (
+                nodeTypeForAutoSync === "minecraft:scatter_feature" &&
+                prevIterationsForAutoSync !== nextIterationsForAutoSync
+            ) {
+                const idForFile = currentEditNode && currentEditNode.data && currentEditNode.data.identifier;
+                if (idForFile) {
+                    scheduleAutoWriteIterationsMolang(idForFile, nextIterationsForAutoSync);
+                }
+            }
+        } catch (e) {
+            console.warn("自动同步 iterations 到 molang 的流程异常：", e);
+        }
+
+        // 如果当前节点已经有对应的 tools-feature/features/<id>.json 文件：每次保存后尝试把内存同步回文件
+        try {
+            const idForFeatureFile = currentEditNode && currentEditNode.data && currentEditNode.data.identifier;
+            if (idForFeatureFile) {
+                scheduleAutoWriteNodeFeatureFile(idForFeatureFile, currentEditNode.data);
+            }
+        } catch (e) {
+            console.warn("自动同步节点到 features 文件的流程异常：", e);
+        }
+
+        // 同步当前草稿与标题（让用户继续编辑时内容一致）
+        currentPreviewCopy = deepClone(updated);
+        if (jsonModalTitle && newId) {
+            jsonModalTitle.textContent = newId;
+        }
+        if (jsonModalTextarea && currentPreviewCopy) {
+            try {
+                jsonModalTextarea.value = JSON.stringify(currentPreviewCopy, null, 2);
+            } catch (e) {
+                jsonModalTextarea.value = String(currentPreviewCopy);
+            }
+        }
+
+        if (closeOnSuccess) {
+            hideJsonModal();
+        } else {
+            if (statusEl) statusEl.textContent = "已自动保存。";
+        }
     }
 
     // 删除当前编辑的节点（仅允许叶子节点）
@@ -3014,33 +3788,25 @@
         }
     }
 
-    // Ctrl + 左键时弹出的 JSON 编辑模态框
+    // Ctrl + 左键打开右侧侧边栏编辑器
     function showJsonModal(d) {
-        if (!jsonModalBackdrop) return;
+        if (!jsonSidebarEditor) return;
 
         currentEditNode = d;
 
         const id = d.data.identifier || "(无 identifier)";
         const type = d.data.type || "(无 type)";
-        const file = d.data.file || "(未知文件)";
 
         jsonModalTitle.textContent = id;
-        jsonModalMeta.textContent = `${type}  |  ${file}`;
+        jsonModalMeta.textContent = `${type}`;
 
-        const preview = d.data.preview && typeof d.data.preview === "object"
-            ? d.data.preview
+        const preview = d.data.data && typeof d.data.data === "object"
+            ? d.data.data
             : {};
 
         currentPreviewCopy = deepClone(preview || {});
 
         buildFormForPreview(currentPreviewCopy, type);
-
-        // 每次打开编辑对话框时，确保 Molang 模板列表初始化并刷新一遍
-        if (Array.isArray(molangTemplates) === false || !molangTemplates.length) {
-            molangTemplates = loadMolangTemplatesFromStorage();
-            ensureMolangTemplatesInitialized();
-        }
-        refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
 
         if (jsonModalTextarea) {
             try {
@@ -3055,17 +3821,63 @@
         }
 
         setEditorMode("form");
-        jsonModalBackdrop.style.display = "flex";
+        jsonSidebarEditor.classList.add("sidebar-editor--open");
     }
 
     function hideJsonModal() {
-        if (!jsonModalBackdrop) return;
-        jsonModalBackdrop.style.display = "none";
+        if (!jsonSidebarEditor) return;
+        jsonSidebarEditor.classList.remove("sidebar-editor--open");
         currentEditNode = null;
     }
 
     // ---------- 拖拽重排序逻辑 ----------
+    // 需求：避免单长按误触 -> 改为“按住 Alt + 长按”才进入拖拽（保留 d3.drag）
+    const ALT_DRAG_LONG_PRESS_MS = 220;          // Alt 长按多久才算进入拖拽
+    const SUPPRESS_CLICK_AFTER_DRAG_MS = 260;    // 拖拽结束后短暂屏蔽 click，避免误触展开/折叠
+
+    let suppressNodeClickUntil = 0;
     let dragState = null; // { sourceNode, ghost, targetNode, action: 'reparent'|'before'|'after' }
+    let dragPending = null; // { sourceNode, el, timerId, lastPointer: [x,y] }
+
+    function cancelPendingDrag() {
+        if (!dragPending) return;
+        if (dragPending.timerId) clearTimeout(dragPending.timerId);
+        dragPending = null;
+    }
+
+    function activatePendingDrag() {
+        if (!dragPending || !dragPending.sourceNode) return;
+        const d = dragPending.sourceNode;
+        const el = dragPending.el;
+
+        dragState = {
+            sourceNode: d,
+            ghost: null,
+            targetNode: null,
+            action: null
+        };
+
+        // 创建幽灵节点（初始放在源节点位置；后续 onDrag 会更新到鼠标位置）
+        const ghost = g.append("g")
+            .attr("class", "ghost-node")
+            .attr("transform", `translate(${d.y},${d.x})`);
+
+        ghost.append("circle").attr("r", 7);
+        ghost.append("text")
+            .attr("dy", "0.32em")
+            .attr("x", 10)
+            .text(nodeLabel(d));
+
+        dragState.ghost = ghost;
+
+        // 给原节点添加样式
+        if (el) {
+            d3.select(el).classed("node--dragging", true);
+        }
+
+        // 一旦进入真正拖拽，pending 状态就可以丢弃
+        dragPending = null;
+    }
 
     function isDescendant(parent, child) {
         if (!parent || !child) return false;
@@ -3076,11 +3888,11 @@
         return false;
     }
 
-    // 移除旧父节点对子节点的引用（更新 preview）
+    // 移除旧父节点对子节点的引用（更新 data）
     function removeReferenceFromParent(parentData, childId) {
-        if (!parentData || !parentData.preview || !childId) return null;
+        if (!parentData || !parentData.data || !childId) return null;
         const type = parentData.type;
-        const preview = parentData.preview;
+        const preview = parentData.data;
 
         if (type === "minecraft:aggregate_feature") {
             if (Array.isArray(preview.features)) {
@@ -3115,9 +3927,9 @@
 
     // 添加新父节点对子节点的引用（更新 preview）
     function addReferenceToParent(parentData, childId, insertIndex, extraInfo) {
-        if (!parentData || !parentData.preview || !childId) return;
+        if (!parentData || !parentData.data || !childId) return;
         const type = parentData.type;
-        const preview = parentData.preview;
+        const preview = parentData.data;
 
         if (type === "minecraft:aggregate_feature") {
             if (!Array.isArray(preview.features)) preview.features = [];
@@ -3145,6 +3957,66 @@
         }
     }
 
+    function isAggregateDataNode(data) {
+        return !!(data && typeof data === "object" && data.type === "minecraft:aggregate_feature");
+    }
+
+    function isScatterDataNode(data) {
+        return !!(data && typeof data === "object" && data.type === "minecraft:scatter_feature");
+    }
+
+    function ensureScatterHasAggregateWrapper(scatterData) {
+        // 目标：保证 scatter 只有 1 个直连子节点，且该子节点是 aggregate（用于承载多个实际子节点）
+        if (!isScatterDataNode(scatterData)) return null;
+        if (!scatterData.data || typeof scatterData.data !== "object") scatterData.data = {};
+        if (!Array.isArray(scatterData.children)) scatterData.children = [];
+
+        const placesId = typeof scatterData.data.places_feature === "string" ? scatterData.data.places_feature : "";
+
+        // 已经是：scatter -> aggregate(wrapper) 的结构，直接复用
+        if (
+            scatterData.children.length === 1 &&
+            isAggregateDataNode(scatterData.children[0]) &&
+            scatterData.children[0].identifier &&
+            scatterData.children[0].identifier === placesId
+        ) {
+            const agg = scatterData.children[0];
+            if (!agg.data || typeof agg.data !== "object") {
+                agg.data = createTemplatePreviewForType("minecraft:aggregate_feature", agg.identifier);
+            }
+            if (!Array.isArray(agg.children)) agg.children = [];
+            if (!Array.isArray(agg.data.features)) agg.data.features = [];
+            return agg;
+        }
+
+        // scatter 没有子节点时，不需要包裹（返回 null 代表“保持原逻辑”）
+        if (scatterData.children.length === 0) return null;
+
+        // 需要创建一个新的 aggregate wrapper，把 scatter 原有的子节点整体搬进去
+        const parentId = scatterData.identifier || "namespace:feature";
+        const wrapperId = generateChildIdentifier(parentId + "_wrap", "minecraft:aggregate_feature");
+        const wrapperPreview = createTemplatePreviewForType("minecraft:aggregate_feature", wrapperId);
+
+        const movedChildren = scatterData.children.slice(); // 保留原顺序
+        const wrapperNode = {
+            identifier: wrapperId,
+            type: "minecraft:aggregate_feature",
+            data: wrapperPreview,
+            children: movedChildren,
+        };
+
+        // aggregate 的 features 列表要与 children 顺序一致
+        wrapperPreview.features = movedChildren
+            .map(c => (c && typeof c === "object" ? c.identifier : ""))
+            .filter(Boolean);
+
+        // scatter 只保留一个子节点：wrapper
+        scatterData.children = [wrapperNode];
+        scatterData.data.places_feature = wrapperId;
+
+        return wrapperNode;
+    }
+
     // 核心数据移动逻辑
     function moveDataNode(sourceNode, targetNode, action) {
         if (!sourceNode || !targetNode || !action) return;
@@ -3169,10 +4041,28 @@
             if (!Array.isArray(targetData.children)) {
                 targetData.children = [];
             }
-            targetData.children.push(sourceData);
-            
-            // 添加引用
-            addReferenceToParent(targetData, sourceData.identifier, -1, extraInfo);
+
+            // scatter_feature 特殊处理：
+            // - scatter 语义上只能指向 1 个子节点（places_feature）
+            // - 当 scatter 已有子节点时，新增子节点应自动插入 aggregate wrapper：
+            //   scatter -> aggregate(wrapper) -> [oldChild, newChild]
+            if (isScatterDataNode(targetData) && targetData.children.length > 0) {
+                const agg = ensureScatterHasAggregateWrapper(targetData);
+                if (agg) {
+                    if (!Array.isArray(agg.children)) agg.children = [];
+                    const insertIdx = agg.children.length; // 默认追加到末尾
+                    agg.children.splice(insertIdx, 0, sourceData);
+                    addReferenceToParent(agg, sourceData.identifier, insertIdx, extraInfo);
+                } else {
+                    // 理论上不会走到这里（length>0），但保险起见保留旧逻辑
+                    targetData.children.push(sourceData);
+                    addReferenceToParent(targetData, sourceData.identifier, -1, extraInfo);
+                }
+            } else {
+                targetData.children.push(sourceData);
+                // 添加引用
+                addReferenceToParent(targetData, sourceData.identifier, -1, extraInfo);
+            }
             
             // 如果 target 原本是折叠的，需要展开以便看到新加入的节点
             // 但这里我们操作的是 data，视图状态在 d3 node 上
@@ -3198,10 +4088,44 @@
                 addReferenceToParent(oldParent.data, sourceData.identifier, oldIdx, extraInfo);
                 return;
             }
-            
+
+            // 如果 newParent 是 scatter_feature：不能让它出现 2 个直连子节点
+            // 将行为改为：确保 scatter 下有 aggregate wrapper，然后把 source 插入到 wrapper.children 中。
+            if (isScatterDataNode(newParent.data)) {
+                const usedAgg = ensureScatterHasAggregateWrapper(newParent.data);
+
+                if (!usedAgg) {
+                    // 回退：保持原逻辑（尽量不丢数据）
+                    const insertIdx = action === "before" ? targetIdx : targetIdx + 1;
+                    newParent.data.children.splice(insertIdx, 0, sourceData);
+                    addReferenceToParent(newParent.data, sourceData.identifier, insertIdx, extraInfo);
+                    return;
+                }
+
+                if (!Array.isArray(usedAgg.children)) usedAgg.children = [];
+
+                // 计算插入位置：如果 target 本身就是 wrapper，则 before=开头 / after=末尾
+                let idxInAgg = -1;
+                if (targetData && targetData.identifier) {
+                    idxInAgg = usedAgg.children.findIndex(c => c && c.identifier === targetData.identifier);
+                }
+
+                let insertIdxInAgg;
+                if (targetData && targetData.identifier && targetData.identifier === usedAgg.identifier) {
+                    insertIdxInAgg = action === "before" ? 0 : usedAgg.children.length;
+                } else if (idxInAgg === -1) {
+                    insertIdxInAgg = usedAgg.children.length;
+                } else {
+                    insertIdxInAgg = action === "before" ? idxInAgg : idxInAgg + 1;
+                }
+
+                usedAgg.children.splice(insertIdxInAgg, 0, sourceData);
+                addReferenceToParent(usedAgg, sourceData.identifier, insertIdxInAgg, extraInfo);
+                return;
+            }
+
             const insertIdx = action === "before" ? targetIdx : targetIdx + 1;
             newParent.data.children.splice(insertIdx, 0, sourceData);
-            
             // 添加引用
             addReferenceToParent(newParent.data, sourceData.identifier, insertIdx, extraInfo);
         }
@@ -3224,35 +4148,39 @@
     function onDragStart(event, d) {
         // 禁止拖拽根节点
         if (!d.parent) return;
-        
+
+        // 仅在按住 Alt 时允许进入拖拽（额外还有长按门槛）
+        const src = event && event.sourceEvent;
+        if (!src || !src.altKey) return;
+
         // 阻止事件冒泡，避免触发 zoom
-        event.sourceEvent.stopPropagation();
+        src.stopPropagation();
 
-        dragState = {
+        // 开始计时：只有 Alt + 长按达到阈值，才真正进入拖拽
+        cancelPendingDrag();
+        dragPending = {
             sourceNode: d,
-            ghost: null,
-            targetNode: null,
-            action: null
+            el: this,
+            timerId: null,
+            lastPointer: null
         };
-
-        // 创建幽灵节点
-        const ghost = g.append("g")
-            .attr("class", "ghost-node")
-            .attr("transform", `translate(${d.y},${d.x})`);
-            
-        ghost.append("circle").attr("r", 7);
-        ghost.append("text")
-            .attr("dy", "0.32em")
-            .attr("x", 10)
-            .text(nodeLabel(d));
-            
-        dragState.ghost = ghost;
-        
-        // 给原节点添加样式
-        d3.select(this).classed("node--dragging", true);
+        dragPending.timerId = setTimeout(() => {
+            // 到点再真正激活拖拽
+            activatePendingDrag();
+        }, ALT_DRAG_LONG_PRESS_MS);
     }
 
     function onDrag(event, d) {
+        // 还在“长按等待期”：记录一下当前鼠标位置，但不触发任何拖拽逻辑
+        if (dragPending && dragPending.sourceNode === d) {
+            try {
+                dragPending.lastPointer = d3.pointer(event, g.node());
+            } catch (e) {
+                // ignore
+            }
+            return;
+        }
+
         if (!dragState || !dragState.ghost) return;
 
         // 使用 d3.pointer 获取相对于 g 容器的准确坐标 [x, y]
@@ -3336,6 +4264,11 @@
     }
 
     function onDragEnd(event, d) {
+        // 如果尚未进入真正拖拽（只是 Alt 长按等待），这里要取消 pending
+        if (dragPending && dragPending.sourceNode === d) {
+            cancelPendingDrag();
+            return;
+        }
         if (!dragState) return;
         
         // 移除幽灵节点
@@ -3367,7 +4300,14 @@
             
             statusEl.textContent = `已移动节点: ${nodeLabel(sourceNode)} -> ${action} ${nodeLabel(targetNode)}`;
         }
-        
+
+        // 拖拽结束后，短暂屏蔽节点 click（避免误触展开/折叠）
+        try {
+            suppressNodeClickUntil = performance.now() + SUPPRESS_CLICK_AFTER_DRAG_MS;
+        } catch (e) {
+            suppressNodeClickUntil = Date.now() + SUPPRESS_CLICK_AFTER_DRAG_MS;
+        }
+
         dragState = null;
     }
 
@@ -3400,11 +4340,42 @@
         const nodeEnter = node.enter().append("g")
             .attr("class", d => nodeClass(d))
             .attr("transform", () => `translate(${source.y0 || 0},${source.x0 || 0})`)
-            .call(d3.drag()
-                .on("start", onDragStart)
-                .on("drag", onDrag)
-                .on("end", onDragEnd))
+            .call(
+                d3.drag()
+                    // 先用 filter 把“非 Alt”直接过滤掉（普通点击/长按不会触发 drag 行为）
+                    .filter((event) => {
+                        try {
+                            return !!(event && event.altKey);
+                        } catch (e) {
+                            return false;
+                        }
+                    })
+                    .on("start", onDragStart)
+                    .on("drag", onDrag)
+                    .on("end", onDragEnd)
+            )
+            .on("contextmenu", (event, d) => {
+                // 右键：打开右侧侧边栏编辑器
+                event.preventDefault();
+                event.stopPropagation();
+                showJsonModal(d);
+            })
             .on("click", (event, d) => {
+                // 如果刚刚完成拖拽，短时间内忽略 click（避免误触展开/折叠）
+                try {
+                    const now = performance.now();
+                    if (suppressNodeClickUntil && now < suppressNodeClickUntil) {
+                        event.stopPropagation();
+                        return;
+                    }
+                } catch (e) {
+                    const now = Date.now();
+                    if (suppressNodeClickUntil && now < suppressNodeClickUntil) {
+                        event.stopPropagation();
+                        return;
+                    }
+                }
+
                 // Ctrl + 单击：弹出 JSON 预览模态框
                 if (event.ctrlKey) {
                     event.stopPropagation();
@@ -3523,14 +4494,7 @@
         update(d);
     }
 
-    // 关闭 JSON 模态框的交互：点击空白处或右上角 ×，以及按下 Esc
-    if (jsonModalBackdrop) {
-        jsonModalBackdrop.addEventListener("click", (e) => {
-            if (e.target === jsonModalBackdrop) {
-                hideJsonModal();
-            }
-        });
-    }
+    // 关闭侧边栏编辑器：右上角 × / 取消按钮 / Esc
 
     if (jsonModalClose) {
         jsonModalClose.addEventListener("click", () => {
@@ -3546,7 +4510,8 @@
 
     if (jsonModalApply) {
         jsonModalApply.addEventListener("click", () => {
-            applyJsonEdit();
+            // 手动保存：不关闭侧边栏（与自动保存一致）
+            applyJsonEdit({ closeOnSuccess: false });
         });
     }
 
@@ -3556,287 +4521,14 @@
         });
     }
 
-    // 模板管理模态框：点击空白处或右上角 × 关闭
-    if (templateModalBackdrop) {
-        templateModalBackdrop.addEventListener("click", (e) => {
-            if (e.target === templateModalBackdrop) {
-                hideTemplateModal();
-            }
-        });
-    }
-
-    if (templateModalClose) {
-        templateModalClose.addEventListener("click", () => {
-            hideTemplateModal();
-        });
-    }
-
-    if (templateModalCancel) {
-        templateModalCancel.addEventListener("click", () => {
-            hideTemplateModal();
-        });
-    }
-
-    if (templateModalAdd) {
-        templateModalAdd.addEventListener("click", () => {
-            if (templateModalError) {
-                templateModalError.textContent = "";
-            }
-
-            // 1. 确定模板类型：优先使用当前选择，没有则弹窗输入
-            let type =
-                (templateTypeSelect && templateTypeSelect.value) ||
-                currentTemplateType ||
-                "";
-            if (!type) {
-                type = window.prompt(
-                    "请输入模板类型（例如 minecraft:scatter_feature）：",
-                    "minecraft:scatter_feature"
-                );
-                if (!type) {
-                    if (templateModalError) {
-                        templateModalError.textContent = "未指定模板类型，已取消新增。";
-                    }
-                    return;
-                }
-            }
-
-            // 2. 确定模板名称：优先使用输入框，没有则弹窗输入
-            let name = (templateNameInput && templateNameInput.value.trim()) || "";
-            if (!name) {
-                name = window.prompt("请输入新模板名称：", "");
-                if (!name) {
-                    if (templateModalError) {
-                        templateModalError.textContent = "未输入模板名称，已取消新增。";
-                    }
-                    return;
-                }
-            }
-
-            // 3. 解析当前 JSON 文本作为 preview，允许为空 {}。
-            let preview = {};
-            if (templateJsonTextarea) {
-                const text = templateJsonTextarea.value.trim();
-                if (text) {
-                    try {
-                        preview = JSON.parse(text);
-                    } catch (e) {
-                        if (templateModalError) {
-                            templateModalError.textContent =
-                                "JSON 语法错误，无法作为新模板保存：" + e.message;
-                        }
-                        return;
-                    }
-                }
-            }
-
-            // 4. 写入模板存储（复用已有 addTemplateForType，自动去重并保存）
-            addTemplateForType(type, preview, name, {});
-
-            statusEl.textContent = `已新增模板「${name}」（类型 ${type}）。`;
-
-            // 5. 刷新类型和列表，下拉选中刚刚创建的模板
-            // 先刷新类型下拉
-            refreshTemplateTypeSelect();
-            if (templateTypeSelect) {
-                templateTypeSelect.value = type;
-            }
-
-            const list = getTemplatesForType(type);
-            const idx = list.findIndex((t) => t.name === name);
-            const indexToSelect = idx >= 0 ? idx : list.length - 1;
-            refreshTemplateListSelect(type, indexToSelect);
-        });
-    }
-
-    if (templateTypeSelect) {
-        templateTypeSelect.addEventListener("change", () => {
-            const type = templateTypeSelect.value || "";
-            refreshTemplateListSelect(type);
-        });
-    }
-
-    if (templateListSelect) {
-        templateListSelect.addEventListener("change", () => {
-            const type =
-                (templateTypeSelect && templateTypeSelect.value) || currentTemplateType;
-            const idx = Number(templateListSelect.value);
-            if (!type || Number.isNaN(idx)) return;
-            loadTemplateIntoEditor(type, idx);
-        });
-    }
-
-    if (templateModalSave) {
-        templateModalSave.addEventListener("click", () => {
-            if (!currentTemplateType || currentTemplateIndex < 0) {
-                if (templateModalError) {
-                    templateModalError.textContent = "请先选择要编辑的模板。";
-                }
-                return;
-            }
-            const list = templateStore[currentTemplateType];
-            if (!Array.isArray(list) || !list[currentTemplateIndex]) {
-                if (templateModalError) {
-                    templateModalError.textContent = "内部错误：找不到对应模板。";
-                }
-                return;
-            }
-
-            let parsed = {};
-            if (templateJsonTextarea) {
-                const text = templateJsonTextarea.value.trim();
-                if (text) {
-                    try {
-                        parsed = JSON.parse(text);
-                    } catch (e) {
-                        if (templateModalError) {
-                            templateModalError.textContent = "JSON 语法错误：" + e.message;
-                        }
-                        return;
-                    }
-                }
-            }
-
-            const tpl = list[currentTemplateIndex];
-            if (templateNameInput) {
-                const name = templateNameInput.value.trim();
-                tpl.name = name || tpl.name || `模板_${currentTemplateIndex + 1}`;
-            }
-            tpl.preview = parsed;
-            saveTemplatesToStorage();
-            statusEl.textContent = `模板「${tpl.name || ""}」已保存。`;
-
-            // 刷新当前类型的模板列表，保持当前索引不变（如仍然存在）
-            refreshTemplateListSelect(currentTemplateType, currentTemplateIndex);
-        });
-    }
-
-    if (templateModalDelete) {
-        templateModalDelete.addEventListener("click", () => {
-            if (!currentTemplateType || currentTemplateIndex < 0) {
-                if (templateModalError) {
-                    templateModalError.textContent = "请先选择要删除的模板。";
-                }
-                return;
-            }
-
-            const list = templateStore[currentTemplateType];
-            if (!Array.isArray(list) || !list[currentTemplateIndex]) {
-                if (templateModalError) {
-                    templateModalError.textContent = "内部错误：找不到对应模板。";
-                }
-                return;
-            }
-
-            const tpl = list[currentTemplateIndex];
-            const ok = window.confirm(
-                `确定要删除模板「${tpl.name || currentTemplateType}」吗？此操作不可撤销。`
-            );
-            if (!ok) return;
-
-            list.splice(currentTemplateIndex, 1);
-            if (!list.length) {
-                delete templateStore[currentTemplateType];
-            }
-            saveTemplatesToStorage();
-            statusEl.textContent = `模板「${tpl.name || ""}」已删除。`;
-
-            // 删除后重新刷新类型和列表选择
-            refreshTemplateTypeSelect();
-        });
-    }
-
-    // ---------- Molang 模板：事件绑定 ----------
-    if (molangTemplateCodeTextarea) {
-        enableAutoHeightTextarea(molangTemplateCodeTextarea);
-    }
-    if (molangSearchInput) {
-        molangSearchInput.addEventListener("input", () => {
-            refreshMolangTemplateList(molangSearchInput.value);
-        });
-    }
-
-    if (molangTemplateSaveBtn) {
-        molangTemplateSaveBtn.addEventListener("click", () => {
-            const name = molangTemplateNameInput ? molangTemplateNameInput.value.trim() : "";
-            const code = molangTemplateCodeTextarea ? molangTemplateCodeTextarea.value : "";
-            if (!code) {
-                statusEl.textContent = "Molang 模板内容为空，无法保存。";
-                return;
-            }
-
-            const isEdit = currentMolangTemplateIndex >= 0 && currentMolangTemplateIndex < molangTemplates.length;
-            if (isEdit) {
-                const tpl = molangTemplates[currentMolangTemplateIndex];
-                tpl.name = name || tpl.name || "未命名模板";
-                tpl.code = code;
-                tpl.updatedAt = new Date().toISOString();
-            } else {
-                molangTemplates.push({
-                    name: name || "未命名模板",
-                    code,
-                    createdAt: new Date().toISOString(),
-                });
-                currentMolangTemplateIndex = molangTemplates.length - 1;
-            }
-
-            saveMolangTemplatesToStorage();
-            refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
-            statusEl.textContent = "Molang 模板已保存。";
-        });
-    }
-
-    if (molangTemplateDeleteBtn) {
-        molangTemplateDeleteBtn.addEventListener("click", () => {
-            if (currentMolangTemplateIndex < 0 || currentMolangTemplateIndex >= molangTemplates.length) {
-                statusEl.textContent = "请先从列表中选择要删除的 Molang 模板。";
-                return;
-            }
-            const tpl = molangTemplates[currentMolangTemplateIndex];
-            const ok = window.confirm(`确定要删除 Molang 模板「${tpl.name || "未命名模板"}」吗？此操作不可撤销。`);
-            if (!ok) return;
-
-            molangTemplates.splice(currentMolangTemplateIndex, 1);
-            saveMolangTemplatesToStorage();
-            resetMolangEditor();
-            refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
-            statusEl.textContent = "Molang 模板已删除。";
-        });
-    }
-
-    if (molangTemplateAddBtn) {
-        molangTemplateAddBtn.addEventListener("click", () => {
-            const now = new Date().toISOString();
-            const newTemplate = {
-                name: "",
-                code: "",
-                createdAt: now,
-            };
-            molangTemplates.push(newTemplate);
-            currentMolangTemplateIndex = molangTemplates.length - 1;
-            if (molangTemplateNameInput) {
-                molangTemplateNameInput.value = "";
-            }
-            if (molangTemplateCodeTextarea) {
-                molangTemplateCodeTextarea.value = "";
-            }
-            saveMolangTemplatesToStorage();
-            refreshMolangTemplateList(molangSearchInput ? molangSearchInput.value : "");
-            statusEl.textContent = "已新增一个空的 Molang 模板。";
-        });
-    }
-
-    if (molangTemplateCopyToEditorBtn) {
-        molangTemplateCopyToEditorBtn.addEventListener("click", () => {
-            const raw = molangTemplateCodeTextarea ? molangTemplateCodeTextarea.value : "";
-            if (!raw) {
-                statusEl.textContent = "当前没有可复制的 Molang 模板内容。";
-                return;
-            }
-            // 复制时去掉所有换行符，方便在 JSON/Molang 字段中单行粘贴
-            const code = raw.replace(/\r?\n/g, "");
-            copyTextToClipboard(code);
-        });
+    function isTextEditingInSidebar() {
+        if (!jsonSidebarEditor) return false;
+        if (!jsonSidebarEditor.classList.contains("sidebar-editor--open")) return false;
+        const el = document.activeElement;
+        if (!el) return false;
+        const tag = el.tagName;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") return false;
+        return jsonSidebarEditor.contains(el);
     }
 
     document.addEventListener("keydown", (e) => {
@@ -3848,32 +4540,51 @@
 
         if (e.key === "Escape") {
             hideJsonModal();
-            hideTemplateModal();
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-            // Ctrl+Z 撤销
+            // Ctrl+Z：在编辑文本时走浏览器原生撤销；否则走节点撤销
+            if (isTextEditingInSidebar()) return;
             e.preventDefault();
             if (undoBtn && !undoBtn.disabled) undoBtn.click();
-        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
-            // Ctrl+Y 重做
+        } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "y" || (e.shiftKey && e.key.toLowerCase() === "z"))) {
+            // Ctrl+Y / Ctrl+Shift+Z：在编辑文本时走浏览器原生重做；否则走节点重做
+            if (isTextEditingInSidebar()) return;
             e.preventDefault();
             if (redoBtn && !redoBtn.disabled) redoBtn.click();
         } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
             // 在编辑对话框中 Ctrl+Enter / Cmd+Enter 快速保存
-            if (jsonModalBackdrop && jsonModalBackdrop.style.display === "flex") {
-                applyJsonEdit();
-            } else if (
-                templateModalBackdrop &&
-                templateModalBackdrop.style.display === "flex"
-            ) {
-                // Ctrl+Enter 在模板管理中等同于保存模板
-                if (templateModalSave) {
-                    templateModalSave.click();
-                }
+            if (jsonSidebarEditor && jsonSidebarEditor.classList.contains("sidebar-editor--open")) {
+                applyJsonEdit({ closeOnSuccess: false });
             }
         }
     });
 
+    // 失去焦点自动保存（侧边栏内 input/textarea）
+    let autoSaveTimer = null;
+    function scheduleAutoSave() {
+        if (!jsonSidebarEditor) return;
+        if (!jsonSidebarEditor.classList.contains("sidebar-editor--open")) return;
+        if (!currentEditNode) return;
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+            applyJsonEdit({ closeOnSuccess: false });
+        }, 120);
+    }
+
+    if (jsonSidebarEditor) {
+        jsonSidebarEditor.addEventListener("focusout", (e) => {
+            const t = e.target;
+            if (!t) return;
+            const tag = t.tagName;
+            if (tag !== "INPUT" && tag !== "TEXTAREA") return;
+            scheduleAutoSave();
+        });
+    }
+
     document.addEventListener("keyup", (e) => {
+        // 松开 Alt：如果还在等待长按进入拖拽，直接取消（避免 Alt 松开后仍误触拖拽）
+        if (e.key === "Alt") {
+            cancelPendingDrag();
+        }
         if (e.key === "Shift") {
             isShiftPressed = false;
         }
@@ -4001,6 +4712,9 @@
                 await writable.write(jsonStr);
                 await writable.close();
                 statusEl.textContent = `已直接保存到原文件：${currentJsonFileName || currentFileHandle.name || "root_feature.json"}`;
+
+                // 保存后：把 tools-feature/features 里“已存在的节点文件”用内存数据回写一次，保持一致性
+                await syncAllExistingFeatureFilesFromMemory();
                 return;
             } catch (err) {
                 if (err && err.name === "AbortError") {
@@ -4014,6 +4728,9 @@
 
         // 没有写入句柄，或写入失败：退回为下载导出
         exportRootJson();
+
+        // 即使是导出模式，也尽力做一次 features 回写（如果浏览器支持且已授权）
+        await syncAllExistingFeatureFilesFromMemory();
     }
 
     // 新建一个 root_feature.json：
@@ -4026,8 +4743,7 @@
             const data = {
                 identifier: defaultId,
                 type: "minecraft:aggregate_feature",
-                file: "features/root_feature.json",
-                preview: {
+                data: {
                     description: {
                         identifier: defaultId,
                     },
@@ -4134,11 +4850,18 @@
         });
     }
 
-    if (exportEntryBtn) {
-        exportEntryBtn.addEventListener("click", () => {
-            exportEntryJsonRaw();
+    if (syncMolangsBtn) {
+        syncMolangsBtn.addEventListener("click", async () => {
+            await syncAllMolangsToNodes();
         });
     }
+
+    if (nodeSyncBtn) {
+        nodeSyncBtn.addEventListener("click", async () => {
+            await syncCurrentNodeFeatureFile();
+        });
+    }
+
 
     // 路径管理 UI 逻辑
     const workDirSelect = document.getElementById("workDirSelect");
@@ -4228,27 +4951,6 @@
     // 初始化时刷新一次下拉框
     refreshWorkDirSelect();
 
-    if (manageTemplatesBtn) {
-        manageTemplatesBtn.addEventListener("click", () => {
-            showTemplateModal();
-        });
-    }
-
-    if (searchNodeBtn) {
-        searchNodeBtn.addEventListener("click", () => {
-            const val = searchNodeInput ? searchNodeInput.value.trim() : "";
-            if (val) searchAndFocusNode(val);
-        });
-    }
-
-    if (searchNodeInput) {
-        searchNodeInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-                const val = searchNodeInput.value.trim();
-                if (val) searchAndFocusNode(val);
-            }
-        });
-    }
 
     if (undoBtn) {
         undoBtn.addEventListener("click", () => {
@@ -4274,12 +4976,6 @@
 
     // 初始化空画布
     initSvg();
-    // 初始化 feature 模板：优先从本地存储加载一次，然后尝试从 templates 目录覆盖
-    templateStore = loadTemplatesFromStorage();
-    // 初始化 Molang 模板（只从本地存储读取，不访问网络）
-    molangTemplates = loadMolangTemplatesFromStorage();
-    ensureMolangTemplatesInitialized();
-
     // 窗口大小改变时自动重绘
     window.addEventListener("resize", debounce(() => {
         if (root) {

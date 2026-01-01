@@ -68,7 +68,7 @@ export function setupItemTextureJson(): void {
                 };
             } else {
                 itemTextureJson.texture_data[itemId] = {
-                    textures: `textures/${teamName}/${projName}/items/book`
+                    textures: `textures/${teamName}/${projName}/empty`
                 };
             }
         } catch (error) {

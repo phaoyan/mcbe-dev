@@ -4,7 +4,7 @@ import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { EntityOp, EntityQr, EntityQueryParams, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
-import entityIds from "../json/entity_ids.json";
+import { entityIds } from "../refs/ref";
 import { MinecraftEntityTypes } from "@minecraft/vanilla-data";
 import { CompUtils } from "./comp_utils";
 

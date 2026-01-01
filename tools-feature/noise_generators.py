@@ -113,9 +113,114 @@ def generate_checkerboard(width, height, size=32.0, seed=42):
     # 简单的异或模式
     return ((X // int(size)) % 2) ^ ((Y // int(size)) % 2)
 
-def generate_island_noise(width, height, scale=50.0, octaves=4, persistence=0.5, lacunarity=2.0, 
-                          island_spread=1.0, center_strength=2.0, 
-                          satellite_spread=0.6, satellite_strength=1.5, satellite_distance=0.7, seed=42, **kwargs):
+
+
+def generate_center_noise(
+    width,
+    height,
+    scale=50.0,
+    octaves=4,
+    persistence=0.5,
+    lacunarity=2.0,
+    center_spread=1.0,
+    center_strength=1.0,
+    seed=42,
+    base_normalize=True,
+    roughness=1.0,
+    center_floor=0.0,
+    **kwargs
+):
+    """生成带中心的 Perlin 噪声（中心梯度 + Perlin 起伏）
+
+    直观效果：越接近中心，基础高度越高；并叠加 Perlin 起伏。
+
+    // Parameters
+    t.scale = 50.0;
+    t.octaves = 4;
+    t.persistence = 0.5;
+    t.lacunarity = 2.0;
+    t.island_spread = 1.0;
+    t.center_strength = 2.0;
+    t.satellite_spread = 0.6;
+    t.satellite_strength = 1.5;
+    t.satellite_distance = 0.7;
+    
+    t.center_x = (q.noise(51454, 31916) + 1) * 256;
+    t.center_z = (q.noise(13122, 15958) + 1) * 256;
+    t.base_radius = 64.0;
+
+    // 1. Base Noise
+    t.noise = 0; t.amp = 1; t.freq = 1.0 / t.scale;
+    loop(t.octaves, {
+        t.noise = t.noise + t.amp * query.noise(v.originx * t.freq, v.originz * t.freq);
+        t.amp = t.amp * t.persistence; t.freq = t.freq * t.lacunarity;
+    });
+    
+    t.noise = (t.noise + 1.0) / 2.0;
+    
+    // 2. Center Gradient
+    t.spread_sq = math.pow(t.island_spread * t.base_radius, 2);
+    
+    // Use squared distance to avoid sqrt: 1 - (d/r)^2 = 1 - (d^2 / r^2)
+    t.dx = v.originx - t.center_x;
+    t.dz = v.originz - t.center_z;
+    t.dist_sq_center = t.dx * t.dx + t.dz * t.dz;
+    t.g_center = math.clamp(1.0 - t.dist_sq_center / t.spread_sq, 0, 1) * t.center_strength;
+    
+    t.grad = t.g_center;
+    t.noise_center = math.clamp((t.noise + t.grad) / (1.0 + t.center_strength), 0, 1);
+
+    """
+    # 兼容外部传入的多余参数（例如 UI 统一下发）
+    _ = kwargs
+
+    EPS = 1e-9
+
+    np.random.seed(seed)
+
+    # 1) 基础 Perlin（八度叠加）
+    noise_base = generate_octave_perlin(width, height, scale, octaves, persistence, lacunarity, seed)
+    if base_normalize:
+        # 依据八度振幅总和，将噪声近似归一化到 [0, 1]
+        amp_sum = float(np.sum([persistence ** o for o in range(int(octaves))]))
+        if amp_sum <= EPS:
+            amp_sum = 1.0
+        noise_base = noise_base / amp_sum
+        noise_base = (noise_base + 1.0) * 0.5
+        noise_base = np.clip(noise_base, 0.0, 1.0)
+
+    # 2) 中心梯度（坐标归一化到 [-1, 1]）
+    x = np.linspace(-1, 1, width)
+    y = np.linspace(-1, 1, height)
+    X, Y = np.meshgrid(x, y)
+
+    dist_center = np.sqrt(X**2 + Y**2)
+    spread = max(float(center_spread), EPS)
+    grad_center = 1.0 - (dist_center / spread) ** 2
+    grad_center = np.clip(grad_center, 0.0, 1.0) * float(center_strength)
+
+    # 3) 混合（roughness 控制基础噪声起伏强度）
+    if base_normalize:
+        base_term = (noise_base - 0.5) * float(roughness)
+    else:
+        base_term = noise_base * float(roughness)
+
+    final_terrain = grad_center + base_term
+
+    # 4) 可选：中心最低高度钳制，避免中心被 Perlin 拉成“坑”
+    if center_floor is not None and float(center_floor) > 0:
+        denom = max(float(center_strength), EPS)
+        floor_mask = np.clip(grad_center / denom, 0.0, 1.0)
+        floor_min = float(center_floor) * float(center_strength) * floor_mask
+        final_terrain = np.maximum(final_terrain, floor_min)
+
+    return final_terrain
+
+
+def generate_island_noise(width, height, scale=50.0, octaves=4, persistence=0.5, lacunarity=2.0,
+                          island_spread=1.0, center_strength=2.0,
+                          satellite_spread=0.6, satellite_strength=1.5, satellite_distance=0.7, seed=42,
+                          base_normalize=True, roughness=1.0, center_floor=0.35, **kwargs):
     """生成中心岛屿+卫星岛地形 (多点引力模型)
     
     Molang Equivalent:
@@ -182,7 +287,16 @@ def generate_island_noise(width, height, scale=50.0, octaves=4, persistence=0.5,
     np.random.seed(seed)
     
     # 1. 生成基础噪声
+    # 注意：PerlinNoise.noise() 可能为负值；若直接与梯度相加，中心也可能被“拉塌”形成空洞。
     noise_base = generate_octave_perlin(width, height, scale, octaves, persistence, lacunarity, seed)
+    if base_normalize:
+        # 依据八度振幅总和，将噪声近似归一化到 [0, 1]
+        amp_sum = float(np.sum([persistence ** o for o in range(int(octaves))]))
+        if amp_sum <= 1e-9:
+            amp_sum = 1.0
+        noise_base = noise_base / amp_sum
+        noise_base = (noise_base + 1.0) * 0.5
+        noise_base = np.clip(noise_base, 0.0, 1.0)
     
     # 2. 坐标网格 [-1, 1]
     x = np.linspace(-1, 1, width)
@@ -223,7 +337,20 @@ def generate_island_noise(width, height, scale=50.0, octaves=4, persistence=0.5,
         global_gradient = np.maximum(global_gradient, grad_sat)
     
     # 3. 混合
-    final_terrain = noise_base + global_gradient
+    # roughness 控制基础噪声对地形起伏的影响（越大越“抖”）
+    if base_normalize:
+        base_term = (noise_base - 0.5) * float(roughness)
+    else:
+        base_term = noise_base * float(roughness)
+
+    final_terrain = global_gradient + base_term
+
+    # 4. 消除中心空洞：在“中心岛梯度”范围内强制一个最低地形
+    # center_floor ∈ [0, 1]，越大越“填平”中心；0 表示不启用该钳制。
+    if center_floor is not None and float(center_floor) > 0:
+        floor_mask = np.clip(grad_center / max(float(center_strength), 1e-9), 0.0, 1.0)
+        floor_min = float(center_floor) * float(center_strength) * floor_mask
+        final_terrain = np.maximum(final_terrain, floor_min)
     
     return final_terrain
 
@@ -239,6 +366,21 @@ NOISE_TYPES = {
             {"id": "satellite_spread", "name": "Satellite Radius", "min": 0.1, "max": 1.0, "default": 0.4},
             {"id": "satellite_strength", "name": "Satellite Height", "min": 0.5, "max": 3.0, "default": 1.2},
             {"id": "satellite_distance", "name": "Satellite Distance", "min": 0.3, "max": 2.0, "default": 0.7},
+            {"id": "roughness", "name": "Base Roughness", "min": 0.0, "max": 3.0, "default": 1.0},
+            {"id": "center_floor", "name": "Center Floor (No Hole)", "min": 0.0, "max": 1.0, "default": 0.35},
+        ]
+    },
+    "Center Perlin": {
+        "func": generate_center_noise,
+        "params": [
+            {"id": "scale", "name": "Noise Scale", "min": 10.0, "max": 200.0, "default": 60.0},
+            {"id": "octaves", "name": "Octaves", "min": 1, "max": 8, "default": 4, "step": 1},
+            {"id": "persistence", "name": "Persistence", "min": 0.1, "max": 1.0, "default": 0.5},
+            {"id": "lacunarity", "name": "Lacunarity", "min": 1.0, "max": 4.0, "default": 2.0},
+            {"id": "center_spread", "name": "Center Radius", "min": 0.2, "max": 2.0, "default": 1.0},
+            {"id": "center_strength", "name": "Center Height", "min": 0.0, "max": 5.0, "default": 1.2},
+            {"id": "roughness", "name": "Base Roughness", "min": 0.0, "max": 3.0, "default": 1.0},
+            {"id": "center_floor", "name": "Center Floor (No Hole)", "min": 0.0, "max": 1.0, "default": 0.0},
         ]
     },
     "Octave Perlin": {

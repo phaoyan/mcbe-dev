@@ -198,14 +198,7 @@ export class DamageUtils {
         damage = Math.max(1, Math.floor(damage))
 
         // 10. 造成伤害
-        try {
-            defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT, { damagingEntity: attacker, cause: EntityDamageCause.entityAttack })
-        } catch (e) {
-            // 兼容性处理
-            defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT)
-        }
-
+        defender.applyDamage(damage * DAMAGE_ADJUST_CONSTANT)
         DPUtils.store().mob_hurt_by.set(defender, attacker?.id)
-
     }
 }

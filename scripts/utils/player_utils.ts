@@ -1,7 +1,7 @@
 import { Entity, ItemStack, Player, system, World, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityQr } from "./entity_utils";
-import entityTree from "../json/entity_tree.json"
+import { entityTree } from "../refs/ref"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
 

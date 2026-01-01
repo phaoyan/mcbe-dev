@@ -75,10 +75,12 @@ class NoiseInteractiveApp:
         self.params_widgets = []
         self.params_axes = []
         self.params_labels = []
+        self._is_setting_up_params = False
         
         # 布局配置
         cols = 4
-        rows = 2
+        max_params = max((len(cfg.get("params", [])) for cfg in NOISE_TYPES.values()), default=0)
+        rows = max(1, int(np.ceil(max_params / cols)))
         start_x = 0.25
         start_y = 0.18      # 第一行文本框的 Y 坐标
         col_width = 0.16
@@ -115,27 +117,32 @@ class NoiseInteractiveApp:
         """根据选择的噪声类型配置参数输入框"""
         config = NOISE_TYPES[noise_type]
         params = config["params"]
-        
-        # 遍历所有输入框
-        for i, widget in enumerate(self.params_widgets):
-            ax = self.params_axes[i]
-            lbl = self.params_labels[i]
-            
-            if i < len(params):
-                p_conf = params[i]
-                ax.set_visible(True)
-                lbl.set_visible(True)
-                
-                # 更新标签
-                lbl.set_text(p_conf["name"])
-                
-                # 设置当前值（重置为默认）
-                widget.set_val(str(p_conf["default"]))
-        else:
-                # 该输入框不需要，隐藏
-                ax.set_visible(False)
-                lbl.set_visible(False)
-        
+
+        self._is_setting_up_params = True
+        try:
+            # 遍历所有输入框
+            for i, widget in enumerate(self.params_widgets):
+                ax = self.params_axes[i]
+                lbl = self.params_labels[i]
+
+                if i < len(params):
+                    p_conf = params[i]
+                    ax.set_visible(True)
+                    lbl.set_visible(True)
+
+                    # 更新标签
+                    lbl.set_text(p_conf["name"])
+
+                    # 设置当前值（重置为默认）
+                    # 注意：set_val 会触发 on_submit 回调，因此在 _is_setting_up_params 期间屏蔽 update()
+                    widget.set_val(str(p_conf["default"]))
+                else:
+                    # 该输入框不需要，隐藏
+                    ax.set_visible(False)
+                    lbl.set_visible(False)
+        finally:
+            self._is_setting_up_params = False
+
         self.fig.canvas.draw_idle()
 
     def change_noise_type(self, label):
@@ -161,6 +168,9 @@ class NoiseInteractiveApp:
 
     def update(self, val):
         """核心更新逻辑"""
+        if getattr(self, "_is_setting_up_params", False):
+            return
+
         config = NOISE_TYPES[self.current_noise_type]
         func = config["func"]
         params_def = config["params"]
@@ -170,6 +180,9 @@ class NoiseInteractiveApp:
         info_parts = [f"Seed: {self.seed}"]
         
         for i, p_def in enumerate(params_def):
+            if i >= len(self.params_widgets):
+                # 输入框数量不足时，避免崩溃（通常不会发生，因为 rows 会按 max_params 自动扩展）
+                break
             text_val = self.params_widgets[i].text
             try:
                 val = float(text_val)

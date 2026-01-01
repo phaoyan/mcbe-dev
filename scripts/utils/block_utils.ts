@@ -1,7 +1,6 @@
 import { BlockComponentTickEvent, system, world } from "@minecraft/server";
-import blockIds from "../json/block_tree.json";
+import { blockTree as blockIds, nameSpace } from "../refs/ref";
 import { MinecraftBlockTypes } from "@minecraft/vanilla-data";
-import { NAME_SPACE } from "../data";
 import { DPUtils } from "./dp_utils";
 
 export class BlockUtils {
@@ -25,9 +24,9 @@ system.beforeEvents.startup.subscribe(({blockComponentRegistry})=>{
 })
 
 Object.values(blockIds.dummy.spawner)
-.filter((typeId: any)=>typeId.startsWith(`${NAME_SPACE}:spawner_`))
+.filter((typeId: any)=>typeId.startsWith(`${nameSpace}:spawner_`))
 .forEach((typeId: any)=>{
-    const entityId = typeId.replace(`${NAME_SPACE}:spawner_`, "").replace("__", ":")
+    const entityId = typeId.replace(`${nameSpace}:spawner_`, "").replace("__", ":")
     BlockUtils.onTick(typeId, (event)=>{
         event.dimension.runCommand(`summon ${entityId} ${event.block.location.x} ${event.block.location.y} ${event.block.location.z}`)
         event.block.setType(MinecraftBlockTypes.Air)

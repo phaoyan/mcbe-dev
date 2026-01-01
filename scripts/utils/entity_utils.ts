@@ -1,5 +1,5 @@
 import { Vector3Utils } from "@minecraft/math";
-import { Entity, EntityEffectOptions, EntityQueryOptions, Player, system, TeleportOptions, Vector3, world } from "@minecraft/server";
+import { Entity, EntityQueryOptions, Player, system, TeleportOptions, Vector3, world } from "@minecraft/server";
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
@@ -8,7 +8,7 @@ import { DamageUtils } from "./damage_utils";
 import { TagList } from "../lists/tag_list";
 import { CompUtils } from "./comp_utils";
 import { BlackboardManager } from "./behavior_utils";
-import animationLength from "../json/animation_length.json"
+import { animationLength } from "../refs/ref"
 import { CameraMoveOptions } from "./effect_utils";
 import { ItemUtils } from "./item_utils";
 
@@ -90,7 +90,7 @@ export class EntityOp {
 
     static create() { return new EntityOp() }
 
-    private _enqueue(action: (entity: Entity) => void): EntityOp {
+    protected _enqueue(action: (entity: Entity) => void): EntityOp {
         const at = this._cursor
         const step: { tick: number; action: (entity: Entity) => void } = { tick: at, action }
         this._steps.push(step)

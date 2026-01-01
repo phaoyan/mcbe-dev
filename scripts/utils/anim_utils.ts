@@ -1,9 +1,7 @@
 import { Entity, ItemStack, Player, system, world, World } from "@minecraft/server"
-import animationTree from "../json/animation_tree.json"
+import { animationTree, animationLength, attachableAnimations } from "../refs/ref"
 import { DPUtils } from "./dp_utils"
 import { TimeUtils } from "./time_utils"
-import animationLength from "../json/animation_length.json"
-import attachableAnimations from "../json/attachable_animations.json"
 
 // Player Invert ACs
 export const PILegsAC: AnimCtrl = {

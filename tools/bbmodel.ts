@@ -212,7 +212,6 @@ function setupBbmodelJson(): void {
 
     writeJson(path.join(BBPACK_DIR, "bbmodel.json"), data);
     writeJson(path.join(TOOLS_DIR, "json", "bbmodel.json"), data);
-    writeJson(path.join(SCRIPTS_DIR, "json", "bbmodel.json"), data);
 
     console.log(`生成bbmodel.json完成，包含 ${Object.keys(data).length} 个模型`);
 }

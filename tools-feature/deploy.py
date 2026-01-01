@@ -41,7 +41,7 @@ def extract_features():
     
     zip_file = project_root / 'root_feature_features.zip'
     project_name = get_project_name(project_root)
-    target_dir = project_root / 'behavior_packs' / project_name
+    target_dir = project_root / 'behavior_packs' / project_name / 'features'
     
     # 检查 zip 文件是否存在
     if not zip_file.exists():

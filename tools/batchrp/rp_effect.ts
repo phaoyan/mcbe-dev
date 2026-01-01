@@ -1,6 +1,6 @@
 import { BBMODEL_JSON, client_entity, NAME_SPACE } from "../utils";
 
-export const rpEffect = (bbmodel: string, typeId?: string, params?: { extraAnimate?: string[] }) => {
+export const rpEffect = (bbmodel: string, typeId?: string, params?: { extraAnimate?: string[], invisiable?: boolean }) => {
     if (!typeId) typeId = bbmodel;
     const bbmodelConfig = BBMODEL_JSON[bbmodel] || {};
     const geometry = bbmodelConfig.geometry || "";
@@ -18,7 +18,7 @@ export const rpEffect = (bbmodel: string, typeId?: string, params?: { extraAnima
                     default: `geometry.${geometry}`
                 },
                 textures: {
-                    default: `textures/${NAME_SPACE.replace('_', '/')}/entity/${textures[0]}`
+                    default: `textures/${NAME_SPACE.replace('_', '/')}/${params?.invisiable ? "empty" : "entity/" + textures[0]}`
                 },
                 materials: {
                     default: "entity_alphatest"
