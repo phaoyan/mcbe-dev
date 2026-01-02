@@ -1,10 +1,52 @@
-import { EasingType, Entity, Player, Vector3, world } from "@minecraft/server";
+import { EasingType, Entity, Player, system, Vector3, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityEventIds } from "../lists/event_list";
 import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { EntityOp, EntityState } from "./entity_utils";
 import { TagList } from "../lists/tag_list";
 import { animationTree } from "../refs/ref";
+
+import { TimeUtils } from "./time_utils";
+
+DPUtils.store().effect_refresh.register((target) => {
+    if (!(target instanceof Entity)) return
+    const rawState = DPUtils.store().effect_state.curr(target, {})
+    const state: Record<string, { expire: number, level: number, showParticles: boolean }[]> = { ...rawState }
+
+    // 统一清理过期项 + 排序（高等级优先）
+    Object.entries(state).forEach(([effect, data]) => {
+        const filtered = (data ?? [])
+            .filter(item => item.expire > system.currentTick)
+            .sort((a, b) => -a.level + b.level)
+        if (filtered.length === 0) {
+            delete state[effect]
+        } else {
+            state[effect] = filtered
+        }
+    })
+    DPUtils.store().effect_state.set(target, state)
+
+    // 应用当前最高等级，并计算“下一次必须刷新”的最早过期 tick
+    let nextExpireTick: number | undefined
+    Object.entries(state).forEach(([effect, data]) => {
+        const currEff = (data ?? [])[0]
+        if (!currEff) return
+        const left = currEff.expire - system.currentTick
+        TimeUtils.timeout(()=>target.addEffect(effect, left, { amplifier: currEff.level, showParticles: currEff.showParticles }), 1)
+        nextExpireTick = nextExpireTick === undefined ? currEff.expire : Math.min(nextExpireTick, currEff.expire)
+    })
+
+    // 每次刷新后只保留“一条”到期刷新（最早过期那个），避免回落刷新丢失
+    if (nextExpireTick !== undefined) {
+        const delay = nextExpireTick - system.currentTick
+        if (delay > 0) {
+            DPUtils.store().effect_refresh.cancel(target, system.currentTick + 1)
+            const refresh = (prev: number | undefined) => (prev ?? 0) + 1
+            DPUtils.store().effect_refresh.set(target, refresh, 0, delay)
+        }
+    }
+})
+
 
 DPUtils.store().effect_superarmor.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return

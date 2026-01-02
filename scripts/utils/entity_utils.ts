@@ -168,10 +168,12 @@ export class EntityOp {
         })
     }
 
-    playSound(soundId: string, location?: Vector3, delay: number = 3, volume: number = 1, pitch: number = 1): EntityOp {
+    playSound(soundId: string, location?: Vector3, delay: number = 3, radius: number = 48): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeout(() => {
-                entity.dimension.playSound(soundId, location ?? entity.location, { volume, pitch })
+                entity.dimension.getPlayers().filter(p=>MathUtils.distanceSquared(p.location, location ?? entity.location) <= radius ** 2).forEach(p=>{
+                    p.playSound(soundId, { location: location ?? entity.location })
+                })
             }, delay)
         })
     }
@@ -212,7 +214,21 @@ export class EntityOp {
 
     eff(effect: string, ticks: number | null, amp: number, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
-            entity.addEffect(effect, ticks ?? 20000000, { amplifier: amp === 0 ? 1: amp, showParticles: showParticles })
+            const curr = DPUtils.store().effect_state.curr(entity, {})
+            const duration = (ticks ?? 20000000)
+            const expireTick = system.currentTick + duration
+            let data: { expire: number, level: number, showParticles: boolean }[] = curr[effect] ?? []
+            // 写入时先清理过期项，避免 effect_state 无限制膨胀
+            data = [...data.filter(item => item.expire > system.currentTick), {
+                expire: expireTick,
+                level: amp === 0 ? 1 : amp,
+                showParticles: showParticles
+            }].sort((a, b) => - a.level + b.level)
+            DPUtils.store().effect_state.set(entity, { ...curr, [effect]: data })
+            // 用自增触发刷新：避免同一 tick 内多次 eff() 因脏检查而不触发
+            const refresh = (prev: number | undefined) => (prev ?? 0) + 1
+            DPUtils.store().effect_refresh.set(entity, refresh, 0)
+            // 过期回落的刷新由 effect_refresh.register 统一根据“最近过期时间”调度
         })
     }
 
@@ -233,13 +249,13 @@ export class EntityOp {
 
     slowness(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
-            entity.addEffect(MinecraftEffectTypes.Slowness, ticks, { amplifier: amp, showParticles: showParticles })
+            EntityOp.create().eff(MinecraftEffectTypes.Slowness, ticks, amp, showParticles).run(entity)
         })
     }
 
     speed(ticks: number, amp: number = 3, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
-            entity.addEffect(MinecraftEffectTypes.Speed, ticks, { amplifier: amp, showParticles: showParticles })
+            EntityOp.create().eff(MinecraftEffectTypes.Speed, ticks, amp, showParticles).run(entity)
         })
     }
 
@@ -486,6 +502,7 @@ export class EntityOp {
             }
             else {
                 entity.removeEffect(effect)
+                DPUtils.store().effect_state.set(entity, { ...DPUtils.store().effect_state.curr(entity, {}), [effect]: [] })
             }
         })
     }

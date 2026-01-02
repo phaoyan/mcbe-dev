@@ -58,7 +58,8 @@ export const dpList = {
     entity_sched_id: "minecraft_dev:entity_sched_id", // 实体调度id, 将其设置为undefined可以中断调度
     damage_attribute: "minecraft_dev:damage_attribute", // 玩家、怪物、装备都可能使用到这条属性
 
-
+    effect_state: "minecraft_dev:effect_state",
+    effect_refresh: "minecraft_dev:effect_refresh",
     effect_superarmor: "minecraft_dev:effect_superarmor",
     effect_dizzy: "minecraft_dev:effect_dizzy",
     effect_move_straight: "minecraft_dev:effect_move_straight",
