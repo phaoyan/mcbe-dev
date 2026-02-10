@@ -1,12 +1,11 @@
 import { EasingType, Entity, Player, system, Vector3, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
-import { EntityEventIds } from "../lists/event_list";
+import { EntityEventIds } from "../refs/event_list";
 import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
 import { EntityOp, EntityState } from "./entity_utils";
-import { TagList } from "../lists/tag_list";
-import { animationTree } from "../refs/ref";
-
+import { TagList } from "../refs/tag_list";
 import { TimeUtils } from "./time_utils";
+import { animationTree } from "../refs/ref";
 
 DPUtils.store().effect_refresh.register((target) => {
     if (!(target instanceof Entity)) return
@@ -41,12 +40,10 @@ DPUtils.store().effect_refresh.register((target) => {
         const delay = nextExpireTick - system.currentTick
         if (delay > 0) {
             DPUtils.store().effect_refresh.cancel(target, system.currentTick + 1)
-            const refresh = (prev: number | undefined) => (prev ?? 0) + 1
-            DPUtils.store().effect_refresh.set(target, refresh, 0, delay)
+            DPUtils.store().effect_refresh.reduce(target, "add", 1, 0, delay)
         }
     }
 })
-
 
 DPUtils.store().effect_superarmor.register((target, curr, prev) => {
     if (!(target instanceof Entity)) return
@@ -205,7 +202,7 @@ DPUtils.store().player_camera_reset.register((player) => {
     player.camera.clear()
 })
 
-DPUtils.store().effect_camera_tpp.register((player, curr)=>{
+DPUtils.store().effect_camera_tpp.register((player, curr) => {
     if (!(player instanceof Player)) return
     if (curr) {
         player.camera.setCamera(MinecraftCameraPresetsTypes.ThirdPerson)

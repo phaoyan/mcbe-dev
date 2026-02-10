@@ -32,7 +32,3 @@ Object.values(blockIds.dummy.spawner)
         event.block.setType(MinecraftBlockTypes.Air)
     })
 })
-
-BlockUtils.onTick(blockIds.dummy.placeholder.placeholder, (event)=>{
-    event.block.setType(MinecraftBlockTypes.Air)
-})

@@ -500,6 +500,51 @@ export function mcstructureRefs(): void {
 }
 
 /**
+ * 生成对话引用
+ */
+export function dialogueRefs(): { scenes: Record<string, string>, events: Record<string, string> } {
+    const scenes: Record<string, string> = {};
+    const events: Record<string, string> = {};
+
+    const dialogueDir = path.join(BEHAVIOR_PACK_DIR, "dialogue");
+    const dialogueFiles = rglob('.*\\.scene\\.json$', dialogueDir);
+
+    for (const file of dialogueFiles) {
+        try {
+            const data = readJson(file);
+            const npcDialogue = data["minecraft:npc_dialogue"];
+            if (!npcDialogue || !npcDialogue.scenes) continue;
+
+            for (const scene of npcDialogue.scenes) {
+                if (scene.scene_tag) {
+                    scenes[scene.scene_tag] = scene.scene_tag;
+                }
+
+                if (scene.buttons) {
+                    for (const button of scene.buttons) {
+                        if (button.commands) {
+                            for (const command of button.commands) {
+                                if (typeof command === 'string' && command.startsWith('/scriptevent ')) {
+                                    const event = command.substring('/scriptevent '.length).trim();
+                                    if (event) {
+                                        const key = event.split(':').pop() || event;
+                                        events[key] = event;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(`读取对话文件失败 ${file}: ${error}`);
+        }
+    }
+
+    return { scenes, events };
+}
+
+/**
  * 生成聚合引用文件 ref.json（与 scripts/main.ts 同级）
  * - 只输出一个文件：scripts/refs/ref.json
  * - 内容结构与之前 scripts/json/*.json 一致（key 为原文件名去掉 .json）
@@ -727,6 +772,13 @@ export function refJson(): void {
         ref["attachable_animations"] = attAnimations;
     }
 
+    // dialogue
+    {
+        const { scenes, events } = dialogueRefs();
+        ref["dialogue_scenes"] = scenes;
+        ref["dialogue_events"] = events;
+    }
+
     // bbmodel.json
     {
         const bbmodel = readJson(path.join(BBPACK_DIR, "bbmodel.json"));
@@ -735,6 +787,22 @@ export function refJson(): void {
 
     // 命名空间
     ref["name_space"] = NAME_SPACE;
+
+    // item textures
+    {
+        const itemTextures: Record<string, string> = {};
+        const texturesDir = path.join(RESOURCE_PACK_DIR, "textures", NAME_SPACE.replace(/_/g, '/'), "items");
+
+        if (fs.existsSync(texturesDir)) {
+            const pngFiles = rglob('.*\\.png$', texturesDir);
+            for (const pngFile of pngFiles) {
+                const fileName = path.basename(pngFile, '.png');
+                const relPath = path.relative(RESOURCE_PACK_DIR, pngFile).replace(/\\/g, '/');
+                itemTextures[fileName] = relPath;
+            }
+        }
+        ref["item_textures"] = itemTextures;
+    }
 
     ensureDir(path.dirname(refPath));
     writeJson(refPath, ref);

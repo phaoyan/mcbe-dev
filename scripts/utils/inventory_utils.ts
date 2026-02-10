@@ -107,6 +107,10 @@ export class InventoryUtils {
         }
     }
 
+    static clearAll(target: Entity) {
+        target.runCommand(`clear`)
+    }
+
     static remove(target: Entity, typeId: string, amount: number) {
         target.runCommand(`clear @s ${typeId} 0 ${amount}`)
     }
@@ -167,7 +171,19 @@ export class InventoryUtils {
                     prevItembind?.mainhand?.id && InventoryUtils.clear(target, prevItembind.mainhand.id)
                     prevItembind?.offhand?.id && InventoryUtils.clear(target, prevItembind.offhand.id)
 
-                    currItembind.inventory?.forEach(item => item && InventoryUtils.give(target, ItemUtils.fromConfig(item).get()))
+                    if (currItembind.inventory && currItembind.inventory.length > 0) {
+                        const inventory = InventoryUtils.entity(target)
+                        if (inventory) {
+                            const count = Math.min(currItembind.inventory.length, inventory.size)
+                            const slots: number[] = []
+                            for (let i = 0; i < count; i++) slots.push(i)
+                            if (InventoryUtils.move(target, slots)) {
+                                for (let i = 0; i < count; i++) {
+                                    inventory.setItem(slots[i], ItemUtils.fromConfig(currItembind.inventory[i]).get())
+                                }
+                            }
+                        }
+                    }
                     currItembind.head?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.head).get(), EquipmentSlot.Head, { onlyOnce: true, override: true })
                     currItembind.chest?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.chest).get(), EquipmentSlot.Chest, { onlyOnce: true, override: true })
                     currItembind.legs?.id && InventoryUtils.equip(target, ItemUtils.fromConfig(currItembind.legs).get(), EquipmentSlot.Legs, { onlyOnce: true, override: true })

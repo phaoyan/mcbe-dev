@@ -19,6 +19,10 @@ export const bpNpc = (typeId: string) => {
                     "value": 0,
                     "max": 0
                 },
+                "minecraft:collision_box": {
+                    "height": 2,
+                    "width": 1
+                },
                 "minecraft:physics": {},
                 "minecraft:damage_sensor": {
                     "triggers": {

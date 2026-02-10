@@ -51,3 +51,56 @@ export const bpEffect = (typeId: string) => {
         }
     };
 };
+
+export const bpDecoration = (typeId: string) => {
+    return {
+        "format_version": "1.21.10",
+        "minecraft:entity": {
+            "description": {
+                "identifier": `${NAME_SPACE}:${typeId}`,
+                "is_spawnable": false,
+                "is_summonable": true,
+                "is_experimental": false
+            },
+            "components": {
+                "minecraft:collision_box": {
+                    "width": 1,
+                    "height": 1
+                },
+                "minecraft:physics": {
+                    "has_gravity": true,
+                    "has_collision": true,
+                },
+                "minecraft:health": {
+                    "max": 1e4,
+                    "value": 1e4
+                },
+                "minecraft:type_family": {
+                    "family": ["decoration", "dummy"]
+                },
+                "minecraft:damage_sensor": {
+                    "triggers": {
+                        "deals_damage": false
+                    }
+                },
+                "minecraft:interact": {
+                    "interactions": [
+                        {
+                            "on_interact": {
+                                "filters": {
+                                    "all_of": [
+                                        {
+                                            "test": "is_family",
+                                            "subject": "other",
+                                            "value": "player"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    };
+};

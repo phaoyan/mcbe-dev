@@ -10,14 +10,14 @@ const createMoveController = (suffix: string) => {
             default: {
                 animations: [`idle${animSuffix}`],
                 transitions: [
-                    {"walk": "q.modified_move_speed >= (t.walk_threshold ?? 0.1)"},
+                    {"walk": "q.is_sprinting"},
                     {"void": "t.slot != 0"},
                 ]
             },
             walk: {
                 animations: [`walk${animSuffix}`],
                 transitions: [
-                    {"default": "q.modified_move_speed < (t.walk_threshold ?? 0.1)"}, 
+                    {"default": "!q.is_sprinting"}, 
                     {"void": "t.slot != 0"},
                 ]
             },
@@ -49,7 +49,7 @@ const createSkillController = (suffix?: string, blendTransition?: number) => {
     const states: Record<string, any> = {
         default: {
             transitions: generateSlotTransitions(0),
-            blend_transition: 0.1
+            blend_transition: 0
         }
     };
 
@@ -68,8 +68,8 @@ const createFppController = ()=>{
     const states: Record<string, any> = {
         default: {
             animations: [
-                { idle_fpp: "q.modified_move_speed < (t.walk_threshold ?? 0.1)" },
-                { walk_fpp: "q.modified_move_speed >= (t.walk_threshold ?? 0.1)" }
+                { idle_fpp: "!q.is_sprinting" },
+                { walk_fpp: "q.is_sprinting" }
             ],
             transitions: generateSlotTransitions(0),
             blend_transition: DEFAULT_BLEND_TRANSITION
@@ -101,7 +101,7 @@ export const acAtt = () => {
                         ],
                         "transitions": [
                             {
-                                "walk": "q.modified_move_speed >= (t.walk_threshold ?? 0.1)"
+                                "walk": "q.is_sprinting"
                             },
                             {
                                 "skill": "t.slot != 0"
@@ -114,7 +114,7 @@ export const acAtt = () => {
                         ],
                         "transitions": [
                             {
-                                "default": "q.modified_move_speed < (t.walk_threshold ?? 0.1)"
+                                "default": "!q.is_sprinting"
                             }
                         ]
                     },
@@ -124,7 +124,7 @@ export const acAtt = () => {
                                 "default": "t.slot == 0"
                             },
                             {
-                                "walk": "q.modified_move_speed >= (t.walk_threshold ?? 0.1)"
+                                "walk": "q.is_sprinting"
                             }
                         ]
                     }

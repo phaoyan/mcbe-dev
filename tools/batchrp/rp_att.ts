@@ -11,12 +11,13 @@ export interface AttData {
         idleFpp: string,
         walkAtt?: string,
         walkFpp?: string,
+        voidOverride?: string,
     },
 }
 
 export const rpAtt = (data: AttData) => {
     const { typeId, basics, skills } = data;
-    const { idleAtt, idleFpp, walkAtt = idleAtt, walkFpp = idleFpp } = basics;
+    const { idleAtt, idleFpp, walkAtt = idleAtt, walkFpp = idleFpp, voidOverride = ref.animation_tree.minecraft_dev.common.void } = basics;
     const slotAnimations = {
         ctrl_fpp: "controller.animation.minecraft_dev.player.fpp",
         ctrlskill_att: "controller.animation.minecraft_dev.player.skill.att",
@@ -27,7 +28,7 @@ export const rpAtt = (data: AttData) => {
         walk_att: walkAtt,
         ...Array.from({length: SLOT_COUNT}, (_, i) => ({[`slot${i+1}_fpp`]: "animation.minecraft_dev.common.none"})).reduce((acc, curr) => ({...acc, ...curr}), {}),
         ...Array.from({length: SLOT_COUNT}, (_, i) => ({[`slot${i+1}_att`]: "animation.minecraft_dev.common.none"})).reduce((acc, curr) => ({...acc, ...curr}), {}),
-        void: ref.animation_tree.minecraft_dev.common.void,
+        void: voidOverride ?? ref.animation_tree.minecraft_dev.common.void,
     }
     const maxSkillSlots = Math.min(skills.length, SLOT_COUNT);
     for (let i = 0; i < maxSkillSlots; i++) {

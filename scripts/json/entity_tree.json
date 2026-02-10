@@ -1,6 +1,0 @@
-{
-    "dummy": {
-        "lclick_dummy": "minecraft_dev:lclick_dummy",
-        "locator_dummy": "minecraft_dev:locator_dummy"
-    }
-}

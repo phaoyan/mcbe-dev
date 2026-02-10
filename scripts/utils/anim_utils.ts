@@ -95,9 +95,32 @@ export class AnimUtils {
         })
     }
 
+    static animbindsV2(data: { 
+        id: string, 
+        triggers: string | string[],
+        mapping: (target: Player) => string,
+        animbinds: { [key: string]: AnimCtrl } 
+    }) {
+        const triggers = Array.isArray(data.triggers) ? data.triggers : [data.triggers]
+        world.afterEvents.worldLoad.subscribe(() => {
+            triggers.forEach(trigger => {
+                DPUtils.register(trigger, (target: Entity | ItemStack | World, curr: string, prev: string) => {
+                    if (prev === curr) return
+                    if (!(target instanceof Player)) return
+                    const currAnimbind = data.mapping(target)
+                    const prevAnimbind = DPUtils.store().player_prev_animbind.curr(target, {})[data.id]
+                    if (prevAnimbind === currAnimbind) return
+                    if (prevAnimbind) AnimUtils.unregister(target, data.animbinds[prevAnimbind])
+                    if (currAnimbind) AnimUtils.register(target, data.animbinds[currAnimbind])
+                    DPUtils.store().player_prev_animbind.set(target, (curr: any) => ({ ...curr, [data.id]: currAnimbind }), prevAnimbind)
+                })
+            })
+        })
+    }
+
     static slots(player: Player, ...series: number[][]) {
         for (let [slot, tick] of series) {
-            DPUtils.store().player_animation_slot.set(player, slot, 0, tick)
+            DPUtils.store().player_animation_slot.reduce(player, "set", slot, 0, tick)
         }
         return this
     }

@@ -2,6 +2,24 @@ import { Vector3Utils } from "@minecraft/math";
 import { Dimension, Entity, system, Vector3, world } from "@minecraft/server";
 import { MinecraftDimensionTypes } from "@minecraft/vanilla-data";
 
+export type FontColor =
+    | "black" | "0"
+    | "dark_blue" | "darkblue" | "1"
+    | "dark_green" | "darkgreen" | "2"
+    | "dark_aqua" | "darkaqua" | "dark_cyan" | "darkcyan" | "3"
+    | "dark_red" | "darkred" | "4"
+    | "dark_purple" | "darkpurple" | "5"
+    | "gold" | "orange" | "6"
+    | "gray" | "grey" | "7"
+    | "dark_gray" | "dark_grey" | "darkgray" | "darkgrey" | "8"
+    | "blue" | "9"
+    | "green" | "a"
+    | "aqua" | "cyan" | "light_blue" | "lightblue" | "b"
+    | "red" | "c"
+    | "light_purple" | "lightpurple" | "pink" | "magenta" | "d"
+    | "yellow" | "e"
+    | "white" | "f"
+    | "reset" | "r";
 
 export class MathUtils {
     static valueMap(state: any, from: any[], to: any[]): any {
@@ -60,6 +78,48 @@ export class MathUtils {
         if (yawDeg > 180) yawDeg -= 360; // 转回[-180°, 180°]
         return yawDeg;
     };
+
+    static fontColor(text: string, color: FontColor) {
+        const raw = (color ?? "").trim();
+        if (!raw) return text;
+
+        const key = raw.toLowerCase().replace(/\s+/g, "_");
+
+        // Bedrock/Java legacy § color codes (0-f) + some common aliases.
+        const map: Record<string, string> = {
+            black: "0", "0": "0",
+            dark_blue: "1", darkblue: "1", "1": "1",
+            dark_green: "2", darkgreen: "2", "2": "2",
+            dark_aqua: "3", darkaqua: "3", dark_cyan: "3", darkcyan: "3", "3": "3",
+            dark_red: "4", darkred: "4", "4": "4",
+            dark_purple: "5", darkpurple: "5", "5": "5",
+            gold: "6", orange: "6", "6": "6",
+            gray: "7", grey: "7", "7": "7",
+            dark_gray: "8", dark_grey: "8", darkgray: "8", darkgrey: "8", "8": "8",
+            blue: "9", "9": "9",
+            green: "a", "a": "a",
+            aqua: "b", cyan: "b", light_blue: "b", lightblue: "b", "b": "b",
+            red: "c", "c": "c",
+            light_purple: "d", lightpurple: "d", pink: "d", magenta: "d", "d": "d",
+            yellow: "e", "e": "e",
+            white: "f", "f": "f",
+            reset: "r", "r": "r",
+        };
+
+        const code = map[key] ?? map[raw] ?? map[raw.toLowerCase()];
+        if (!code) return text;
+
+        // Append §r to avoid coloring subsequent text.
+        return `§${code}${text}§r`;
+    }
+
+    static timeOfDay(txt: "day" | "night" | "midnight"): number {
+        return {
+            day: 2000,
+            night: 13000,
+            midnight: 18000,
+        }[txt]
+    }
 }
 
 /**
@@ -241,6 +301,12 @@ export class VecUtils {
         return VecUtils
     }
 
+    static moveXYZ(entity: Entity | Vector3, xyz: number[], moveYToBlock: boolean = false){
+        const res = VecUtils.start(entity).moveX(xyz[0] ?? 0).moveY(xyz[1] ?? 0).moveZ(xyz[2] ?? 0).end()
+        if (moveYToBlock) return VecUtils.moveYToBlock().end()
+        return res
+    }
+
     static moveR(dist: number) {
         const hori = VecUtils.unit(VecUtils.hori(this.DIRECTION))
         this.LOCATION = Vector3Utils.add(this.LOCATION, Vector3Utils.scale({ x: hori.z, z: -hori.x, y: 0 }, dist))
@@ -275,11 +341,19 @@ export class VecUtils {
     }
 
     static moveYToBlock(downOffset: number = 5, upOffset: number = 5){
-        for (let i = - upOffset; i < downOffset; i++) {
+        // 先从当前位置往下遍历
+        for (let i = 0; i < downOffset; i++) {
             const block = this.DIMENSION.getBlock(Vector3Utils.add(this.LOCATION, {y: -i}))
             if (block?.isAir) continue
             this.LOCATION = Vector3Utils.add(this.LOCATION, {y: -i+1})
-            break
+            return VecUtils
+        }
+        // 如果没找到，再从当前位置往上遍历
+        for (let i = 1; i <= upOffset; i++) {
+            const block = this.DIMENSION.getBlock(Vector3Utils.add(this.LOCATION, {y: i}))
+            if (block?.isAir) continue
+            this.LOCATION = Vector3Utils.add(this.LOCATION, {y: i+1})
+            return VecUtils
         }
         return VecUtils
     }

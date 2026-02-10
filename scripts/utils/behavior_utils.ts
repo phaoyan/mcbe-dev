@@ -1,9 +1,9 @@
 import { Entity, world, system, Player, GameMode } from "@minecraft/server";
 import { MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
-import { EntityEventIds } from "../lists/event_list";
+import { EntityEventIds } from "../refs/event_list";
 import { EntityOp, EntityQr, EntityQueryParams, EntityState } from "./entity_utils";
-import { TagList } from "../lists/tag_list";
+import { TagList } from "../refs/tag_list";
 import { entityIds } from "../refs/ref";
 import { MinecraftEntityTypes } from "@minecraft/vanilla-data";
 import { CompUtils } from "./comp_utils";
@@ -26,12 +26,21 @@ function btTrace(message: string): void {
 
 // 每实体运行态存储：按实体隔离节点状态
 class RuntimeState {
-    private static getAll(entity: Entity): Record<string, any> {
-        return DPUtils.store().mob_behavior_state.curr(entity, {});
+    // 纯内存运行态：entityId -> nodePath -> state
+    // 注意：该运行态不持久化，世界重进/脚本重载会丢失（符合行为树运行态预期）
+    private static STATE = new Map<string, Record<string, any>>();
+
+    private static getAllById(entityId: string): Record<string, any> {
+        let all = this.STATE.get(entityId);
+        if (!all) {
+            all = {};
+            this.STATE.set(entityId, all);
+        }
+        return all;
     }
 
-    private static setAll(entity: Entity, all: Record<string, any>): void {
-        DPUtils.store().mob_behavior_state.set(entity, all, {});
+    private static getAll(entity: Entity): Record<string, any> {
+        return this.getAllById(entity.id);
     }
 
     static getVal<T = any>(entity: Entity, node: BehaviorNode, key: string, defaultValue: T): T {
@@ -47,11 +56,14 @@ class RuntimeState {
         const nodeState = all[path] ?? {};
         nodeState[key] = value;
         all[path] = nodeState;
-        this.setAll(entity, all);
     }
 
     static clearEntity(entity: Entity): void {
-        DPUtils.store().mob_behavior_state.set(entity, {});
+        this.STATE.delete(entity.id);
+    }
+
+    static clearEntityId(entityId: string): void {
+        this.STATE.delete(entityId);
     }
 }
 
@@ -463,36 +475,40 @@ export class BehaviorTree {
 // 行为树管理器
 export class BehaviorUtils {
     private static FACTORIES: { [key: string]: (entity: Entity) => BehaviorTree } = {};
+    // 按实体缓存行为树，避免每 tick 重建整棵树
+    private static TREES = new Map<string, { factoryKey: string; tree: BehaviorTree }>();
+
+    // 内部：清理指定实体的缓存树
+    static clearTreeCache(entityId: string): void {
+        this.TREES.delete(entityId);
+    }
 
     // 注册行为树逻辑：使用行为树ID注册工厂
     static register(treeId: string, factory: (entity: Entity) => BehaviorTree) {
         this.FACTORIES[treeId] = factory;
-        Object.keys(entityIds).includes(treeId) &&
-            world.afterEvents.entitySpawn.subscribe(({ entity }) => {
-                if (entity.typeId !== treeId) return
-                BehaviorUtils.bind(entity.id, treeId)
-            })
         return factory
     }
 
-    // 绑定实体到某个工厂键，并持久化到World动态属性
-    static bind(entityId: string, factoryKey: string) {
-        DPUtils.store().world_behavior_map.set(world, (curr: any = {}) => {
-            const next = { ...curr };
-            next[entityId] = factoryKey;
-            return next;
-        }, {});
-
-    }
-
     private static ensureTree(entity: Entity): BehaviorTree | undefined {
-        const map = DPUtils.store().world_behavior_map.curr(world, {} as Record<string, string>);
-        const key = map?.[entity.id];
-        if (key && this.FACTORIES[key]) {
-            const tree = this.FACTORIES[key](entity);
-            return tree;
+        // 1. 优先尝试内存缓存
+        const cached = this.TREES.get(entity.id);
+        if (cached) {
+            return cached.tree;
         }
-        return undefined;
+
+        // 2. 按 typeId 自动匹配
+        const key = entity.typeId;
+        const factory = this.FACTORIES[key];
+        if (!factory) return undefined;
+
+        try {
+            const tree = factory(entity);
+            this.TREES.set(entity.id, { factoryKey: key, tree });
+            return tree;
+        } catch (e) {
+            console.warn(`[Behavior] Failed to create tree for ${entity.typeId}: ${e}`);
+            return undefined;
+        }
     }
 
     // 一律按实体绑定：注册实体对应的行为树
@@ -515,26 +531,11 @@ export class BehaviorUtils {
     }
 }
 
-const behaviorMapGC = () => {
-    try {
-        // 清理无效实体映射
-        const map = DPUtils.store().world_behavior_map.curr(world, {} as Record<string, string>);
-        let changed = false;
-        for (const id of Object.keys(map)) {
-            const entityExists = !!world.getEntity(id);
-            if (!entityExists) {
-                delete map[id];
-                changed = true;
-            }
-        }
-        if (changed) {
-            DPUtils.store().world_behavior_map.set(world, map, {});
-        }
-    } catch { }
-}
-
-// 定时清理与迁移：
-system.runInterval(() => behaviorMapGC(), 1200);
+// 实体移除时清理内存缓存
+world.afterEvents.entityRemove.subscribe(({ removedEntityId }) => {
+    BehaviorUtils.clearTreeCache(removedEntityId);
+    RuntimeState.clearEntityId(removedEntityId);
+});
 
 // 简化的技能配置
 export interface SkillConfig {
@@ -618,6 +619,7 @@ export class BehaviorTemplates {
 
     static monster(config: {
         skills?: SkillConfig[]; // 技能列表，可选
+        priorityCallback?: (entity: Entity) => NodeState; // 优先检查，可选
         spawnAction?: (entity: Entity) => number; // 出生动作，可选
         deathAction?: (entity: Entity) => NodeState; // 死亡动作，可选
         moveToTarget?: (entity: Entity) => NodeState; // 移动行为，可选
@@ -629,6 +631,7 @@ export class BehaviorTemplates {
     } = {}): BehaviorTree {
         const { actions } = this;
         const skills = config.skills ?? [];
+        const priorityCallback = config.priorityCallback ?? (() => NodeState.FAILURE);
         const spawnAction = config.spawnAction ?? (() => 1);
         const deathAction = config.deathAction ?? (() => NodeState.FAILURE);
         const moveToTarget = config.moveToTarget ?? ((entity) => {
@@ -646,6 +649,7 @@ export class BehaviorTemplates {
         const hurtCounterResetTick = config.hurtCounterResetTick ?? 100;
         return BehaviorTree.create()
             .selector("MonsterMainSelector")
+            .action("PriorityCheck", (entity) => priorityCallback(entity))
             .sequence("SpawnHandler")
             .condition("IsFirstSpawn", (entity) => DPUtils.store().mob_first_spawn.curr(entity, true))
             .action("SpawnAction", (entity) => {
@@ -656,7 +660,7 @@ export class BehaviorTemplates {
                 entity.triggerEvent(EntityEventIds.InvisiableOff)
                 DPUtils.store().mob_spawning.set(entity, true)
                 DPUtils.store().mob_spawning.set(entity, false, delay + 1)
-                DPUtils.store().mob_first_spawn.set(entity, false, false, delay)
+                DPUtils.store().mob_first_spawn.reduce(entity, "set", false, 0, delay)
                 return NodeState.RUNNING
             })
             .end()
@@ -667,6 +671,7 @@ export class BehaviorTemplates {
                 if (!handled) {
                     BlackboardManager.set(entity, '__death_handled', true);
                     entity.triggerEvent(EntityEventIds.TargetEscape)
+                    DPUtils.store().world_entity_death_event.set(world, entity.id)
                     return actions.death.execute(deathAction)(entity);
                 }
                 return NodeState.SUCCESS;
@@ -681,7 +686,7 @@ export class BehaviorTemplates {
                 }
                 if (DPUtils.store().mob_hurt_counter.curr(entity, 0) === hurtCounterMax) {
                     DPUtils.store().mob_hurt_counter.cancel(entity)
-                    DPUtils.store().mob_hurt_counter.set(entity, 0, 0, hurtCounterResetTick)
+                    DPUtils.store().mob_hurt_counter.reduce(entity, "set", 0, 0, hurtCounterResetTick)
                     return NodeState.FAILURE
                 }
                 DPUtils.store().mob_hurt_counter.set(entity, (curr: any) => curr + 1, 0)
@@ -799,9 +804,11 @@ const eventHandlers: Record<string, (entity: Entity) => void> = {
     },
     [EntityEventIds.Death]: (entity) => {
         DPUtils.store().mob_dead.set(entity, true);
+        BehaviorUtils.tick(entity)
     },
     [EntityEventIds.Hurt]: (entity) => {
         DPUtils.store().mob_hurt.set(entity, system.currentTick);
+        BehaviorUtils.tick(entity)
     },
     [EntityEventIds.TargetAcquired]: (entity) => {
         const target = EntityQr.entities(entity, { dist: 64, filter: (target) => DPUtils.store().mob_targeted_by.curr(target, []).includes(entity.id) }).first()

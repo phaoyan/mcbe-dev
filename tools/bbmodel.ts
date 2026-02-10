@@ -853,6 +853,8 @@ function exportAnimation(bbmodelFile: string): void {
                 // 处理每个通道的关键帧
                 for (const channel in keyframesByChannel) {
                     const channelKeyframes = keyframesByChannel[channel];
+                    // 如果某个时间点被前一个 step “占用”为跳变输出，则抑制该时间点的普通关键帧写入，避免覆盖
+                    const suppressedTimes = new Set<string>();
 
                     for (let i = 0; i < channelKeyframes.length; i++) {
                         const keyframe = channelKeyframes[i];
@@ -871,7 +873,10 @@ function exportAnimation(bbmodelFile: string): void {
                                 if (!boneData[channel]) {
                                     boneData[channel] = {};
                                 }
-                                boneData[channel][formatTimeKey(time)] = fillin;
+                                const tKey = formatTimeKey(time);
+                                if (!suppressedTimes.has(tKey)) {
+                                    boneData[channel][tKey] = fillin;
+                                }
                             } else if (interpolation === "catmullrom") {
                                 // Catmull-Rom：使用 pre/post 两个切线，若缺失 post 则回退为 pre
                                 const pre = mapped[0] ?? [0, 0, 0];
@@ -886,9 +891,19 @@ function exportAnimation(bbmodelFile: string): void {
                                 }
                                 boneData[channel][formatTimeKey(time)] = fillin;
                             } else if (interpolation === "step") {
-                                // Step：在下一帧时间点输出 {pre: 当前帧值, post: 下一帧值}
-                                const currentValue = mapped[0];
+                                // Step：目标格式
+                                // - 当前 time 写入数组值（保持值）
+                                // - nextTime 写入 {pre: 当前值, post: 下一帧值}（跳变），并抑制 nextTime 的普通写入避免覆盖
+                                const currentValue = mapped[0] ?? [0, 0, 0];
                                 const nextKeyframe = channelKeyframes[i + 1];
+
+                                if (!boneData[channel]) {
+                                    boneData[channel] = {};
+                                }
+                                const curKey = formatTimeKey(time);
+                                if (!suppressedTimes.has(curKey) && !(curKey in boneData[channel])) {
+                                    boneData[channel][curKey] = currentValue;
+                                }
 
                                 if (nextKeyframe) {
                                     const nextTime = nextKeyframe.time || 0;
@@ -897,17 +912,17 @@ function exportAnimation(bbmodelFile: string): void {
                                     if (nextDataPoints.length > 0) {
                                         const nextVectors = nextDataPoints.map((dp: any) => vectorFromPoint(dp));
                                         const nextMapped = nextVectors.map((v: [any, any, any]) => mapVectorByChannel(channel, v));
-                                        const nextValue = nextMapped[0];
+                                        const nextValue = nextMapped[0] ?? currentValue;
 
                                         fillin = {
                                             pre: currentValue,
-                                            post: nextValue
+                                            post: nextValue,
+                                            lerp_mode: "catmullrom"
                                         };
 
-                                        if (!boneData[channel]) {
-                                            boneData[channel] = {};
-                                        }
-                                        boneData[channel][formatTimeKey(nextTime)] = fillin;
+                                        const nextKey = formatTimeKey(nextTime);
+                                        suppressedTimes.add(nextKey);
+                                        boneData[channel][nextKey] = fillin;
                                     }
                                 }
                             }

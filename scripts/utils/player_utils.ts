@@ -1,9 +1,10 @@
-import { Entity, ItemStack, Player, system, World, world } from "@minecraft/server";
+import { Entity, EquipmentSlot, ItemStack, Player, system, World, world } from "@minecraft/server";
 import { DPUtils } from "./dp_utils";
 import { EntityQr } from "./entity_utils";
 import { entityTree } from "../refs/ref"
 import { BehaviorUtils, NodeState, BehaviorTemplates } from "./behavior_utils";
 import { TimeUtils } from "./time_utils";
+import { InventoryUtils } from "./inventory_utils";
 
 const INPUT_PATTERN_LENGTH = 3
 
@@ -84,7 +85,6 @@ DPUtils.store().player_operation_map.register((target) => {
     if (lclickEnable && !dummy) {
         const lclick = target.dimension.spawnEntity(dummyType, target.location)
         DPUtils.store().lclick_host.set(lclick, target.id)
-        BehaviorUtils.bind(lclick.id, entityTree.dummy.lclick_dummy)
     }
 })
 
@@ -325,22 +325,28 @@ export class CDUtils {
     static skill(
         player: Player,
         data: {
-            cooldown: number,
-            skillId: string,
-            duration?: number,
+            id: string,
+            duration: number,
+            cooldown: number
             filter?: (player: Player) => boolean,
             action: (player: Player) => number | void,
-        }) {
-        const { cooldown, skillId, duration = 0, action, filter } = data
+        }
+    ){
+        const { id, duration, cooldown, filter, action } = data
         if (filter && !filter(player)) return
+
+        const locking = DPUtils.store().player_skill_locking.curr(player, 0)
+        if (locking > system.currentTick) return
+        
         const cooldowns = DPUtils.store().player_skill_cooldowns.curr(player, {})
-        const cd = cooldowns[skillId] ?? 0
+        const cd = cooldowns[id] ?? 0
         if (system.currentTick < cd) {
             player.onScreenDisplay.setActionBar(`Skill Cooldown: ${Math.ceil((cd - system.currentTick) / 20)}s`)
             return
         }
-        const newCooldowns = Object.fromEntries(Object.entries(cooldowns).map(([key]) => [key, system.currentTick + duration]))
-        const realCd = action(player)
-        DPUtils.store().player_skill_cooldowns.set(player, { ...newCooldowns, [skillId]: system.currentTick + (realCd ?? cooldown) })
+        player.startItemCooldown(id, Math.ceil(cooldown))
+        cooldowns[id] = system.currentTick + Math.ceil(cooldown) + duration
+        DPUtils.store().player_skill_cooldowns.set(player, cooldowns)
+
     }
 }

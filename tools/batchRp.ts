@@ -22,23 +22,12 @@ const exportData = (data: any, name: string): void => {
     writeJson(targetPath, data);
 };
 
-const exportAc = (data: any, name: string) => {
-    const targetPath = path.join(RESOURCE_PACK_DIR, "animation_controllers", `${name}.ac.json`);
-    writeJson(targetPath, data);
-}
-
-const exportRc = (data: any, name: string) => {
-    const targetPath = path.join(RESOURCE_PACK_DIR, "render_controllers", `${name}.rc.json`);
-    writeJson(targetPath, data);
-}
-
-
 // 读取bbmodel配置
 /**
  * 主函数
  */
 export async function main(): Promise<void> {
-    
+
 }
 
 // 如果直接运行此文件

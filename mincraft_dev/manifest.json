@@ -1,0 +1,39 @@
+{
+    "format_version": 2,
+    "header": {
+        "name": "ns_ds Resource Pack",
+        "description": "ns_ds Resource Pack",
+        "uuid": "8db8c06f-c1a7-4e0b-ad58-9d279de5aff2",
+        "version": [
+            1,
+            0,
+            0
+        ],
+        "min_engine_version": [
+            1,
+            20,
+            30
+        ]
+    },
+    "modules": [
+        {
+            "type": "resources",
+            "uuid": "503fe660-142b-46a2-8fec-34a54e944720",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        }
+    ],
+    "dependencies": [
+        {
+            "uuid": "393219a6-78de-43f2-810b-9688ab046935",
+            "version": [
+                1,
+                0,
+                0
+            ]
+        }
+    ]
+}

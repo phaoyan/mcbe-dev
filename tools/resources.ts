@@ -10,8 +10,10 @@ import {
     writeJson,
     writeText,
     ensureDir,
-    NAME_SPACE
+    NAME_SPACE,
+    wrapNamespace
 } from './utils';
+import ref from '../scripts/refs/ref';
 
 /**
  * 生成物品纹理列表
@@ -46,6 +48,13 @@ export function setupItemTextureJson(): void {
         itemTextureJson.texture_data = {};
     }
 
+    // 清理重复命名空间的脏数据
+    for (const key of Object.keys(itemTextureJson.texture_data)) {
+        if (key.startsWith(`${NAME_SPACE}:${NAME_SPACE}:`)) {
+            delete itemTextureJson.texture_data[key];
+        }
+    }
+
     // 获取所有PNG纹理文件名（不含扩展名）
     const itemTextureNames = new Set<string>();
     if (fs.existsSync(itemTexturesDir)) {
@@ -61,13 +70,23 @@ export function setupItemTextureJson(): void {
     for (const itemFile of itemFiles) {
         try {
             const itemId = path.basename(itemFile, '.json').replace('.item', '');
+            const textureKey = wrapNamespace(itemId);
 
             if (itemTextureNames.has(itemId)) {
-                itemTextureJson.texture_data[itemId] = {
+                // 迁移旧的无命名空间key，避免重复
+                if (textureKey !== itemId && itemTextureJson.texture_data[itemId]) {
+                    delete itemTextureJson.texture_data[itemId];
+                }
+
+                itemTextureJson.texture_data[textureKey] = {
                     textures: `textures/${teamName}/${projName}/items/${itemId}`
                 };
             } else {
-                itemTextureJson.texture_data[itemId] = {
+                if (textureKey !== itemId && itemTextureJson.texture_data[itemId]) {
+                    delete itemTextureJson.texture_data[itemId];
+                }
+
+                itemTextureJson.texture_data[textureKey] = {
                     textures: `textures/${teamName}/${projName}/empty`
                 };
             }
@@ -88,11 +107,21 @@ export function setupItemTextureJson(): void {
 
                 if (spawnEgg && typeof spawnEgg.texture === "string") {
                     const textureId = spawnEgg.texture;
+                    const textureKey = wrapNamespace(textureId);
+                    const fileName = textureId.includes(':') ? textureId.split(':')[1] : textureId;
+
+                    // 迁移旧的无命名空间key，避免重复
+                    if (textureKey !== textureId && itemTextureJson.texture_data[textureId]) {
+                        delete itemTextureJson.texture_data[textureId];
+                    }
 
                     // 如果该纹理ID还没有在texture_data中定义，则新增一条
-                    if (!itemTextureJson.texture_data[textureId]) {
-                        itemTextureJson.texture_data[textureId] = {
-                            textures: `textures/${teamName}/${projName}/items/${textureId}`
+                    if (!itemTextureJson.texture_data[textureKey]) {
+                        const hasTexture = itemTextureNames.has(fileName);
+                        itemTextureJson.texture_data[textureKey] = {
+                            textures: hasTexture
+                                ? `textures/${teamName}/${projName}/items/${fileName}`
+                                : `textures/${teamName}/${projName}/empty`
                         };
                     }
                 }
@@ -211,11 +240,40 @@ export function deployItemTexture(): void {
             const itemId = path.basename(itemFile, '.json').replace('.item', '');
 
             if (data["minecraft:item"] && data["minecraft:item"].components) {
-                data["minecraft:item"].components["minecraft:icon"] = itemId;
+                data["minecraft:item"].components["minecraft:icon"] = wrapNamespace(itemId);
                 writeJson(itemFile, data);
             }
         } catch (error) {
             console.error(`部署物品纹理失败 ${itemFile}: ${error}`);
+        }
+    }
+}
+
+/**
+ * 部署实体 spawn_egg.texture 的命名空间（与 item_texture.json 的 key 对齐）
+ */
+export function deploySpawnEggTextureNamespace(): void {
+    const entityDir = path.join(RESOURCE_PACK_DIR, "entity");
+    if (!fs.existsSync(entityDir)) return;
+
+    const entityFiles = rglob('.*\\.ce\\.json$', entityDir);
+    for (const entityFile of entityFiles) {
+        try {
+            const data = readJson(entityFile);
+            const clientEntity = data["minecraft:client_entity"];
+            const description = clientEntity && clientEntity.description;
+            const spawnEgg = description && description.spawn_egg;
+
+            if (spawnEgg && typeof spawnEgg.texture === "string") {
+                const original = spawnEgg.texture;
+                const wrapped = wrapNamespace(original);
+                if (wrapped !== original) {
+                    spawnEgg.texture = wrapped;
+                    writeJson(entityFile, data);
+                }
+            }
+        } catch (error) {
+            console.error(`部署 spawn_egg.texture 命名空间失败 ${entityFile}: ${error}`);
         }
     }
 }
@@ -289,8 +347,6 @@ function idToDisplayName(id: string): string {
  * 生成语言文件（en_US.lang）
  */
 export function generateLangFile(): void {
-    const itemIdsPath = path.join(SCRIPTS_DIR, "json", "item_ids.json");
-    const entityIdsPath = path.join(SCRIPTS_DIR, "json", "entity_ids.json");
     const targetPath = path.join(TOOLS_DIR, "outputs", "en_US.lang");
 
     ensureDir(path.dirname(targetPath));
@@ -298,41 +354,29 @@ export function generateLangFile(): void {
     const lines: string[] = [];
 
     // 读取物品ID
-    if (fs.existsSync(itemIdsPath)) {
-        try {
-            const itemIds = readJson(itemIdsPath);
-            const itemKeys = Object.keys(itemIds).sort();
+    const itemIds = ref.item_ids
+    const itemKeys = Object.keys(itemIds).sort();
 
-            for (const itemId of itemKeys) {
-                const displayName = idToDisplayName(itemId);
-                lines.push(`item.${itemId}=${displayName}`);
-            }
-        } catch (error) {
-            console.error(`读取物品ID文件失败: ${error}`);
-        }
+    for (const itemId of itemKeys) {
+        const displayName = idToDisplayName(itemId);
+        lines.push(`item.${itemId}=${displayName}`);
     }
 
     // 读取实体ID
-    if (fs.existsSync(entityIdsPath)) {
-        try {
-            const entityIds = readJson(entityIdsPath);
-            const entityKeys = Object.keys(entityIds).sort();
+    const entityIds = ref.entity_ids
+    const entityKeys = Object.keys(entityIds).sort();
 
-            // 添加空行分隔
-            if (lines.length > 0) {
-                lines.push('');
-            }
+    // 添加空行分隔
+    if (lines.length > 0) {
+        lines.push('');
+    }
 
-            for (const entityId of entityKeys) {
-                const displayName = idToDisplayName(entityId);
-                // 实体名称
-                lines.push(`entity.${entityId}.name=${displayName}`);
-                // spawn_egg名称
-                lines.push(`item.spawn_egg.entity.${entityId}.name=${displayName}`);
-            }
-        } catch (error) {
-            console.error(`读取实体ID文件失败: ${error}`);
-        }
+    for (const entityId of entityKeys) {
+        const displayName = idToDisplayName(entityId);
+        // 实体名称
+        lines.push(`entity.${entityId}.name=${displayName}`);
+        // spawn_egg名称
+        lines.push(`item.spawn_egg.entity.${entityId}.name=${displayName}`);
     }
 
     // 写入文件
@@ -348,6 +392,7 @@ export async function main(): Promise<void> {
     setupItemTextureJson();
     setupTerrainTextureJson();
     deployItemTexture();
+    deploySpawnEggTextureNamespace();
     setupSoundsDefinition();
     generateLangFile();
 }

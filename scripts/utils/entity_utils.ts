@@ -3,14 +3,13 @@ import { Entity, EntityQueryOptions, Player, system, TeleportOptions, Vector3, w
 import { VecUtils, MathUtils } from "./math_utils";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
-import { MinecraftCameraPresetsTypes, MinecraftEffectTypes, MinecraftEntityTypes } from "@minecraft/vanilla-data";
-import { DamageUtils } from "./damage_utils";
-import { TagList } from "../lists/tag_list";
+import { MinecraftCameraPresetsTypes, MinecraftEffectTypes } from "@minecraft/vanilla-data";
+import { TagList } from "../refs/tag_list";
 import { CompUtils } from "./comp_utils";
 import { BlackboardManager } from "./behavior_utils";
-import { animationLength } from "../refs/ref"
 import { CameraMoveOptions } from "./effect_utils";
 import { ItemUtils } from "./item_utils";
+import { animationLength } from "../refs/ref";
 
 export type ComboData = {
     duration: number
@@ -29,7 +28,13 @@ export class EntityState {
 
     static target(entity: Entity) {
         const targetId = DPUtils.store().mob_target.curr(entity)
-        return targetId ? world.getEntity(targetId) : undefined
+        if (!targetId) return undefined
+        const target = world.getEntity(targetId)
+        if (!target || !target.isValid) {
+            DPUtils.store().mob_target.set(entity, undefined)
+            return undefined
+        }
+        return target
     }
 
     static targetDist(entity: Entity) {
@@ -60,9 +65,20 @@ export class EntityState {
         return cosine
     }
 
+    static targetDizzy(entity: Entity) {
+        const target = EntityState.target(entity)
+        if (!target) return false
+        return DPUtils.store().effect_dizzy.curr(target, false)
+    }
+
     static skillAvailable(entity: Entity, skillId: string) {
         if (!entity) return 0
         return DPUtils.store().mob_skill_cooldowns.curr(entity)[skillId] ?? 0
+    }
+
+    static healthAbs(entity: Entity) {
+        const health = CompUtils.health(entity)
+        return health.currentValue
     }
 
     static healthPercent(entity: Entity) {
@@ -115,24 +131,57 @@ export class EntityOp {
         })
     }
 
-    for(ticks: number | number[], condition?: (entity: Entity) => boolean): EntityOp {
+    /**
+     * 将“上方的若干个动作 step”改为仅在 baseTick + intervals 触发（屏蔽原始 baseTick 触发）
+     * - `repeatSteps` 默认 1：兼容旧用法
+     * - `interval=0` 也只触发一次（去重）
+     * - `ticks=[]` 等价于“删除上方 repeatSteps 个动作”
+     */
+    for(ticks: number | number[], repeatSteps: number = 1, condition?: (entity: Entity) => boolean): EntityOp {
         if (!this._lastStep) return this
-        const last = this._lastStep
-        const lastAction: (entity: Entity) => void = last.action
+
         const intervals = Array.isArray(ticks) ? ticks : [ticks]
-        const baseTick = last.tick
+        const dtList: number[] = []
+        const seen = new Set<number>()
         for (const interval of intervals) {
             const dt = Math.max(0, Math.floor(interval))
-            const at = baseTick + dt
-            const step: { tick: number; action: (entity: Entity) => void } = {
-                tick: at, action: (entity: Entity) => {
-                    if (condition && !condition(entity)) return
-                    lastAction(entity)
-                }
-            }
-            this._steps.push(step)
-            this._lastStep = step
+            if (seen.has(dt)) continue
+            seen.add(dt)
+            dtList.push(dt)
         }
+
+        const n = Math.max(1, Math.floor(repeatSteps ?? 1))
+        const targets = this._steps.slice(-n) // 从旧到新（最后 n 个）
+        if (targets.length === 0) return this
+
+        // 先移除目标 step（屏蔽它们的“原始触发”）
+        const targetSet = new Set(targets)
+        this._steps = this._steps.filter(s => !targetSet.has(s))
+
+        // ticks 为空：仅删除，不新增
+        if (dtList.length === 0) {
+            this._lastStep = this._steps[this._steps.length - 1]
+            return this
+        }
+
+        // 为每个目标 step 重新按 intervals 排队
+        for (const target of targets) {
+            const baseTick = target.tick
+            const targetAction = target.action
+            for (const dt of dtList) {
+                const at = baseTick + dt
+                const step: { tick: number; action: (entity: Entity) => void } = {
+                    tick: at,
+                    action: (entity: Entity) => {
+                        if (condition && !condition(entity)) return
+                        targetAction(entity)
+                    }
+                }
+                this._steps.push(step)
+                this._lastStep = step
+            }
+        }
+
         return this
     }
 
@@ -142,6 +191,26 @@ export class EntityOp {
             return
         }
         this._steps.forEach(step => TimeUtils.timeout(() => { step.action(entity) }, step.tick))
+    }
+
+    /**
+     * 以“可打断调度”模式运行
+     * 每一刻动作执行前都会检查 entity_sched_id 是否匹配
+     */
+    sched(entity: Entity | Entity[]) {
+        if (Array.isArray(entity)) {
+            entity.forEach(e => this.sched(e))
+            return
+        }
+        // 生成一个唯一的调度 ID（当前 tick + 随机数）
+        const schedId = system.currentTick + Math.random();
+        DPUtils.store().entity_sched_id.set(entity, schedId);
+
+        this._steps.forEach(step => TimeUtils.timeout(() => {
+            // 执行前校验：如果 sched_id 不匹配，说明该调度已被覆盖或中止
+            if (DPUtils.store().entity_sched_id.curr(entity) !== schedId) return;
+            step.action(entity)
+        }, step.tick))
     }
 
     callable() {
@@ -159,19 +228,19 @@ export class EntityOp {
         })
     }
 
-    playParticle(particle: string, delay: number = 0, offset: number[] = [0, 0, 0]): EntityOp {
+    playParticle(particle: string, ticks: number[] = [0], offset: number[] = [0, 0, 0]): EntityOp {
         return this._enqueue((entity: Entity) => {
-            TimeUtils.timeout(() => {
+            TimeUtils.timeseries(() => {
                 if (DPUtils.store().mob_dead.curr(entity, false)) return
                 entity.dimension.spawnParticle(particle, Vector3Utils.add(entity.location, { x: offset[0], y: offset[1], z: offset[2] }))
-            }, delay)
+            }, ticks)
         })
     }
 
     playSound(soundId: string, location?: Vector3, delay: number = 3, radius: number = 48): EntityOp {
         return this._enqueue((entity: Entity) => {
             TimeUtils.timeout(() => {
-                entity.dimension.getPlayers().filter(p=>MathUtils.distanceSquared(p.location, location ?? entity.location) <= radius ** 2).forEach(p=>{
+                entity.dimension.getPlayers().filter(p => MathUtils.distanceSquared(p.location, location ?? entity.location) <= radius ** 2).forEach(p => {
                     p.playSound(soundId, { location: location ?? entity.location })
                 })
             }, delay)
@@ -200,20 +269,23 @@ export class EntityOp {
         })
     }
 
-    damage(damageRate: number, source?: Entity, tags: string[] = []): EntityOp {
+    damage(damageRate: number, source?: Entity): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DamageUtils.damage(damageRate, entity, source, tags)
+            const damage = Math.max(1, Math.floor(damageRate))
+            entity.applyDamage(damage)
+            DPUtils.store().mob_hurt_by.set(entity, source?.id)
         })
     }
 
-    dp(dpId: string, value: any, placeHolder?: any, delay?: number): EntityOp {
+    dp(dpId: string, value: any, placeHolder?: any): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.set(entity, dpId, value, placeHolder, delay)
+            DPUtils.set(entity, dpId, value, placeHolder)
         })
     }
 
-    eff(effect: string, ticks: number | null, amp: number, showParticles: boolean = false): EntityOp {
+    eff(effect: string, ticks: number | null, amp: number = 0, showParticles: boolean = false): EntityOp {
         return this._enqueue((entity: Entity) => {
+            if (amp < 0) return;
             const curr = DPUtils.store().effect_state.curr(entity, {})
             const duration = (ticks ?? 20000000)
             const expireTick = system.currentTick + duration
@@ -229,21 +301,6 @@ export class EntityOp {
             const refresh = (prev: number | undefined) => (prev ?? 0) + 1
             DPUtils.store().effect_refresh.set(entity, refresh, 0)
             // 过期回落的刷新由 effect_refresh.register 统一根据“最近过期时间”调度
-        })
-    }
-
-    intervalEffect(dpId: string, ticks: number[], v?: any): EntityOp {
-        return this._enqueue((entity: Entity) => {
-            if (ticks.length === 0) {
-                DPUtils.cancel(entity, dpId)
-                DPUtils.set(entity, dpId, undefined)
-            } else if (v !== undefined) {
-                DPUtils.cancel(entity, dpId)
-                ticks.forEach((tick) => DPUtils.set(entity, dpId, v, undefined, tick))
-            } else {
-                DPUtils.cancel(entity, dpId)
-                ticks.forEach((tick) => DPUtils.set(entity, dpId, true, false, tick))
-            }
         })
     }
 
@@ -285,7 +342,10 @@ export class EntityOp {
 
     bleed(damage: number, ticks: number[]): EntityOp {
         return this._enqueue((entity: Entity) => {
-            TimeUtils.timeseries(() => { DamageUtils.damage(damage, entity) }, ticks)
+            TimeUtils.timeseries(() => {
+                damage = Math.max(1, Math.floor(damage))
+                entity.applyDamage(damage)
+            }, ticks)
         })
     }
 
@@ -293,7 +353,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_superarmor.cancel(entity)
             DPUtils.store().effect_superarmor.set(entity, true)
-            DPUtils.store().effect_superarmor.set(entity, false, false, ticks)
+            DPUtils.store().effect_superarmor.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -302,7 +362,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_damage_absorption.cancel(entity)
             DPUtils.store().effect_damage_absorption.set(entity, true)
-            DPUtils.store().effect_damage_absorption.set(entity, false, false, ticks)
+            DPUtils.store().effect_damage_absorption.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -316,7 +376,7 @@ export class EntityOp {
             interrupt && DPUtils.store().entity_sched_id.set(entity, undefined)
             DPUtils.store().effect_dizzy.cancel(entity)
             DPUtils.store().effect_dizzy.set(entity, true)
-            DPUtils.store().effect_dizzy.set(entity, false, false, ticks)
+            DPUtils.store().effect_dizzy.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -325,7 +385,7 @@ export class EntityOp {
             DPUtils.store().effect_move_straight.cancel(entity)
             if (ticks === 0) return
             DPUtils.store().effect_move_straight.set(entity, true)
-            DPUtils.store().effect_move_straight.set(entity, false, false, ticks)
+            DPUtils.store().effect_move_straight.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -333,7 +393,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_disable_movement.cancel(entity)
             ticks !== 0 && DPUtils.store().effect_disable_movement.set(entity, true)
-            DPUtils.store().effect_disable_movement.set(entity, false, false, ticks)
+            DPUtils.store().effect_disable_movement.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -341,7 +401,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_disable_camera.cancel(entity)
             DPUtils.store().effect_disable_camera.set(entity, true)
-            DPUtils.store().effect_disable_camera.set(entity, false, false, ticks)
+            DPUtils.store().effect_disable_camera.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -360,7 +420,7 @@ export class EntityOp {
             if (entity instanceof Player) {
                 DPUtils.store().effect_camera_tpp.cancel(entity)
                 DPUtils.store().effect_camera_tpp.set(entity, true)
-                DPUtils.store().effect_camera_tpp.set(entity, false, false, ticks)
+                DPUtils.store().effect_camera_tpp.reduce(entity, "set", false, 0, ticks)
             }
         })
     }
@@ -373,19 +433,51 @@ export class EntityOp {
         })
     }
 
-    cameraSet(loc: Vector3, facing?: Vector3, ease?: number, delay?: number): EntityOp {
+    cameraSet(
+        loc: Vector3 | ((entity: Entity) => Vector3), 
+        facing?: Vector3 | ((entity: Entity) => Vector3), 
+        ease?: number,
+        reset?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().effect_camera_set.set(entity, { loc, facing: facing ?? entity.getHeadLocation(), ease: ease ?? 0.1 }, undefined, delay ?? 0)
+            DPUtils.store().effect_camera_set.set(entity, { loc: typeof loc === "function" ? loc(entity) : loc, facing: typeof facing === "function" ? facing(entity) : facing ?? entity.getHeadLocation(), ease: ease ?? 0.1, seed: Math.random() }, undefined)
+            if (reset) {
+                EntityOp.create().at(1).cameraReset(Math.ceil(reset * 20)).run(entity)
+            }
         })
     }
 
     cameraMove(data: { options: CameraMoveOptions, moment: number }[]): EntityOp {
         return this._enqueue((entity: Entity) => {
             data.forEach((item) => {
-                DPUtils.store().effect_camera_set.set(entity, item.options, undefined, item.moment)
+                DPUtils.store().effect_camera_set.reduce(entity, "set", item.options, undefined, item.moment)
             })
-            DPUtils.store().effect_camera_set.set(entity, undefined, undefined, data[data.length - 1].moment + 1)
+            DPUtils.store().effect_camera_set.reduce(entity, "set", undefined, undefined, data[data.length - 1].moment + 1)
         })
+    }
+
+    cameraSlide(start: Vector3, end: Vector3, ticks: number, facing?: Vector3): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            if (!(entity instanceof Player)) return
+            const f = facing ?? end
+            EntityOp.create()
+                .cameraSet(() => start, () => f, 0)
+                .at(1)
+                .cameraSet(() => end, () => f, ticks / 20)
+                .run(entity)
+        })
+    }
+
+    cameraSlideMultiple(locs: { start: Vector3, end: Vector3, moment: number }[], facing: Vector3): EntityOp {
+        let lastMoment = 0
+        locs.forEach((segment) => {
+            const duration = segment.moment - lastMoment
+            if (duration > 0) {
+                this.at(lastMoment).cameraSlide(segment.start, segment.end, duration, facing)
+            }
+            lastMoment = segment.moment
+        })
+        this.cameraReset(locs[locs.length - 1].moment + 1)
+        return this
     }
 
     cameraBack(base: number, scaler: number, ticks: number): EntityOp {
@@ -420,7 +512,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             if (entity instanceof Player) {
                 DPUtils.store().effect_camera_set.cancel(entity)
-                DPUtils.store().player_camera_reset.set(entity, (curr:boolean)=>!curr, false, ticks)
+                DPUtils.store().player_camera_reset.reduce(entity, "flip", false, 0, ticks)
             }
         })
     }
@@ -429,7 +521,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_untargetable.cancel(entity)
             DPUtils.store().effect_untargetable.set(entity, true)
-            DPUtils.store().effect_untargetable.set(entity, false, false, ticks)
+            DPUtils.store().effect_untargetable.reduce(entity, "set", false, 0, ticks)
         })
     }
 
@@ -437,7 +529,7 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_invisible.cancel(entity)
             DPUtils.store().effect_invisible.set(entity, "on")
-            DPUtils.store().effect_invisible.set(entity, removeEffect ? "off_both" : "off_att", false, ticks)
+            DPUtils.store().effect_invisible.reduce(entity, "set", removeEffect ? "off_both" : "off_att", false, ticks)
         })
     }
 
@@ -448,7 +540,7 @@ export class EntityOp {
             } else {
                 DPUtils.store().effect_blind.cancel(entity)
                 DPUtils.store().effect_blind.set(entity, true)
-                DPUtils.store().effect_blind.set(entity, false, false, ticks)
+                DPUtils.store().effect_blind.reduce(entity, "set", false, 0, ticks)
             }
         })
     }
@@ -457,20 +549,20 @@ export class EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().effect_lose_target.cancel(entity)
             DPUtils.store().effect_lose_target.set(entity, true)
-            DPUtils.store().effect_lose_target.set(entity, false, false, ticks)
+            DPUtils.store().effect_lose_target.reduce(entity, "set", false, 0, ticks)
         })
     }
 
 
     remove(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().effect_remove.set(entity, true, false, ticks)
+            DPUtils.store().effect_remove.reduce(entity, "set", true, 0, ticks)
         })
     }
 
     die(ticks: number): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().effect_die.set(entity, true, false, ticks)
+            DPUtils.store().effect_die.reduce(entity, "set", true, 0, ticks)
         })
     }
 
@@ -531,18 +623,6 @@ export class EntityOp {
         })
     }
 
-    warn(prompt: string, dist: number = 32){
-        return this._enqueue((entity: Entity) => {
-            entity.dimension.getEntities({
-                location: entity.location,
-                maxDistance: dist,
-                type: MinecraftEntityTypes.Player,
-            }).forEach(player=>{
-                (player as Player).onScreenDisplay.setActionBar(prompt)
-            })
-        })
-    }
-
     knockbackBaseView(viewEntity: Entity, f: number, y: number = 0, r: number = 0, ticks: number = 1): EntityOp {
         if (!viewEntity) return this
         return this._enqueue((entity: Entity) => {
@@ -565,9 +645,9 @@ export class EntityOp {
         })
     }
 
-    knockbackToPlace(location: Entity | Vector3, y: number = 0, scaler: number = 1): EntityOp {
+    knockbackToPlace(location: Entity | Vector3 | ((entity: Entity) => Vector3), y: number = 0, scaler: number = 1): EntityOp {
         return this._enqueue((entity: Entity) => {
-            let loc = location as Vector3
+            let loc = typeof location === "function" ? location(entity) : (location as Vector3)
             if (location instanceof Entity) loc = location.location
             const unit = VecUtils.unit(VecUtils.hori(Vector3Utils.subtract(loc, entity.location)), Vector3Utils.distance(entity.location, loc) * scaler)
             entity.applyKnockback({ x: unit.x, z: unit.z }, y)
@@ -705,6 +785,8 @@ export class EntityOp {
         const { dpId, data, comboStop } = params
         return this._enqueue((entity: Entity) => {
             if (!(entity instanceof Player)) return
+            const cooldown = DPUtils.store().player_combo_cooldown.curr(entity, 0)
+            if (system.currentTick < cooldown) return
             const comboState: { state: number, last: number } = DPUtils.curr(entity, dpId, { state: 0, last: 0 })
             if (comboState.state >= data.length) {
                 comboState.state = 0
@@ -722,6 +804,9 @@ export class EntityOp {
                 comboState.last = system.currentTick
                 DPUtils.set(entity, dpId, comboState)
                 data[comboState.state].callback(entity)
+                if (comboState.state === data.length - 1) {
+                    DPUtils.store().player_combo_cooldown.set(entity, system.currentTick + data[comboState.state].duration + data[comboState.state].wait)
+                }
             }
             if (comboStop) {
                 DPUtils.store().player_combo_stop.set(entity, system.currentTick + data[comboState.state].duration + data[comboState.state].wait)
@@ -743,13 +828,116 @@ export class EntityOp {
     inputLock(types: string[], ticks?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
             DPUtils.store().player_input_lock.set(entity, types)
-            ticks && DPUtils.store().player_input_lock.set(entity, undefined, false, ticks)
+            ticks && DPUtils.store().player_input_lock.reduce(entity, "set", undefined, false, ticks)
         })
     }
 
     inputUnlock(ticks?: number): EntityOp {
         return this._enqueue((entity: Entity) => {
-            DPUtils.store().player_input_lock.set(entity, undefined, false, ticks ?? 0)
+            DPUtils.store().player_input_lock.reduce(entity, "set", undefined, false, ticks ?? 0)
+        })
+    }
+
+    spawnEntity(type: string, location: Vector3, delay: number = 40, callback?: (entity: Entity) => void): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            const id = `spawn_entity_${system.currentTick}_${Math.random().toString(36).substring(2, 15)}`
+            entity.dimension.runCommand(`tickingarea add circle ${location.x} ${location.y} ${location.z} 1 ${id} true`)
+            
+            const attemptSummon = (retryCount: number) => {
+                if (retryCount >= 16) return;
+                
+                TimeUtils.timeout(() => {
+                    const result = entity.dimension.runCommand(`summon ${type} ${location.x} ${location.y} ${location.z} ~ ~`)
+                    if (result.successCount === 0) {
+                        attemptSummon(retryCount + 1);
+                    } else {
+                        TimeUtils.timeout(()=>{
+                            entity.dimension.getEntities({
+                                location: location,
+                                type: type,
+                                maxDistance: 4,
+                            })
+                            .forEach(e => {
+                                if (e.isValid) {
+                                    callback?.(e)
+                                }
+                            })
+                        }, 2)
+                    }
+                }, delay);
+            };
+
+            attemptSummon(0);
+            TimeUtils.timeout(() => entity.dimension.runCommand(`tickingarea remove ${id}`), (delay * 5) + 10)
+        })
+    }
+
+    spawnEntities(entities: { type: string, location: Vector3 }[], force: boolean = true): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            const location = entities[0].location
+            if (force) {
+                const id = `spawn_entity_${system.currentTick}_${Math.random().toString(36).substring(2, 15)}`
+                entity.dimension.runCommand(`tickingarea add circle ${location.x} ${location.y} ${location.z} 1 ${id}`)
+                TimeUtils.timeout(()=>{
+                    entities.forEach(e => {
+                        entity.dimension.runCommand(`summon ${e.type} ${e.location.x} ${e.location.y} ${e.location.z} ~ ~`)
+                    })
+                },4)
+                TimeUtils.timeout(() => entity.dimension.runCommand(`tickingarea remove ${id}`), 20)
+            } else {
+                entities.forEach(e => {
+                    entity.dimension.runCommand(`summon ${e.type} ${e.location.x} ${e.location.y} ${e.location.z} ~ ~`)
+                })
+            }
+        })
+    }
+
+    despawnEntity(options: EntityQueryOptions): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            const center = (() => {
+                if (options && "location" in options && options.location) return options.location;
+                if (entity && (entity as any).location) return (entity as any).location;
+                return { x: 0, y: 0, z: 0 }
+            })();
+
+            const id = `despawn_entity_${system.currentTick}_${Math.random().toString(36).substring(2, 15)}`
+            entity.dimension.runCommand(`tickingarea add circle ${center.x} ${center.y} ${center.z} 1 ${id} true`)
+
+            const attemptDespawn = (retryCount: number) => {
+                if (retryCount >= 16) {
+                    entity.dimension.runCommand(`tickingarea remove ${id}`)
+                    return;
+                }
+
+                TimeUtils.timeout(() => {
+                    const entities = entity.dimension.getEntities(options)
+                    if (entities.length === 0) {
+                        // Already despawned (or not found)
+                        entity.dimension.runCommand(`tickingarea remove ${id}`)
+                        return;
+                    }
+                    let removed = 0;
+                    entities.forEach(e => {
+                        if (e.isValid) {
+                            try { e.remove(); removed++; } catch {}
+                        }
+                    });
+                    if (removed === 0) {
+                        // Try again if nothing was removed
+                        attemptDespawn(retryCount + 1)
+                    } else {
+                        entity.dimension.runCommand(`tickingarea remove ${id}`)
+                    }
+                }, 10);
+            };
+
+            attemptDespawn(0)
+        })
+    }
+
+    actionBar(message: string): EntityOp {
+        return this._enqueue((entity: Entity) => {
+            (entity as Player).onScreenDisplay.setActionBar(message)
         })
     }
 }

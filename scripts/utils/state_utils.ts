@@ -26,7 +26,6 @@ export class StateUtils {
                     if (!(target instanceof Entity)) return
                     const prevState = DPUtils.store().player_prev_state.curr(target, {})[data.statebindId]
                     const currState = data.mapping(target)
-                    if (prevState === currState) return
                     if (prevState) this.STATES[prevState]?.off(target)
                     if (currState) this.STATES[currState]?.on(target)
                     DPUtils.store().player_prev_state.set(target, (curr: any) => ({ ...curr, [data.statebindId]: currState }), prevState)

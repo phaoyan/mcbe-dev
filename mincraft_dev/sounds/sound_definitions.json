@@ -1,0 +1,38 @@
+{
+    "format_version": "1.20.20",
+    "sound_definitions": {
+        "ns.ds.common.challenge_complete": {
+            "category": "player",
+            "max_distance": 64,
+            "sounds": [
+                {
+                    "name": "sounds/ns/ds/common/challenge_complete",
+                    "volume": 1,
+                    "is3D": false
+                }
+            ]
+        },
+        "ns.ds.common.challenge_complete2": {
+            "category": "player",
+            "max_distance": 64,
+            "sounds": [
+                {
+                    "name": "sounds/ns/ds/common/challenge_complete2",
+                    "volume": 1,
+                    "is3D": false
+                }
+            ]
+        },
+        "ns.ds.common.mission_complete": {
+            "category": "player",
+            "max_distance": 64,
+            "sounds": [
+                {
+                    "name": "sounds/ns/ds/common/mission_complete",
+                    "volume": 1,
+                    "is3D": false
+                }
+            ]
+        }
+    }
+}

@@ -1156,6 +1156,12 @@ export async function copyBbpackFiles(): Promise<void> {
     console.log("开始复制 particles 目录中的 particle 文件（全量部署）...");
     console.log("=".repeat(60));
 
+    // 是否输出逐文件“新增/更新”日志（默认关闭，避免 bbpack.log 过长）
+    // 开启：PowerShell 里运行 `setx BBPACK_VERBOSE_PARTICLE_COPY 1`（或临时 `$env:BBPACK_VERBOSE_PARTICLE_COPY="1"`）
+    const verboseParticleCopy =
+        (process.env.BBPACK_VERBOSE_PARTICLE_COPY ?? '').toLowerCase() === '1' ||
+        (process.env.BBPACK_VERBOSE_PARTICLE_COPY ?? '').toLowerCase() === 'true';
+
     // 1. 获取 particles 目录中的所有粒子文件
     const particleFiles = fileCache.particleFiles;
 
@@ -1191,7 +1197,9 @@ export async function copyBbpackFiles(): Promise<void> {
 
     console.log("\n📁 处理particle文件...");
 
-    const copyOperations: Array<{ type: string; file: string }> = [];
+    const newFiles: string[] = [];
+    const updatedFiles: string[] = [];
+    const failedFiles: string[] = [];
 
     const tCopy = __prof.start();
     for (let i = 0; i < filesToProcess.length; i += BATCH_SIZE) {
@@ -1203,26 +1211,26 @@ export async function copyBbpackFiles(): Promise<void> {
                 try {
                     await fs.promises.copyFile(sourcePath, targetPath);
                     if (isNew) {
-                        copyOperations.push({ type: '新增', file: basename });
+                        newFiles.push(basename);
                         copiedCount++;
                     } else {
-                        copyOperations.push({ type: '更新', file: basename });
+                        if (verboseParticleCopy) updatedFiles.push(basename);
                         updatedCount++;
                     }
                 } catch (error) {
-                    copyOperations.push({ type: '失败', file: basename });
+                    failedFiles.push(basename);
                 }
             })
         );
     }
     __prof.end('copyBbpack_copyFiles', tCopy);
 
-    // 只打印有操作的文件
-    if (copyOperations.length > 0) {
-        for (const op of copyOperations) {
-            const icon = op.type === '新增' ? '➕' : op.type === '更新' ? '🔄' : '❌';
-            console.log(`  ${icon} ${op.type}: ${op.file}`);
-        }
+    // 打印逐文件日志（默认只打印新增/失败；更新日志仅在 verbose 时输出）
+    for (const f of newFiles) console.log(`  ➕ 新增: ${f}`);
+    if (verboseParticleCopy) for (const f of updatedFiles) console.log(`  🔄 更新: ${f}`);
+    for (const f of failedFiles) console.log(`  ❌ 失败: ${f}`);
+    if (!verboseParticleCopy && updatedCount > 0) {
+        console.log(`  ℹ️  已省略 ${updatedCount} 条“更新(覆盖复制)”日志（可设置 BBPACK_VERBOSE_PARTICLE_COPY=1 显示详情）`);
     }
 
     // 6. （可选）删除过期文件

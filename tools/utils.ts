@@ -45,7 +45,7 @@ export function getCustomDeploymentPath(): string {
 }
 
 // 路径常量定义
-export const DEST_DIR = "";
+export const DEST_DIR = "C:/Users/Administrator/AppData/Roaming/Minecraft Bedrock/Users/Shared/games/com.mojang";
 export const DEST_BP_DIR = path.join(DEST_DIR, "development_behavior_packs", getProjectName());
 export const DEST_RP_DIR = path.join(DEST_DIR, "development_resource_packs", getProjectName());
 export const DEST_SCRIPT_DIR = path.join(DEST_BP_DIR, "scripts");
@@ -53,7 +53,7 @@ export const DEST_SCRIPT_DIR = path.join(DEST_BP_DIR, "scripts");
 export const PROJECT_NAME = getProjectName();
 export const TOOLS_DIR = __dirname;
 export const PROJECT_ROOT = path.join(__dirname, '..');
-export const BBPACK_DIR = "";
+export const BBPACK_DIR = ;
 export const BBMODEL_JSON_PATH = path.join(BBPACK_DIR, 'bbmodel.json');
 export const ENV_PATH = path.join(PROJECT_ROOT, '.env');
 export const RESOURCE_PACK_DIR = path.join(PROJECT_ROOT, 'resource_packs', PROJECT_NAME);

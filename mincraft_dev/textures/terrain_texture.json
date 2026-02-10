@@ -1,0 +1,7 @@
+{
+    "num_mip_levels": 4,
+    "padding": 8,
+    "texture_name": "atlas.terrain",
+    "resource_pack_name": "mcbe_dev",
+    "texture_data": {}
+}

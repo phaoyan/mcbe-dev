@@ -24,8 +24,45 @@ export const rpEffect = (bbmodel: string, typeId?: string, params?: { extraAnima
                     default: "entity_alphatest"
                 },
                 render_controllers: [
-                    "controller.render.default"
+                    {"controller.render.default": "q.anim_time > 0.1"}
                 ],
+                ...(Object.keys(animations).length > 0 && { animations }),
+                ...(Object.keys(particleEffects).length > 0 && { particle_effects: particleEffects }),
+                ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects }),
+                ...(params?.extraAnimate && params.extraAnimate.length > 0 && {
+                    scripts: {
+                        animate: [...params.extraAnimate]
+                    }
+                }),
+            }
+        }
+    };
+};
+
+export const rpDecoration = (bbmodel: string, typeId?: string, params?: { extraAnimate?: string[], invisiable?: boolean }) => {
+    if (!typeId) typeId = bbmodel;
+    const bbmodelConfig = BBMODEL_JSON[bbmodel] || {};
+    const geometry = bbmodelConfig.geometry || "";
+    const textures = bbmodelConfig.textures || [];
+    const animations = bbmodelConfig.animations || {};
+    const particleEffects = bbmodelConfig.particle_effects || {};
+    const soundEffects = bbmodelConfig.sound_effects || {};
+
+    return {
+        format_version: "1.21.10",
+        [client_entity]: {
+            description: {
+                identifier: `${NAME_SPACE}:${typeId}`,
+                geometry: {
+                    default: `geometry.${geometry}`
+                },
+                textures: {
+                    default: `textures/${NAME_SPACE.replace('_', '/')}/${params?.invisiable ? "empty" : "entity/" + textures[0]}`
+                },
+                materials: {
+                    default: "entity_alphatest"
+                },
+                render_controllers: ["controller.render.default"],
                 ...(Object.keys(animations).length > 0 && { animations }),
                 ...(Object.keys(particleEffects).length > 0 && { particle_effects: particleEffects }),
                 ...(Object.keys(soundEffects).length > 0 && { sound_effects: soundEffects }),

@@ -1,14 +1,11 @@
-import { system, world } from "@minecraft/server";
-import { MinecraftEntityTypes } from "@minecraft/vanilla-data";
+import { BlockComponentTypes, BlockInventoryComponent, ItemStack, Player, system, world } from "@minecraft/server";
+import { MinecraftBlockTypes, MinecraftEntityTypes, MinecraftItemTypes } from "@minecraft/vanilla-data";
 import { VecUtils } from "./utils/math_utils";
-import animation_ids from "./json/animation_tree.json";
-import animation_length from "./json/animation_length.json";
+import ref, { animationTree as animation_ids, animationLength as animation_length } from "./refs/ref";
 import { TimeUtils } from "./utils/time_utils";
 
-const NAME_SPACE = "xxx"
-
 world.afterEvents.worldLoad.subscribe(() => {
-    console.warn("当前版本时间戳：XXX")
+    console.warn("Current Tick: " + world.getAbsoluteTime())
 })
 
 system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
@@ -16,7 +13,7 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) 
     if (!sourceEntity) return
     for (let i = 0; i < 30; i++) {
         const location = VecUtils.start(sourceEntity).moveF(Math.random() * 30 - 15).moveR(Math.random() * 30 - 15).end()
-        sourceEntity.dimension.spawnEntity(MinecraftEntityTypes.IronGolem, location)
+        sourceEntity.dimension.spawnEntity(MinecraftEntityTypes.Pillager, location)
     }
 })
 
@@ -77,4 +74,12 @@ system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) 
     sourceEntity.runCommand("kill @e")
     current += parseInt(message as string)
     sourceEntity.runCommand("scriptevent debug:animations")
+})
+
+system.afterEvents.scriptEventReceive.subscribe(({ id, sourceEntity, message }) => {
+    if (id !== "debug:move") return
+    if (!sourceEntity) return
+    const dist = parseInt(message as string)
+    const loc = VecUtils.start(sourceEntity).moveF(dist).end()
+    sourceEntity.teleport(loc)
 })

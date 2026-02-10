@@ -1,0 +1,65 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.default": {
+            "geometry": "geometry.default",
+            "materials": [
+                {
+                    "*": "material.default"
+                }
+            ],
+            "textures": [
+                "texture.default"
+            ]
+        },
+        "controller.render.tpp": {
+            "geometry": "geometry.tpp",
+            "materials": [
+                {
+                    "*": "material.default"
+                }
+            ],
+            "textures": [
+                "texture.tpp"
+            ]
+        },
+        "controller.render.fpp": {
+            "geometry": "geometry.fpp",
+            "materials": [
+                {
+                    "*": "material.default"
+                }
+            ],
+            "textures": [
+                "texture.fpp"
+            ]
+        },
+        "controller.render.skin": {
+            "arrays": {
+                "textures": {
+                  "array.skins": [
+                    "texture.skin_0",
+                    "texture.skin_1",
+                    "texture.skin_2",
+                    "texture.skin_3",
+                    "texture.skin_4",
+                    "texture.skin_5",
+                    "texture.skin_6",
+                    "texture.skin_7",
+                    "texture.skin_8",
+                    "texture.skin_9"
+                  ]
+                }
+              },
+            "geometry": "geometry.default",
+            "materials": [
+                {
+                    "*": "material.default"
+                }
+            ],
+            "textures": [
+                "array.skins[q.property('minecraft_dev:skin')]"
+            ]
+        }
+    }
+}

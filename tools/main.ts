@@ -12,6 +12,7 @@
  */
 
 import * as path from 'path';
+import { deployAllDialogues } from './dialogue';
 
 // 显示帮助信息
 function showHelp(): void {
@@ -30,6 +31,7 @@ Minecraft Bedrock 开发工具集 - TypeScript版本
   bbpack-check        - 仅检查bbpack中的粒子引用
   bbpack-names        - 仅检查和修复动画名称规范
   bbpack-ids          - 检查并修复粒子ID命名空间
+  dialogue            - 部署所有已配置的任务对话（MissionDialogueList → generated_dialogue.scene.json）
   import              - 生成TypeScript项目的main.ts导入文件
   reference           - 生成资源引用配置JSON文件
   resources           - 生成资源配置（纹理、声音等）
@@ -123,6 +125,19 @@ async function main(): Promise<void> {
                 break;
             }
 
+            case 'dialogue': {
+                const { deployAllDialogues, exportDialogueMarkdown } = await import('./dialogue');
+                deployAllDialogues();
+                exportDialogueMarkdown();
+
+                // 生成/刷新 scripts/refs/ref.json，保证 dialogue_scenes / dialogue_events 更新
+                const { main: referenceMain } = await import('./reference');
+                await referenceMain();
+
+                console.log('✅ 所有任务对话部署完成（并已刷新 ref.json）');
+                break;
+            }
+
             case 'import': {
                 const { main: importMain } = await import('./import');
                 importMain();
@@ -163,6 +178,7 @@ async function main(): Promise<void> {
                 console.log('⚙️  生成behavior pack资源...');
                 const { main: batchBpMain } = await import('./batchBp');
                 await batchBpMain();
+                deployAllDialogues();
 
                 // 4. 生成resource pack资源
                 console.log('🎭 生成resource pack资源...');

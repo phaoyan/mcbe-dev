@@ -6,23 +6,29 @@ export interface MobParams {
     collisionBox?: number[]
     movement?: number
     movementFightMultiplier?: number
-    boss?: boolean
+    boss?: string
     targetDist?: number
     fallDamageImmune?: boolean
     properties?: Record<string, any>
+    interactable?: boolean
+    despawn?: boolean
+    timer?: number
 }
 
 export const bpMob = (params: MobParams) => {
     const {
         typeId,
-        boss = false,
+        boss = undefined,
         collisionBox = [4, 6],
         health = 100,
         movement = 0.2,
         movementFightMultiplier = 2,
         targetDist = 64,
         fallDamageImmune = false,
-        properties = undefined
+        properties = undefined,
+        interactable = false,
+        despawn = false,
+        timer = 0.05,
     } = params;
 
     const spawnGroups = [
@@ -48,7 +54,14 @@ export const bpMob = (params: MobParams) => {
             },
             "component_groups": {
                 "comp:base": {
-                    "minecraft:physics": {},
+                    "minecraft:physics": {
+                        "has_gravity": true,
+                        "has_collision": true,
+                    },
+                    "minecraft:pushable": {
+                        "is_pushable": true,
+                        "is_pushable_by_piston": true
+                    },
                     "minecraft:type_family": {
                         "family": [
                             "monster"
@@ -66,14 +79,38 @@ export const bpMob = (params: MobParams) => {
                     "minecraft:jump.static": {},
                     "minecraft:movement": {
                         "value": movement
-                    }
+                    },
+                    ...(despawn ? {
+                        "minecraft:despawn": {
+                            "despawn_from_distance": {}
+                        },
+                    } : {}),
+                    ...(interactable ? {
+                        "minecraft:interact": {
+                            "interactions": [
+                                {
+                                    "on_interact": {
+                                        "filters": {
+                                            "all_of": [
+                                                {
+                                                    "test": "is_family",
+                                                    "subject": "other",
+                                                    "value": "player"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    } : {})
                 },
                 "comp:common": {
                     "minecraft:variant": {
                         "value": 255
                     },
                     "minecraft:timer": {
-                        "time": 0.05,
+                        "time": timer,
                         "time_down_event": {
                             "event": "event:timer"
                         }
@@ -116,7 +153,10 @@ export const bpMob = (params: MobParams) => {
                     "minecraft:on_target_escape": {
                         "event": "event:target_escape",
                         "target": "self"
-                    }
+                    },
+                    "minecraft:behavior.float": {
+                        "priority": 0
+                    },
                 },
                 "comp:idle": {
                     "minecraft:variant": {
@@ -186,7 +226,7 @@ export const bpMob = (params: MobParams) => {
                                 "max_dist": targetDist
                             }
                         ],
-                        "must_see": true,
+                        "must_see": false,
                         "must_see_forget_duration": 17
                     }
                 },
@@ -202,7 +242,7 @@ export const bpMob = (params: MobParams) => {
                 "comp:boss": {
                     "minecraft:boss": {
                         "hud_range": 55,
-                        "name": `${NAME_SPACE}:${typeId}`,
+                        "name": boss,
                         "should_darken_sky": false
                     }
                 },
@@ -398,13 +438,15 @@ export const bpPet = (params: MobParams) => {
     
     const {
         typeId,
-        collisionBox = [0.8, 1.8],
+        collisionBox = [4, 6],
         health = 100,
         movement = 0.2,
         movementFightMultiplier = 2,
         targetDist = 64,
         fallDamageImmune = false,
-        properties = undefined
+        properties = undefined,
+        interactable = false,
+        timer = 0.05,
     } = params;
 
     const spawnGroups = [
@@ -457,14 +499,34 @@ export const bpPet = (params: MobParams) => {
                           "event": "minecraft:on_tame",
                           "target": "self"
                         }
-                    }
+                    },
+
+                    ...(interactable ? {
+                        "minecraft:interact": {
+                            "interactions": [
+                                {
+                                    "on_interact": {
+                                        "filters": {
+                                            "all_of": [
+                                                {
+                                                    "test": "is_family",
+                                                    "subject": "other",
+                                                    "value": "player"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    } : {})
                 },
                 "comp:common": {
                     "minecraft:variant": {
                         "value": 255
                     },
                     "minecraft:timer": {
-                        "time": 0.05,
+                        "time": timer,
                         "time_down_event": {
                             "event": "event:timer"
                         }
@@ -507,24 +569,8 @@ export const bpPet = (params: MobParams) => {
                     "minecraft:on_target_escape": {
                         "event": "event:target_escape",
                         "target": "self"
-                    }
-                },
-                "comp:idle": {
-                    "minecraft:variant": {
-                        "value": 0
                     },
-                    "minecraft:behavior.random_stroll": {
-                        "priority": 6,
-                        "speed_multiplier": 0.8
-                    },
-                    "minecraft:behavior.random_look_around": {
-                        "priority": 8
-                    },
-
-
                     // Pet
-                    "minecraft:sittable": {},
-                    "minecraft:behavior.stay_while_sitting": {"priority": 2},
                     "minecraft:behavior.teleport_to_owner": {
                         "priority": 1,
                         "filters": {
@@ -543,6 +589,18 @@ export const bpPet = (params: MobParams) => {
                         "start_distance": 10,
                         "stop_distance": 2
                     }
+                },
+                "comp:idle": {
+                    "minecraft:variant": {
+                        "value": 0
+                    },
+                    "minecraft:behavior.random_stroll": {
+                        "priority": 6,
+                        "speed_multiplier": 0.8
+                    },
+                    "minecraft:behavior.random_look_around": {
+                        "priority": 8
+                    },
                 },
                 "comp:fight": {
                     "minecraft:variant": {

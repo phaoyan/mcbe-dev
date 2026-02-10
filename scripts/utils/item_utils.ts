@@ -1,5 +1,5 @@
 import { ItemLockMode, ItemStack } from "@minecraft/server"
-import { DPUtils } from "./dp_utils"
+import { LoreData } from "../refs/lore"
 
 export interface ItemConfig {
     id: string,
@@ -16,6 +16,9 @@ export class ItemUtils {
     private config: ItemConfig
 
     private constructor(configs: ItemConfig) {
+        if (configs.lore.length === 0 && LoreData[configs.id]) {
+            configs.lore = [LoreData[configs.id]]
+        }
         this.config = configs
     }
 
@@ -68,11 +71,6 @@ export class ItemUtils {
         return this
     }
 
-    withDP(k: string, v: any) {
-        this.config.dp[k] = v
-        return this
-    }
-
     withLore(lore: string[]) {
         this.config.lore = lore
         return this
@@ -90,7 +88,6 @@ export class ItemUtils {
         item.nameTag = config.name
         item.lockMode = config.lockMode
         item.keepOnDeath = config.keepOnDeath
-        Object.keys(config.dp).forEach(k => DPUtils.set(item, k, config.dp[k]))
         return item
     }
 
