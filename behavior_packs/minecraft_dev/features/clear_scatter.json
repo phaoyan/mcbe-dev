@@ -1,0 +1,22 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:scatter_feature": {
+    "description": {
+      "identifier": "minecraft_dev:clear_scatter"
+    },
+    "distribution": {
+      "iterations": 280,
+      "scatter_chance": 100,
+      "x": 0,
+      "y": {
+        "distribution": "fixed_grid",
+        "extent": [
+          -64,
+          200
+        ]
+      },
+      "z": 0
+    },
+    "places_feature": "minecraft_dev:clear_scatter_block"
+  }
+}

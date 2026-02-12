@@ -1,0 +1,7 @@
+t.intensity = 1.0;
+t.threshold = 0.0;
+t.hash = math.abs(math.mod(math.sin(v.originx * 12.9898 + v.originz * 78.233) * 43758.5453, 1));
+t.noise = (t.hash > t.threshold) ? t.hash * t.intensity : 0;
+t.cell_hash = math.abs(math.mod(math.sin(math.floor(v.originx / 16) * 127.1 + math.floor(v.originz / 16) * 311.7) * 43758.5453, 1));
+t.height = t.noise < 0.75 ? 0 : (t.noise - 0.75) / 0.25 * (t.cell_hash < 0.25 ? 10 : (t.cell_hash < 0.5 ? 20 : (t.cell_hash < 0.75 ? 40 : 80)));
+return t.height;

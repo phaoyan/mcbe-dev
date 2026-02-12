@@ -1,25 +1,25 @@
 {
-  "identifier": "juumii_sky:root",
+  "identifier": "minecraft_dev:root",
   "type": "minecraft:aggregate_feature",
   "children": [
     {
-      "identifier": "juumii_sky:variables",
+      "identifier": "minecraft_dev:variables",
       "type": "minecraft:scatter_feature",
       "children": [
         {
-          "identifier": "juumii_sky:biome_marker_locator",
+          "identifier": "minecraft_dev:biome_marker_locator",
           "type": "minecraft:scatter_feature",
           "children": [
             {
-              "identifier": "juumii_sky:biome_marker_placer",
+              "identifier": "minecraft_dev:biome_marker_placer",
               "type": "minecraft:scatter_feature",
               "children": [
                 {
-                  "identifier": "juumii_sky:biome_marker",
+                  "identifier": "minecraft_dev:biome_marker",
                   "type": "minecraft:single_block_feature",
                   "data": {
                     "description": {
-                      "identifier": "juumii_sky:biome_marker"
+                      "identifier": "minecraft_dev:biome_marker"
                     },
                     "places_block": "minecraft:stone",
                     "enforce_placement_rules": false,
@@ -32,7 +32,7 @@
               ],
               "data": {
                 "description": {
-                  "identifier": "juumii_sky:biome_marker_placer"
+                  "identifier": "minecraft_dev:biome_marker_placer"
                 },
                 "distribution": {
                   "iterations": "return q.noise(v.originx, v.originz) > 0.99 && q.noise(v.originx + 13122, v.originz + 15958) > 0.99;",
@@ -41,13 +41,13 @@
                   "y": 0,
                   "z": 0
                 },
-                "places_feature": "juumii_sky:biome_marker"
+                "places_feature": "minecraft_dev:biome_marker"
               }
             }
           ],
           "data": {
             "description": {
-              "identifier": "juumii_sky:biome_marker_locator"
+              "identifier": "minecraft_dev:biome_marker_locator"
             },
             "distribution": {
               "iterations": 1,
@@ -56,13 +56,13 @@
               "y": "200 - v.originy",
               "z": 0
             },
-            "places_feature": "juumii_sky:biome_marker_placer"
+            "places_feature": "minecraft_dev:biome_marker_placer"
           }
         }
       ],
       "data": {
         "description": {
-          "identifier": "juumii_sky:variables"
+          "identifier": "minecraft_dev:variables"
         },
         "distribution": {
           "iterations": "t.ORIGIN_DIST = math.abs(v.worldx) + math.abs(v.worldz);\nt.HEIGHT_MAP = q.heightmap(v.worldx, v.worldz);\n\n\nreturn 1;\n",
@@ -71,16 +71,16 @@
           "y": 0,
           "z": 0
         },
-        "places_feature": "juumii_sky:biome_marker_locator"
+        "places_feature": "minecraft_dev:biome_marker_locator"
       }
     }
   ],
   "data": {
     "description": {
-      "identifier": "juumii_sky:root"
+      "identifier": "minecraft_dev:root"
     },
     "features": [
-      "juumii_sky:variables"
+      "minecraft_dev:variables"
     ]
   }
 }

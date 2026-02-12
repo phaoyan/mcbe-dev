@@ -1,25 +1,25 @@
 {
-  "identifier": "juumii_sky:root",
+  "identifier": "minecraft_dev:root",
   "type": "minecraft:aggregate_feature",
   "children": [
     {
-      "identifier": "juumii_sky:variables",
+      "identifier": "minecraft_dev:variables",
       "type": "minecraft:scatter_feature",
       "children": [
         {
-          "identifier": "juumii_sky:biome_marker_locator",
+          "identifier": "minecraft_dev:biome_marker_locator",
           "type": "minecraft:scatter_feature",
           "children": [
             {
-              "identifier": "juumii_sky:biome_marker_placer",
+              "identifier": "minecraft_dev:biome_marker_placer",
               "type": "minecraft:scatter_feature",
               "children": [
                 {
-                  "identifier": "juumii_sky:biome_marker",
+                  "identifier": "minecraft_dev:biome_marker",
                   "type": "minecraft:single_block_feature",
                   "data": {
                     "description": {
-                      "identifier": "juumii_sky:biome_marker"
+                      "identifier": "minecraft_dev:biome_marker"
                     },
                     "places_block": "minecraft:stone",
                     "enforce_placement_rules": false,
@@ -32,7 +32,7 @@
               ],
               "data": {
                 "description": {
-                  "identifier": "juumii_sky:biome_marker_placer"
+                  "identifier": "minecraft_dev:biome_marker_placer"
                 },
                 "distribution": {
                   "iterations": "t.scale = 50.0;\nt.octaves = 4;\nt.persistence = 0.5;\nt.lacunarity = 2.0;\nt.island_spread = 1.0;\nt.center_strength = 2.0;\nt.satellite_spread = 0.6;\nt.satellite_strength = 1.5;\nt.satellite_distance = 0.7;\n\nt.center_x = q.noise(51454, 31916) * 256;\nt.center_z = q.noise(15434, 71041) * 256;\nt.base_radius = 64.0;\n\nt.noise = 0; t.amp = 1; t.freq = 1.0 / t.scale;\nloop(t.octaves, {\n    t.noise = t.noise + t.amp * query.noise(v.originx * t.freq, v.originz * t.freq);\n    t.amp = t.amp * t.persistence; t.freq = t.freq * t.lacunarity;\n});\n\nt.noise = (t.noise + 1.0) / 2.0;\n\nt.spread_sq = math.pow(t.island_spread * t.base_radius, 2);\n\nt.dx = v.originx - t.center_x;\nt.dz = v.originz - t.center_z;\nt.dist_sq_center = t.dx * t.dx + t.dz * t.dz;\nt.g_center = math.clamp(1.0 - t.dist_sq_center / t.spread_sq, 0, 1) * t.center_strength;\n\nt.grad = t.g_center;\n\nt.sat_spread_sq = math.pow(t.satellite_spread * t.base_radius, 2);\nt.sat_dist_val = t.satellite_distance * t.base_radius * 2.0;\n\nt.rot_seed = query.noise(t.center_x, t.center_z) * 360.0;\n\nt.i = 0;\nloop(3, {\n    t.angle = t.rot_seed + t.i * 120.0;\n    t.sx = math.cos(t.angle) * t.sat_dist_val;\n    t.sz = math.sin(t.angle) * t.sat_dist_val;\n    \n    t.sdx = t.dx - t.sx;\n    t.sdz = t.dz - t.sz;\n    t.dist_sq_sat = t.sdx * t.sdx + t.sdz * t.sdz;\n    \n    t.g_sat = math.clamp(1.0 - t.dist_sq_sat / t.sat_spread_sq, 0, 1) * t.satellite_strength;\n    t.grad = math.max(t.grad, t.g_sat);\n    \n    t.i = t.i + 1;\n});\n\nt.noise_island = math.clamp((t.noise + t.grad) / (1.0 + t.center_strength), 0, 1);\nreturn t.noise_island > 0.5;",
@@ -41,13 +41,13 @@
                   "y": 0,
                   "z": 0
                 },
-                "places_feature": "juumii_sky:biome_marker"
+                "places_feature": "minecraft_dev:biome_marker"
               }
             }
           ],
           "data": {
             "description": {
-              "identifier": "juumii_sky:biome_marker_locator"
+              "identifier": "minecraft_dev:biome_marker_locator"
             },
             "distribution": {
               "iterations": 1,
@@ -56,13 +56,13 @@
               "y": "200 - v.originy",
               "z": 0
             },
-            "places_feature": "juumii_sky:biome_marker_placer"
+            "places_feature": "minecraft_dev:biome_marker_placer"
           }
         }
       ],
       "data": {
         "description": {
-          "identifier": "juumii_sky:variables"
+          "identifier": "minecraft_dev:variables"
         },
         "distribution": {
           "iterations": "t.ORIGIN_DIST = math.abs(v.worldx) + math.abs(v.worldz);\nt.HEIGHT_MAP = q.heightmap(v.worldx, v.worldz);\n\n\nreturn 1;\n",
@@ -71,16 +71,16 @@
           "y": 0,
           "z": 0
         },
-        "places_feature": "juumii_sky:biome_marker_locator"
+        "places_feature": "minecraft_dev:biome_marker_locator"
       }
     }
   ],
   "data": {
     "description": {
-      "identifier": "juumii_sky:root"
+      "identifier": "minecraft_dev:root"
     },
     "features": [
-      "juumii_sky:variables"
+      "minecraft_dev:variables"
     ]
   }
 }

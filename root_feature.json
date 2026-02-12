@@ -3,6 +3,62 @@
   "type": "minecraft:aggregate_feature",
   "children": [
     {
+      "identifier": "minecraft_dev:clear",
+      "type": "minecraft:scatter_feature",
+      "data": {
+        "description": {
+          "identifier": "minecraft_dev:clear"
+        },
+        "distribution": {
+          "iterations": "t.pass==0",
+          "scatter_chance": 100,
+          "x": 0,
+          "y": "- v.originy",
+          "z": 0
+        },
+        "places_feature": "minecraft_dev:clear_scatter"
+      },
+      "children": [
+        {
+          "identifier": "minecraft_dev:clear_scatter",
+          "type": "minecraft:scatter_feature",
+          "data": {
+            "description": {
+              "identifier": "minecraft_dev:clear_scatter"
+            },
+            "distribution": {
+              "iterations": 280,
+              "scatter_chance": 100,
+              "x": 0,
+              "y": {
+                "distribution": "fixed_grid",
+                "extent": [
+                  -64,
+                  200
+                ]
+              },
+              "z": 0
+            },
+            "places_feature": "minecraft_dev:clear_scatter_block"
+          },
+          "children": [
+            {
+              "identifier": "minecraft_dev:clear_scatter_block",
+              "type": "minecraft:single_block_feature",
+              "data": {
+                "description": {
+                  "identifier": "minecraft_dev:clear_scatter_block"
+                },
+                "places_block": "minecraft:air",
+                "enforce_placement_rules": false,
+                "enforce_survivability_rules": false
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "identifier": "minecraft_dev:variables",
       "type": "minecraft:scatter_feature",
       "children": [
@@ -35,14 +91,14 @@
                   "identifier": "minecraft_dev:biome_marker_placer"
                 },
                 "distribution": {
-                  "iterations": "t.intensity = 1.0;\nt.threshold = 0.0;\nt.hash = math.abs(math.mod(math.sin(v.originx * 12.9898 + v.originz * 78.233) * 43758.5453, 1));\nt.noise = (t.hash > t.threshold) ? t.hash * t.intensity : 0;\nreturn t.noise < 0.75 ? 0 : t.noise * 20 - 10;",
+                  "iterations": "t.intensity = 1.0;\nt.threshold = 0.0;\nt.hash = math.abs(math.mod(math.sin(v.originx * 12.9898 + v.originz * 78.233) * 43758.5453, 1));\nt.noise = (t.hash > t.threshold) ? t.hash * t.intensity : 0;\nt.cell_hash = math.abs(math.mod(math.sin(math.floor(v.originx / 16) * 127.1 + math.floor(v.originz / 16) * 311.7) * 43758.5453, 1));\nt.height = t.noise < 0.75 ? 0 : (t.noise - 0.75) / 0.25 * (t.cell_hash < 0.25 ? 10 : (t.cell_hash < 0.5 ? 20 : (t.cell_hash < 0.75 ? 40 : 80)));\nreturn t.height;",
                   "scatter_chance": 100,
                   "x": 0,
                   "y": {
                     "distribution": "fixed_grid",
                     "extent": [
-                      "-t.noise * 10",
-                      "t.noise * 10"
+                      0,
+                      "t.height"
                     ]
                   },
                   "z": 0
@@ -59,7 +115,7 @@
               "iterations": 1,
               "scatter_chance": 100,
               "x": 0,
-              "y": "200 - v.originy",
+              "y": "64 - v.originy",
               "z": 0
             },
             "places_feature": "minecraft_dev:biome_marker_placer"
@@ -71,7 +127,7 @@
           "identifier": "minecraft_dev:variables"
         },
         "distribution": {
-          "iterations": "t.ORIGIN_DIST = math.abs(v.worldx) + math.abs(v.worldz);\nt.HEIGHT_MAP = q.heightmap(v.worldx, v.worldz);\n\n\nreturn 1;\n",
+          "iterations": "t.pass==7\n",
           "scatter_chance": 100,
           "x": 0,
           "y": 0,
@@ -86,6 +142,7 @@
       "identifier": "minecraft_dev:root"
     },
     "features": [
+      "minecraft_dev:clear",
       "minecraft_dev:variables"
     ]
   }

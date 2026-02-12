@@ -1,0 +1,11 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:single_block_feature": {
+    "description": {
+      "identifier": "minecraft_dev:clear_scatter_block"
+    },
+    "places_block": "minecraft:air",
+    "enforce_placement_rules": false,
+    "enforce_survivability_rules": false
+  }
+}

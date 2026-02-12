@@ -1,5 +1,5 @@
 import { ItemLockMode, ItemStack } from "@minecraft/server"
-import { LoreData } from "../refs/lore"
+import { LoreData } from "../refs/lore"     
 
 export interface ItemConfig {
     id: string,

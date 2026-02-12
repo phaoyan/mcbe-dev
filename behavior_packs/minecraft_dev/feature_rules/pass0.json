@@ -2,8 +2,8 @@
     "format_version": "1.13.0",
     "minecraft:feature_rules": {
         "description": {
-            "identifier": "ns_ds:pass0",
-            "places_feature": "ns_ds:root"
+            "identifier": "minecraft_dev:pass0",
+            "places_feature": "minecraft_dev:root"
         },
         "conditions": {
             "placement_pass": "first_pass",

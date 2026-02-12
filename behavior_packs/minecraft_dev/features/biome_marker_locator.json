@@ -1,0 +1,16 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:scatter_feature": {
+    "description": {
+      "identifier": "minecraft_dev:biome_marker_locator"
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": 100,
+      "x": 0,
+      "y": "64 - v.originy",
+      "z": 0
+    },
+    "places_feature": "minecraft_dev:biome_marker_placer"
+  }
+}
