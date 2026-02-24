@@ -1,4 +1,8 @@
-import { Player } from "@minecraft/server"
+import ref from "./ref";
+
+export const dpId = (id: string)=>{
+    return `${ref.name_space}:${id}`;
+};
 
 export const dpList = {
     lclick_dummy_idx: "minecraft_dev:lclick_dummy_idx",

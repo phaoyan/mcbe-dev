@@ -312,6 +312,15 @@
     },
     "entity_animations": {},
     "attachable_animations": {},
+    "fog_ids": {
+        "fog_1": "ns_ds:fog_1",
+        "fog_2": "ns_ds:fog_2",
+        "fog_3": "ns_ds:fog_3",
+        "fog_4": "ns_ds:fog_4",
+        "fog_5": "ns_ds:fog_5",
+        "fog_6": "ns_ds:fog_6",
+        "fog_muzani": "ns_ds:fog_muzani"
+    },
     "dialogue_scenes": {},
     "dialogue_events": {},
     "bbmodel": {},

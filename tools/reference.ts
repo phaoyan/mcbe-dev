@@ -500,6 +500,36 @@ export function mcstructureRefs(): void {
 }
 
 /**
+ * 生成雾效ID引用
+ */
+export function fogIdRefs(): void {
+    const fogIds: Record<string, string> = {};
+
+    const fogDir = path.join(RESOURCE_PACK_DIR, "fogs");
+    if (fs.existsSync(fogDir)) {
+        const fogFiles = rglob('.*\\.json$', fogDir);
+        for (const fogFile of fogFiles) {
+            try {
+                const fogData = readJson(fogFile);
+                if (fogData["minecraft:fog_settings"] && fogData["minecraft:fog_settings"].description) {
+                    const fogId = fogData["minecraft:fog_settings"].description.identifier;
+                    const shortId = fogId.split(':').pop() || '';
+                    if (shortId) {
+                        fogIds[shortId] = fogId;
+                    }
+                }
+            } catch (error) {
+                console.error(`读取雾效文件失败 ${fogFile}: ${error}`);
+            }
+        }
+    }
+
+    const outputPath = path.join(SCRIPTS_DIR, "json", "fog_ids.json");
+    ensureDir(path.dirname(outputPath));
+    writeJson(outputPath, fogIds);
+}
+
+/**
  * 生成对话引用
  */
 export function dialogueRefs(): { scenes: Record<string, string>, events: Record<string, string> } {
@@ -770,6 +800,28 @@ export function refJson(): void {
             }
         }
         ref["attachable_animations"] = attAnimations;
+    }
+
+    // fog
+    {
+        const fogIds: Record<string, string> = {};
+        const fogDir = path.join(RESOURCE_PACK_DIR, "fogs");
+        if (fs.existsSync(fogDir)) {
+            const fogFiles = rglob('.*\\.json$', fogDir);
+            for (const fogFile of fogFiles) {
+                try {
+                    const fogData = readJson(fogFile);
+                    if (fogData["minecraft:fog_settings"] && fogData["minecraft:fog_settings"].description) {
+                        const fogId = fogData["minecraft:fog_settings"].description.identifier;
+                        const shortId = fogId.split(':').pop() || '';
+                        if (shortId) fogIds[shortId] = fogId;
+                    }
+                } catch (error) {
+                    console.error(`读取雾效文件失败 ${fogFile}: ${error}`);
+                }
+            }
+        }
+        ref["fog_ids"] = fogIds;
     }
 
     // dialogue

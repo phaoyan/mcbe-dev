@@ -1,8 +1,8 @@
 {
     "format_version": 2,
     "header": {
-        "name": "mincraft_dev Behavior Pack",
-        "description": "mincraft_dev Behavior Pack",
+        "name": "pack.name",
+        "description": "pack.description",
         "uuid": "393219a6-78de-43f2-810b-9688ab046935",
         "version": [
             1,
@@ -54,5 +54,8 @@
             "module_name": "@minecraft/server-ui",
             "version": "2.0.0"
         }
-    ]
+    ],
+    "metadata": {
+        "product_type": "addon"
+    }
 }

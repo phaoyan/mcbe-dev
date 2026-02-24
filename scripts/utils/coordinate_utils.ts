@@ -4,6 +4,7 @@ import { Vector3Utils } from "@minecraft/math";
 import { DPUtils } from "./dp_utils";
 import { TimeUtils } from "./time_utils";
 import { VecUtils } from "./math_utils";
+import { dpId } from "../refs/dp_list";
 
 type KDNode2D<T> = {
     p: { x: number; y: number };
@@ -109,24 +110,6 @@ export class KDTree2D<T = any> {
     }
 }
 
-/**
- * CoordinateType：坐标检测类型，定义了检测半径和检测周期（ticks）
- */
-export enum CoordinateType {
-    RANGE_16_20 = "RANGE_16_20",
-    RANGE_32_20 = "RANGE_32_20",
-    RANGE_32_40 = "RANGE_32_40",
-    RANGE_64_20 = "RANGE_64_20",
-    RANGE_64_100 = "RANGE_64_100",
-    RANGE_128_40 = "RANGE_128_40",
-    RANGE_128_100 = "RANGE_128_100",
-    RANGE_128_200 = "RANGE_128_200",
-    RANGE_128_400 = "RANGE_128_400",
-    RANGE_256_200 = "RANGE_256_200",
-    RANGE_512_200 = "RANGE_512_200",
-}
-
-
 const TYPE_CONFIGS = {
     RANGE_16_20: { radius: 16, ticks: 20 },
     RANGE_32_20: { radius: 32, ticks: 20 },
@@ -139,18 +122,31 @@ const TYPE_CONFIGS = {
     RANGE_128_400: { radius: 128, ticks: 400 },
     RANGE_256_200: { radius: 256, ticks: 200 },
     RANGE_512_200: { radius: 512, ticks: 200 },
-};
+    FOG: { radius: 256, ticks: 100 },
+    NPC: { radius: 64, ticks: 40 },
+} as const;
+
+/**
+ * CoordinateType：坐标检测类型，定义了检测半径和检测周期（ticks）
+ */
+export type CoordinateType = keyof typeof TYPE_CONFIGS;
+export const CoordinateType = Object.fromEntries(
+    Object.keys(TYPE_CONFIGS).map(key => [key, key])
+) as { [K in CoordinateType]: K };
 
 /**
  * CoordinateUtil：坐标注册与触发工具
  */
 export class CoordinateUtils {
-    private static trees = new Map<string, KDTree2D<(player: Player) => void>>();
+    private static ENTER_LEAVE_TREES = new Map<string, KDTree2D<{ id: string; radius: number; onEnter: (player: Player) => boolean | void; onLeave: (player: Player) => boolean | void }>>();
+    private static ENTER_LEAVE_NODE_MAP = new Map<string, Record<string, { id: string; x: number; z: number; radius: number; onEnter: (player: Player) => boolean | void; onLeave: (player: Player) => boolean | void }>>();
+    private static NODE_SEQ = 0;
 
     static {
         // 初始化所有类型的树
         for (const type of Object.keys(TYPE_CONFIGS)) {
-            this.trees.set(type, new KDTree2D());
+            this.ENTER_LEAVE_TREES.set(type, new KDTree2D());
+            this.ENTER_LEAVE_NODE_MAP.set(type, {});
         }
     }
 
@@ -158,11 +154,35 @@ export class CoordinateUtils {
      * 注册一个坐标点及其触发时的回调函数
      * @param type 触发类型（包含半径和周期），默认为 Range64 (64格20tick)
      */
-    static register(x: number, y: number, callback: (player: Player) => void, type: string): void {
-        const tree = this.trees.get(type);
-        if (tree) {
-            tree.add(x, y, callback);
-        }
+    static registerEnter(x: number, z: number, callback: (player: Player) => boolean | void, type: string): void {
+        const config = TYPE_CONFIGS[type as keyof typeof TYPE_CONFIGS];
+        if (!config) return;
+        this.register(
+            x,
+            z,
+            type,
+            `enter_${type}_${this.NODE_SEQ++}`,
+            config.radius,
+            callback,
+            () => { }
+        );
+    }
+
+    static register(
+        x: number,
+        z: number,
+        type: string,
+        id: string,
+        radius: number,
+        onEnter: (player: Player) => boolean | void,
+        onLeave: (player: Player) => boolean | void
+    ) {
+        const tree = this.ENTER_LEAVE_TREES.get(type);
+        const nodeMap = this.ENTER_LEAVE_NODE_MAP.get(type);
+        if (!tree || !nodeMap) return;
+        const node = { id, x, z, radius, onEnter, onLeave };
+        tree.add(x, z, { id, radius, onEnter, onLeave });
+        nodeMap[id] = node;
     }
 
     /**
@@ -170,21 +190,56 @@ export class CoordinateUtils {
      */
     static init() {
         for (const [type, config] of Object.entries(TYPE_CONFIGS)) {
-            const tree = this.trees.get(type)!;
+            const tree = this.ENTER_LEAVE_TREES.get(type)!;
             const { radius, ticks } = config;
 
             TimeUtils.timer((player) => {
-                if (!player.isValid || tree.size() === 0) return;
+                if (!player.isValid) return;
                 const playerPos = player.location;
-                // 直接使用该类型定义的半径进行查询
+                if (tree.size() === 0) return;
+
+                const activeNodesKey = `coord_active_nodes_${type}`;
+                const prevActiveNodeIds = DPUtils.curr(player, activeNodesKey, []) as string[];
+
                 const results = tree.queryRadius(playerPos.x, playerPos.z, radius);
-                results.forEach(res => {
-                    try {
-                        res.data(player);
-                    } catch (e) {
-                        console.error(`CoordinateUtil callback error [Type:${type}] at [${res.p.x}, ${res.p.y}]: ${e}`);
+                const currActiveNodes = results.filter(res => {
+                    const node = res.data;
+                    const dx = playerPos.x - res.p.x;
+                    const dz = playerPos.z - res.p.y;
+                    const d2 = dx * dx + dz * dz;
+                    return d2 <= node.radius * node.radius;
+                }).map(res => res.data);
+                const currActiveNodeIds = currActiveNodes.map(n => n.id);
+
+                // onLeave
+                for (const id of prevActiveNodeIds) {
+                    if (!currActiveNodeIds.includes(id)) {
+                        try {
+                            const node = this.ENTER_LEAVE_NODE_MAP.get(type)?.[id];
+                            if (node) node.onLeave(player);
+                        } catch (e) {
+                            console.error(`CoordinateUtil onLeave error [Type:${type}] id:${id}: ${e}`);
+                        }
                     }
-                });
+                }
+
+                // onEnter
+                const nextActiveNodeIds: string[] = [];
+                for (const node of currActiveNodes) {
+                    if (!prevActiveNodeIds.includes(node.id)) {
+                        try {
+                            if (node.onEnter(player) !== false) {
+                                nextActiveNodeIds.push(node.id);
+                            }
+                        } catch (e) {
+                            console.error(`CoordinateUtil onEnter error [Type:${type}] id:${node.id}: ${e}`);
+                        }
+                    } else {
+                        nextActiveNodeIds.push(node.id);
+                    }
+                }
+
+                DPUtils.set(player, activeNodesKey, nextActiveNodeIds);
             }, ticks);
         }
     }
@@ -198,13 +253,15 @@ export class CoordinateEventTemplates {
      * 实现“只执行一次”逻辑的模板。
      * 基于 world 的 DynamicProperty (DP) 进行持久化，确保逻辑在整个世界生命周期内只运行一次。
      */
-    static once(id: string, callback: (player: Player) => boolean | void): (player: Player) => void {
+    static once(id: string, callback: (player: Player) => boolean | void): (player: Player) => boolean | void {
         return (player: Player) => {
             const dpKey = `once_${id}`;
-            if (world.getDynamicProperty(dpKey)) return;
-            if (callback(player) !== false) {
+            if (world.getDynamicProperty(dpKey)) return true;
+            const result = callback(player);
+            if (result !== false) {
                 world.setDynamicProperty(dpKey, true);
             }
+            return result;
         };
     }
 
@@ -212,30 +269,44 @@ export class CoordinateEventTemplates {
      * 实现具有冷却时间的重复触发逻辑。
      * 基于 world 的 DynamicProperty 进行持久化，确保冷却时间在服务器重启后依然有效。
      */
-    static cooldown(id: string, cooldownTicks: number, callback: (player: Player) => boolean | void): (player: Player) => void {
+    static cooldown(id: string, cooldownTicks: number, callback: (player: Player) => boolean | void): (player: Player) => boolean | void {
         return (player: Player) => {
             const dpKey = `cd_${id}`;
             const nextTick = world.getDynamicProperty(dpKey) as number ?? 0;
-            if (world.getAbsoluteTime() < nextTick) return;
+            if (world.getAbsoluteTime() < nextTick) return false;
             
-            if (callback(player) !== false) {
+            const result = callback(player);
+            if (result !== false) {
                 world.setDynamicProperty(dpKey, world.getAbsoluteTime() + cooldownTicks);
             }
+            return result;
         };
     }
 
     static registerOnceAt(x: number, z: number, type: string, id: string, callback: (player: Player) => boolean | void) {
-        CoordinateUtils.register(x, z, this.once(id, callback), type);
+        CoordinateUtils.registerEnter(x, z, this.once(id, callback), type);
     }
 
     static registerCooldownAt(x: number, z: number, type: string, id: string, cooldownTicks: number, callback: (player: Player) => boolean | void) {
-        CoordinateUtils.register(x, z, this.cooldown(id, cooldownTicks, callback), type);
+        CoordinateUtils.registerEnter(x, z, this.cooldown(id, cooldownTicks, callback), type);
+    }
+
+    static registerEnterLeaveAt(
+        x: number,
+        z: number,
+        type: string,
+        id: string,
+        radius: number,
+        onEnter: (player: Player) => boolean | void,
+        onLeave: (player: Player) => boolean | void
+    ) {
+        CoordinateUtils.register(x, z, type, id, radius, onEnter, onLeave);
     }
 
     static registerNpc(npcs: { id: string; type: string; loc: Vector3; facing: [number, number] }[]) {
         for (const coordinate of npcs) {
             const loc = coordinate.loc;
-            this.registerOnceAt(loc.x, loc.z, CoordinateType.RANGE_64_20, `ns_ds:npc_gen_${coordinate.id}`, () => {
+            this.registerOnceAt(loc.x, loc.z, CoordinateType.NPC, dpId(`npc_gen_${coordinate.id}`), () => {
                 try {
                     const npc = world.getDimension(MinecraftDimensionTypes.Overworld).spawnEntity(coordinate.type, loc);
                     const dialogueName = `${npc.typeId.replace("ns_ds:mob_npc_", "")}_initial`;
@@ -266,7 +337,7 @@ export class CoordinateEventTemplates {
             this.CHESTS[chest.id] = chest
 
             const loc = chest.loc;
-            this.registerOnceAt(loc.x, loc.z, CoordinateType.RANGE_64_100, `ns_ds:chest_gen_${chest.id}`, (player) => {
+            this.registerOnceAt(loc.x, loc.z, CoordinateType.RANGE_64_100, dpId(`chest_gen_${chest.id}`), (player) => {
                 if (chest.filter && !chest.filter(player)) return false;
                 const targetLoc = VecUtils.start({
                     x: loc.x + 0.5,
@@ -312,12 +383,12 @@ export class CoordinateEventTemplates {
 
         materials.forEach(material => {
             const loc = material.loc;
-            CoordinateUtils.register(loc.x, loc.z, (player: Player) => {
-                if (material.filter && !material.filter(player)) return;
+            const dpKeyCd = dpId(`cd_material_${material.id}`);
+            CoordinateUtils.registerEnter(loc.x, loc.z, (player: Player) => {
+                if (material.filter && !material.filter(player)) return false;
 
-                const dpKey = `cd_ns_ds:material_${material.id}`
-                const nextTick = world.getDynamicProperty(dpKey) as number ?? 0;
-                if (world.getAbsoluteTime() < nextTick) return;
+                const nextTick = world.getDynamicProperty(dpKeyCd) as number ?? 0;
+                if (world.getAbsoluteTime() < nextTick) return true;
                 const targetLoc = VecUtils.start({
                     x: loc.x + 0.5,
                     y: loc.y,
@@ -328,13 +399,14 @@ export class CoordinateEventTemplates {
                     maxDistance: 2,
                     type: material.type,
                 });
-                if (existing.length > 0) return;
+                if (existing.length > 0) return false;
 
                 try {
                     const entity = player.dimension.spawnEntity(material.type, targetLoc);
                     DPUtils.store().decoration_material_id.set(entity, material.id);
+                    return false;
                 } catch (e) {
-                    return;
+                    return false;
                 }
             }, type);
         })
@@ -347,28 +419,43 @@ export class CoordinateEventTemplates {
             if (!material) return;
 
             if (material.onCollect(player, target) !== false) {
-                const dpKey = `cd_ns_ds:material_${material.id}`
+                const dpKey = dpId(`cd_material_${material.id}`)
                 world.setDynamicProperty(dpKey, world.getAbsoluteTime() + material.cooldown);
             }
         });
     }
 
 
-    static registerFight(fights: Record<string, { loc: Vector3; radius: number; cooldown: number; mobs: string[]; filter?: (player: Player) => boolean; spawnLoc?: Vector3 }>, particle: string) {
+    static registerFight(fights: Record<string, { 
+        loc: Vector3; 
+        radius: number; 
+        cooldown: number; 
+        mobs: string[]; 
+        filter?: (player: Player) => boolean; 
+        spawnLoc?: Vector3 
+        spawnRadius?: number
+    }>, particle: string) {
         Object.entries(fights).forEach(([key, data]) => {
-            const type = data.radius > 16 ? CoordinateType.RANGE_128_40 : CoordinateType.RANGE_16_20;
-            this.registerCooldownAt(data.loc.x, data.loc.z, type, `ns_ds:fight_${key}`, data.cooldown, (player: Player) => {
+            let type: string = CoordinateType.RANGE_16_20;
+            if (data.radius > 256) type = CoordinateType.RANGE_512_200;
+            else if (data.radius > 128) type = CoordinateType.RANGE_256_200;
+            else if (data.radius > 64) type = CoordinateType.RANGE_128_40;
+            else if (data.radius > 32) type = CoordinateType.RANGE_64_20;
+            else if (data.radius > 16) type = CoordinateType.RANGE_32_20;
+
+            this.registerCooldownAt(data.loc.x, data.loc.z, type, dpId(`cd_fight_${key}`), data.cooldown, (player: Player) => {
                 if (player.dimension.id !== MinecraftDimensionTypes.Overworld) return false;
                 if (data.filter && !data.filter(player)) return false;
                 const dist = Vector3Utils.distance(player.location, data.loc);
                 if (dist > data.radius) return false;
                 try {
                     const spawnLoc = data.spawnLoc ?? data.loc;
+                    const spawnRadius = data.spawnRadius ?? data.radius * 0.25;
                     data.mobs.forEach((mob: string) => {
-                        const spawnPos = key === "final_oni5_boss" ? spawnLoc : {
-                            x: (Math.random() - 0.5) * data.radius * 0.5 + spawnLoc.x,
+                        const spawnPos = {
+                            x: (Math.random() - 0.5) * spawnRadius * 2 + spawnLoc.x,
                             y: spawnLoc.y,
-                            z: (Math.random() - 0.5) * data.radius * 0.5 + spawnLoc.z,
+                            z: (Math.random() - 0.5) * spawnRadius * 2 + spawnLoc.z,
                         };
                         player.dimension.spawnEntity(mob, spawnPos);
                         player.dimension.spawnParticle(particle, spawnPos);
@@ -379,6 +466,34 @@ export class CoordinateEventTemplates {
                 }
             });
         });
+    }
+
+    static registerFog(fog: { 
+        id: string; 
+        fogId: string; 
+        type: string; 
+        loc: Vector3; 
+        radius: number; 
+        delay: number;
+        filter?: (player: Player) => boolean 
+    }) {
+        this.registerEnterLeaveAt(
+            fog.loc.x,
+            fog.loc.z,
+            fog.type,
+            dpId(`fog_${fog.id}`),
+            fog.radius,
+            (player: Player) => {
+                if (fog.filter && !fog.filter(player)) return false;
+                TimeUtils.timeout(() => {
+                    player.runCommand(`fog @s push ${fog.fogId} ${fog.id}`)
+                }, fog.delay);
+            },
+            (player: Player) => {
+                if (fog.filter && !fog.filter(player)) return false;
+                player.runCommand(`fog @s remove ${fog.id}`)
+            }
+        );
     }
 }
 
